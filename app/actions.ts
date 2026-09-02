@@ -15,6 +15,26 @@ function text(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+/**
+ * datetime-local はタイムゾーンを持たない文字列を送ってくる。
+ * Vercel のサーバーは UTC で動くため、そのまま解釈すると幹事の入力から9時間ずれる。
+ * ブラウザが送ってきたオフセット（分）を足して、入力した人の時刻として保存する。
+ */
+function toIsoWithOffset(localValue: string, offsetMinutes: string) {
+  if (!localValue) {
+    return null;
+  }
+
+  const offset = Number(offsetMinutes);
+  const parsed = Date.parse(`${localValue}:00Z`);
+
+  if (!Number.isFinite(offset) || Number.isNaN(parsed)) {
+    return new Date(localValue).toISOString();
+  }
+
+  return new Date(parsed + offset * 60_000).toISOString();
+}
+
 function yen(formData: FormData, key: string) {
   const value = Number(text(formData, key) || "0");
 
@@ -43,8 +63,7 @@ export async function createOrderEvent(_: ActionState, formData: FormData): Prom
     title,
     menu_url: menuUrl || null,
     shipping_fee: shippingFee,
-    // datetime-local はタイムゾーンを持たないため、ブラウザではなくサーバーの時刻として解釈される。
-    closed_at: closedAt ? new Date(closedAt).toISOString() : null,
+    closed_at: toIsoWithOffset(closedAt, text(formData, "tz_offset")),
   });
 
   if (error) {

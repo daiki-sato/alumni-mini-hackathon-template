@@ -3,7 +3,15 @@ import { notFound } from "next/navigation";
 
 import { AddOrderForm } from "@/app/components/AddOrderForm";
 import { DeadlineWatcher } from "@/app/components/DeadlineWatcher";
-import { formatDateTime, formatYen, isClosed, splitShipping, tallyItems } from "@/lib/bento/calc";
+import {
+  attachShipping,
+  countPeople,
+  formatDateTime,
+  formatYen,
+  isClosed,
+  splitShipping,
+  tallyItems,
+} from "@/lib/bento/calc";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +36,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     .eq("event_id", event.id)
     .order("created_at");
 
-  const rows = orders ?? [];
+  const orderRows = orders ?? [];
   const closed = isClosed(event.closed_at);
-  const { perPerson, remainder } = splitShipping(event.shipping_fee, rows.length);
+  const peopleCount = countPeople(orderRows);
+  const { perPerson, remainder } = splitShipping(event.shipping_fee, peopleCount);
+  const rows = attachShipping(orderRows, perPerson);
   const itemTotal = rows.reduce((sum, row) => sum + row.item_price, 0);
   const tally = closed ? tallyItems(rows) : [];
 
@@ -108,11 +118,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                       {formatYen(row.item_price)}
                     </td>
                     <td className="py-2 pr-4 text-right tabular-nums opacity-70">
-                      {formatYen(perPerson)}
+                      {formatYen(row.shipping)}
                     </td>
-                    <td className="py-2 text-right font-bold tabular-nums">
-                      {formatYen(row.item_price + perPerson)}
-                    </td>
+                    <td className="py-2 text-right font-bold tabular-nums">{formatYen(row.due)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -136,7 +144,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
         {remainder > 0 && (
           <p className="mt-3 text-xs opacity-70">
-            送料を頭割りすると {formatYen(remainder)} 足りません。この分は幹事の負担です。
+            送料 {formatYen(event.shipping_fee)} を {peopleCount}人で頭割りすると{" "}
+            {formatYen(remainder)} 足りません。この分は幹事の負担です。
           </p>
         )}
       </section>

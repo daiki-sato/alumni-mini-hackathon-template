@@ -14,6 +14,9 @@ export function CreateEventForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      {/* サーバーは UTC で動くので、締切をこの人の時刻として保存するために時差を渡す。 */}
+      <input type="hidden" name="tz_offset" value={-new Date().getTimezoneOffset()} />
+
       <label className="flex flex-col gap-1">
         <span className="text-sm font-bold">注文会の名前</span>
         <input name="title" required placeholder="10/15 アルムナイ会ランチ" className={FIELD} />

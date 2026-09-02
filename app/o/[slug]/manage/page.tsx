@@ -4,7 +4,14 @@ import { notFound } from "next/navigation";
 import { closeNow, deleteOrder, togglePaid } from "@/app/actions";
 import { DeadlineWatcher } from "@/app/components/DeadlineWatcher";
 import { ShareLink } from "@/app/components/ShareLink";
-import { formatDateTime, formatYen, isClosed, splitShipping } from "@/lib/bento/calc";
+import {
+  attachShipping,
+  countPeople,
+  formatDateTime,
+  formatYen,
+  isClosed,
+  splitShipping,
+} from "@/lib/bento/calc";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -29,17 +36,14 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
     .eq("event_id", event.id)
     .order("created_at");
 
-  const rows = orders ?? [];
+  const orderRows = orders ?? [];
   const closed = isClosed(event.closed_at);
-  const { perPerson, remainder } = splitShipping(event.shipping_fee, rows.length);
+  const peopleCount = countPeople(orderRows);
+  const { perPerson, remainder } = splitShipping(event.shipping_fee, peopleCount);
+  const rows = attachShipping(orderRows, perPerson);
 
-  const dueOf = (price: number) => price + perPerson;
-  const collected = rows
-    .filter((row) => row.paid)
-    .reduce((sum, row) => sum + dueOf(row.item_price), 0);
-  const outstanding = rows
-    .filter((row) => !row.paid)
-    .reduce((sum, row) => sum + dueOf(row.item_price), 0);
+  const collected = rows.filter((row) => row.paid).reduce((sum, row) => sum + row.due, 0);
+  const outstanding = rows.filter((row) => !row.paid).reduce((sum, row) => sum + row.due, 0);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
@@ -131,7 +135,7 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
                       <span className="ml-2 text-xs opacity-60">{formatYen(row.item_price)}</span>
                     </td>
                     <td className="py-2 pr-4 text-right font-bold tabular-nums">
-                      {formatYen(dueOf(row.item_price))}
+                      {formatYen(row.due)}
                     </td>
                     <td className="py-2 pr-4">
                       <form action={togglePaid}>
@@ -170,7 +174,7 @@ export default async function ManagePage({ params }: { params: Promise<{ slug: s
         )}
 
         <p className="mt-3 text-xs opacity-70">
-          送料 {formatYen(event.shipping_fee)} を {rows.length}人で頭割りして、1人{" "}
+          送料 {formatYen(event.shipping_fee)} を {peopleCount}人で頭割りして、1人{" "}
           {formatYen(perPerson)}。
           {remainder > 0 && ` 割り切れない ${formatYen(remainder)} は幹事の負担です。`}
         </p>
