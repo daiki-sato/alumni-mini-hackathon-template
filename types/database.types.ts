@@ -34,23 +34,73 @@ export type Database = {
   }
   public: {
     Tables: {
-      notes: {
+      order_events: {
         Row: {
+          closed_at: string | null
           created_at: string
           id: number
+          menu_url: string | null
+          shipping_fee: number
+          slug: string
           title: string
         }
         Insert: {
+          closed_at?: string | null
           created_at?: string
           id?: never
+          menu_url?: string | null
+          shipping_fee?: number
+          slug: string
           title: string
         }
         Update: {
+          closed_at?: string | null
           created_at?: string
           id?: never
+          menu_url?: string | null
+          shipping_fee?: number
+          slug?: string
           title?: string
         }
         Relationships: []
+      }
+      orders: {
+        Row: {
+          created_at: string
+          event_id: number
+          id: number
+          item_name: string
+          item_price: number
+          paid: boolean
+          person_name: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: number
+          id?: never
+          item_name: string
+          item_price: number
+          paid?: boolean
+          person_name: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: number
+          id?: never
+          item_name?: string
+          item_price?: number
+          paid?: boolean
+          person_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "order_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

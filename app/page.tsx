@@ -1,126 +1,77 @@
+import Link from "next/link";
+
+import { CreateEventForm } from "@/app/components/CreateEventForm";
+import { formatDateTime, isClosed } from "@/lib/bento/calc";
 import { createClient } from "@/lib/supabase/server";
 
-// Supabase から毎回読み直す（ビルド時に固定させない）。
 export const dynamic = "force-dynamic";
 
-type Note = {
-  id: number;
-  title: string;
-  created_at: string;
-};
-
-type FetchResult = { ok: true; notes: Note[] } | { ok: false; message: string; hint: string };
-
-async function fetchNotes(): Promise<FetchResult> {
-  let supabase: Awaited<ReturnType<typeof createClient>>;
-
-  try {
-    supabase = await createClient();
-  } catch (error) {
-    return {
-      ok: false,
-      message: error instanceof Error ? error.message : String(error),
-      hint: "cp .env.local.example .env.local",
-    };
-  }
-
-  const { data, error } = await supabase.from("notes").select("id, title, created_at").order("id");
-
-  if (error) {
-    return {
-      ok: false,
-      message: `${error.message}（code: ${error.code ?? "-"}）`,
-      hint: "npm run db:start",
-    };
-  }
-
-  return { ok: true, notes: data ?? [] };
-}
-
 export default async function Home() {
-  const result = await fetchNotes();
+  const supabase = await createClient();
+
+  const { data: events, error } = await supabase
+    .from("order_events")
+    .select("id, slug, title, closed_at, created_at, orders(count)")
+    .order("created_at", { ascending: false });
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-16">
-      <h1 className="text-2xl font-bold">Next.js × Supabase テンプレート</h1>
-      <p className="mt-2 text-sm opacity-70">このページは疎通確認用です。</p>
+    <main className="mx-auto w-full max-w-3xl px-6 py-12">
+      <h1 className="text-2xl font-bold">お弁当注文＆集計</h1>
+      <p className="mt-2 text-sm opacity-70">
+        注文会を作ってURLを配ると、みんなが自分の注文を入れられます。
+      </p>
 
       <section className="mt-10">
-        <h2 className="text-lg font-semibold">Supabase との接続</h2>
+        <h2 className="border-b border-stone-300 pb-2 text-lg font-bold dark:border-stone-700">
+          新しい注文会をつくる
+        </h2>
+        <div className="mt-5">
+          <CreateEventForm />
+        </div>
+      </section>
 
-        {result.ok ? (
-          <div className="mt-4 rounded-lg border border-green-600/40 bg-green-600/10 p-4">
-            <p className="font-medium text-green-700 dark:text-green-400">
-              接続できています（notes テーブルから {result.notes.length} 件取得）
-            </p>
-            <ul className="mt-3 space-y-1 text-sm">
-              {result.notes.map((note) => (
-                <li key={note.id} className="flex gap-2">
-                  <span className="opacity-50 tabular-nums">{note.id}.</span>
-                  <span>{note.title}</span>
-                </li>
-              ))}
-            </ul>
-            {result.notes.length === 0 && (
-              <p className="mt-3 text-sm opacity-70">
-                行が0件です。RLS ポリシーが無いテーブルはエラーではなく空で返ります。
-                <code className="mx-1 rounded bg-black/10 px-1 dark:bg-white/10">
-                  npm run db:reset
-                </code>
-                を試してください。
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="mt-4 rounded-lg border border-red-600/40 bg-red-600/10 p-4">
-            <p className="font-medium text-red-700 dark:text-red-400">接続できませんでした</p>
-            <p className="mt-2 text-sm break-words">{result.message}</p>
-            <p className="mt-3 text-sm">
-              まずこれを試してください:
-              <code className="mx-1 rounded bg-black/10 px-1 dark:bg-white/10">{result.hint}</code>
-            </p>
-            <p className="mt-1 text-sm opacity-70">
-              詳しい手順は README.md の「セットアップ」を参照してください。
-            </p>
-          </div>
+      <section className="mt-12">
+        <h2 className="border-b border-stone-300 pb-2 text-lg font-bold dark:border-stone-700">
+          これまでの注文会
+        </h2>
+
+        {error && (
+          <p className="mt-4 rounded border border-red-600/40 bg-red-600/10 px-3 py-2 text-sm text-red-700 dark:text-red-400">
+            一覧を読み込めませんでした（{error.message}）
+          </p>
         )}
-      </section>
 
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">次にやること</h2>
-        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm">
-          <li>
-            <code className="rounded bg-black/10 px-1 dark:bg-white/10">supabase/migrations/</code>
-            のサンプル（notes）を消して、自分たちのテーブルを設計する
-          </li>
-          <li>
-            <code className="rounded bg-black/10 px-1 dark:bg-white/10">
-              npm run db:new -- create_items
-            </code>
-            でマイグレーションを作り、SQL を書く
-          </li>
-          <li>
-            <code className="rounded bg-black/10 px-1 dark:bg-white/10">npm run db:reset</code>
-            で反映し、
-            <code className="mx-1 rounded bg-black/10 px-1 dark:bg-white/10">npm run db:types</code>
-            で TypeScript の型を生成する
-          </li>
-          <li>このページを書き換えて、アプリを作り始める</li>
-        </ol>
-      </section>
+        {events && events.length === 0 && (
+          <p className="mt-4 text-sm opacity-70">
+            まだありません。上のフォームから作ってください。
+          </p>
+        )}
 
-      <section className="mt-10 text-sm opacity-70">
-        <p>
-          ローカルの Supabase Studio:{" "}
-          <a
-            className="underline"
-            href="http://127.0.0.1:54323"
-            target="_blank"
-            rel="noreferrer noopener"
-          >
-            http://127.0.0.1:54323
-          </a>
-        </p>
+        <ul className="mt-4 flex flex-col gap-2">
+          {events?.map((event) => {
+            const closed = isClosed(event.closed_at);
+            const count = event.orders[0]?.count ?? 0;
+
+            return (
+              <li key={event.id}>
+                <Link
+                  href={`/o/${event.slug}`}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded border border-stone-300 bg-white px-4 py-3 transition hover:border-amber-700 dark:border-stone-700 dark:bg-stone-900"
+                >
+                  <span className="font-bold">{event.title}</span>
+                  <span className="flex items-center gap-3 text-xs opacity-70">
+                    <span>{count}件</span>
+                    {event.closed_at && (
+                      <span>
+                        {closed ? "締切済" : "締切"} {formatDateTime(event.closed_at)}
+                      </span>
+                    )}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       </section>
     </main>
   );
