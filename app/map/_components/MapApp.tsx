@@ -695,8 +695,9 @@ export function MapApp() {
 
   return (
     <div
-      className={`flex flex-col bg-bg text-ink md:h-dvh md:overflow-hidden ${
-        view === "map" ? "max-md:h-dvh max-md:overflow-hidden" : "max-md:min-h-dvh"
+      // overflow は clip（hidden だとフォーカスの移動でこの箱がずれて、ヘッダーの下に中身が潜る）
+      className={`flex flex-col bg-bg text-ink md:h-dvh md:overflow-clip ${
+        view === "map" ? "max-md:h-dvh max-md:overflow-clip" : "max-md:min-h-dvh"
       }`}
     >
       {/* 上部バーとシーンの切り替えは、リストをスクロールしても上に残す */}
@@ -904,7 +905,8 @@ export function MapApp() {
 
         <aside
           aria-label={selected ? `${placeName(selected.place)}の詳細` : "店の一覧"}
-          className={`relative z-10 flex flex-col bg-surface md:order-1 md:min-h-0 md:w-[400px] md:flex-none md:border-line md:border-r ${
+          // スマホの詳細シート（fixed, z-50）がヘッダーより上に出るよう、スマホでは重なりの箱を作らない
+          className={`flex flex-col bg-surface md:relative md:z-10 md:order-1 md:min-h-0 md:w-[400px] md:flex-none md:border-line md:border-r ${
             view === "map" && !selected ? "max-md:hidden" : "max-md:flex-1"
           }`}
         >

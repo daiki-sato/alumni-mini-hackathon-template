@@ -148,8 +148,9 @@ body {
     transform: none;
   }
 }
+/* 終わったら transform を残さない（backwards）。残ると中の position: fixed がパネル基準になる */
 .anim-panel-in {
-  animation: panel-in 220ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: panel-in 150ms cubic-bezier(0.2, 0, 0, 1) backwards;
 }
 
 @keyframes pop-in {
@@ -163,7 +164,7 @@ body {
   }
 }
 .anim-pop-in {
-  animation: pop-in 140ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: pop-in 140ms cubic-bezier(0.2, 0, 0, 1) backwards;
   transform-origin: top center;
 }
 

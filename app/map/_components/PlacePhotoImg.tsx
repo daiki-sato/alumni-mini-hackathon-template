@@ -54,7 +54,7 @@ export function PlacePhotoImg({
 }: {
   place: Place;
   index?: number;
-  size: "thumb" | "large" | "full";
+  size: "thumb" | "mid" | "large" | "full";
   className?: string;
   /** 写真の下に帰属表示を出すか（サムネイルでは呼ぶ側がまとめて出す） */
   credit?: boolean;
@@ -101,6 +101,10 @@ export function PlacePhotoImg({
         <img
           src={url}
           alt={`${place.displayName?.text ?? "店"}の写真`}
+          // キャッシュ済みの画像は onLoad より先に読み終わることがあるので、付いた時点でも確かめる
+          ref={(img) => {
+            if (img?.complete && img.naturalWidth > 0) setState("done");
+          }}
           loading="lazy"
           decoding="async"
           onLoad={() => setState("done")}

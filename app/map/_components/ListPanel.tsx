@@ -147,7 +147,7 @@ function TopCard({
   );
 }
 
-/** 4位以下の小さめの行。写真は出さない（写真は1枚ごとに課金されるため、上位3つだけ） */
+/** 4位以下の小さめの行。写真は小さいサムネイル（160px）で、行が画面に入ったときだけ読む */
 function Row({
   s,
   rank,
@@ -157,8 +157,10 @@ function Row({
   onHover,
 }: CardProps & { rank: number; words: WordLists }) {
   const kq = keyQuote(s);
+  const photo = s.place.photos?.[0];
+  const credit = !!photo?.authorAttributions.length;
   return (
-    <li className="min-w-0">
+    <li className="relative min-w-0">
       <button
         type="button"
         data-place-card={s.place.id}
@@ -168,8 +170,14 @@ function Row({
           hot ? "bg-surface-2 ring-1 ring-brand" : ""
         }`}
       >
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-2 font-bold text-muted text-sm tabular-nums">
-          {rank}
+        <span className="flex w-12 shrink-0 flex-col">
+          <span className="relative size-12">
+            <PlacePhotoImg place={s.place} size="thumb" className="size-12 rounded-lg" />
+            <span className="absolute -top-1 -left-1 grid size-6 place-items-center rounded-full border-2 border-surface bg-surface-2 font-bold text-[11px] text-ink tabular-nums">
+              {rank}
+            </span>
+          </span>
+          {credit && <span className="h-3.5" aria-hidden="true" />}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[15px] md:text-sm">{placeName(s.place)}</span>
@@ -190,6 +198,10 @@ function Row({
           </span>
         </span>
       </button>
+      {credit && (
+        // 写真の帰属表示（規約で必要）。リンクはボタンの中に置けないので、サムネイルの直下に重ねる
+        <PhotoCredit photo={photo} className="absolute bottom-1.5 left-2 w-12 text-[10px]" />
+      )}
     </li>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Place } from "@/lib/jibunmap/place";
 import { BackIcon, CloseIcon } from "./Icons";
 import { PhotoCredit, PlacePhotoImg } from "./PlacePhotoImg";
@@ -68,12 +69,13 @@ export function PhotoGallery({
 
   const photo = photos[i];
   if (!photo) return null;
-  return (
+  // body に出す（パネルの中だと、親の transform や重なり順に閉じ込められて全画面にならない）
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label={`${place.displayName?.text ?? "店"}の写真`}
-      className="fixed inset-0 z-[60] flex flex-col bg-black text-white"
+      className="fixed inset-0 z-[100] flex flex-col bg-black text-white"
       onTouchStart={(e) => {
         touchX.current = e.touches[0]?.clientX ?? null;
       }}
@@ -131,6 +133,7 @@ export function PhotoGallery({
       <div className="px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] [&_*]:text-white">
         <PhotoCredit photo={photo} />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
