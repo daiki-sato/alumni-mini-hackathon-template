@@ -33,6 +33,14 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+/**
+ * 保存してよい応答か。206（部分の応答）や opaque など、200 の通常の応答以外は保存しない
+ * （cache.put は 206 を受け付けず例外になる）
+ */
+function cacheable(res) {
+  return res.status === 200 && res.type === "basic";
+}
+
 /** この通信を Service Worker で扱うか（扱わないものは素通し） */
 function handles(request) {
   if (request.method !== "GET") return false;
@@ -54,7 +62,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((res) => {
-          if (res.ok) {
+          if (cacheable(res)) {
             const copy = res.clone();
             caches.open(CACHE).then((c) => c.put(url.pathname, copy));
           }
@@ -83,7 +91,7 @@ self.addEventListener("fetch", (event) => {
       (hit) =>
         hit ||
         fetch(request).then((res) => {
-          if (res.ok) {
+          if (cacheable(res)) {
             const copy = res.clone();
             caches.open(CACHE).then((c) => c.put(request, copy));
           }
