@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { forcedDemo } from "@/lib/jibunmap/demo";
-import { boundsOf, type GLatLngBounds, importLibrary, MAP_ID } from "@/lib/jibunmap/google";
+import {
+  boundsOf,
+  type GLatLngBounds,
+  importLibrary,
+  MAP_ID,
+  mapLoadAllowed,
+} from "@/lib/jibunmap/google";
 import type { Bounds } from "@/lib/jibunmap/place";
 import { placeName } from "@/lib/jibunmap/place";
 import { type Scored, verdict } from "@/lib/jibunmap/score";
@@ -75,6 +81,7 @@ export function GoogleMapView({
   onHover,
   onUserMove,
   onFail,
+  onMapLimit,
   boundsRef,
   me,
   meKey,
@@ -90,6 +97,8 @@ export function GoogleMapView({
   onUserMove: () => void;
   /** 読み込めなかったとき（呼ぶ側でデモに切り替える） */
   onFail: (why: string, detail?: unknown, kind?: "timeout") => void;
+  /** 今日の地図の上限に達して、Google の地図を作らなかった */
+  onMapLimit: () => void;
   boundsRef: React.RefObject<Bounds | null>;
   /** 現在地（青い点と精度の円で出す） */
   me: { lat: number; lng: number; acc: number } | null;
@@ -111,8 +120,8 @@ export function GoogleMapView({
   const [tiles, setTiles] = useState(false);
 
   // 最新のコールバックを ref で持つ（地図のリスナーは一度だけ登録するため）
-  const cb = useRef({ onSelect, onHover, onUserMove, onFail });
-  cb.current = { onSelect, onHover, onUserMove, onFail };
+  const cb = useRef({ onSelect, onHover, onUserMove, onFail, onMapLimit });
+  cb.current = { onSelect, onHover, onUserMove, onFail, onMapLimit };
 
   useEffect(() => {
     // 固定デモ（?demo=1）では読み込まない（親が最初の描画のあとでデモに切り替える）
@@ -137,6 +146,12 @@ export function GoogleMapView({
           importLibrary<MarkerLib>("marker"),
         ]);
         if (cancelled || !divRef.current) return;
+        // 地図を作るたびに Dynamic Maps に数えられるので、1日の上限を確かめてから作る
+        if (!mapLoadAllowed()) {
+          stopTimer();
+          cb.current.onMapLimit();
+          return;
+        }
         const map = new maps.Map(divRef.current, {
           center: TOKYO,
           zoom: 14,

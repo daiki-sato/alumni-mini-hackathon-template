@@ -116,6 +116,12 @@ export function MapApp() {
   // キーがあっても、Google に届かなければデモに切り替える（fellBack）
   const [demo, setDemoState] = useState(!HAS_KEY);
   const [fellBack, setFellBack] = useState(false);
+  /** 今日の地図（Dynamic Maps）の上限に達したので、簡易地図を出している */
+  const [mapLimited, setMapLimited] = useState(false);
+  const onMapLimit = useCallback(() => {
+    console.info("[ジブンマップ] 今日の地図の表示上限に達したので、簡易地図にします");
+    setMapLimited(true);
+  }, []);
   /** タイムアウトで切り替わったので、自動の再試行を待っている */
   const [autoRetry, setAutoRetry] = useState(false);
   /** 自動の再試行はページを開いているあいだに1回だけ */
@@ -342,7 +348,8 @@ export function MapApp() {
     [setDemo, resetView],
   );
 
-  // Maps JS は、ページを開いた直後（検索の前）に読み始める。読むだけなら課金されない。
+  // Maps JS は、ページを開いた直後（検索の前）に読み始める。スクリプトとライブラリを読むだけでは
+  // 数えられない（Dynamic Maps は地図を作ったとき＝new Map のたびに1回数えられ、ここでは作らない）。
   // 失敗の扱いは地図と検索の側に任せる
   useEffect(() => {
     if (!HAS_KEY || forcedDemo()) return;
@@ -1014,12 +1021,15 @@ export function MapApp() {
           }`}
           aria-hidden={mobile && view === "list" ? true : undefined}
         >
-          {demo ? (
+          {demo || mapLimited ? (
+            // デモ、または今日の地図の上限に達したとき: 点の配置だけの簡易地図（検索と一覧はそのまま使える）
             <DemoMapView
               note={
-                fellBack
-                  ? "サンプルの街（架空）の地図です"
-                  : "Google マップのキーを設定すると実際の地図になります"
+                mapLimited && !demo
+                  ? "今日の地図の表示上限に達しました（一覧は使えます）"
+                  : fellBack
+                    ? "サンプルの街（架空）の地図です"
+                    : "Google マップのキーを設定すると実際の地図になります"
               }
               items={visible}
               rankIds={rankIds}
@@ -1039,13 +1049,14 @@ export function MapApp() {
               onHover={setHoverId}
               onUserMove={onUserMove}
               onFail={fallBack}
+              onMapLimit={onMapLimit}
               boundsRef={boundsRef}
               me={me}
               meKey={meKey}
               route={route}
             />
           )}
-          {!demo && (
+          {!demo && !mapLimited && (
             <button
               type="button"
               aria-label="現在地を表示"

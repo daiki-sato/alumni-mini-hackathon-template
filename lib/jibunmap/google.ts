@@ -305,6 +305,14 @@ export function photoAllowed(url: string): boolean {
 
 /* ---------- 一時キャッシュと回数 ---------- */
 
+/**
+ * Google の地図を1枚作ってよいか（Dynamic Maps は地図を作るたびに1回数えられる）。
+ * 通れば今日の回数に足す。1日の上限（50）を超えたら false（呼ぶ側は簡易地図を出す）
+ */
+export function mapLoadAllowed(): boolean {
+  return tryUse("map");
+}
+
 /** 今日の検索の残り回数 */
 export function searchesLeft(): number {
   return usageLeft("search");
