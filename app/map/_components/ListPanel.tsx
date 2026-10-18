@@ -307,6 +307,8 @@ export function ListPanel({
   onMinScore,
   onClearGenre,
   onSolo,
+  scoreTip,
+  onCloseScoreTip,
   hidden,
   hiddenWhy,
   onShowAll,
@@ -339,6 +341,9 @@ export function ListPanel({
   onClearGenre: (() => void) | null;
   /** 「ひとりで」に戻す（友だちとのときだけ。それ以外は null） */
   onSolo: (() => void) | null;
+  /** 点数の説明の吹き出しを出すか（初回だけ） */
+  scoreTip: boolean;
+  onCloseScoreTip: () => void;
   /** 最低点で隠している件数（一時的に全部出しているときは 0） */
   hidden: number;
   /** 隠している理由（例: ほかのジャンル・60点未満） */
@@ -445,6 +450,25 @@ export function ListPanel({
             )}
           </h2>
         </div>
+        {scoreTip && status.kind === "ok" && total > 0 && (
+          // 初回だけ。点数とひと言の評価の意味を1行で
+          <p
+            className="mt-1.5 flex items-center gap-1 rounded-xl bg-brand py-1 pr-1 pl-3 text-on-brand text-xs"
+            role="note"
+          >
+            <span className="min-w-0 flex-1">
+              100点満点。あなたの条件に合う人が集まる度合いです（○ 合いそう など）
+            </span>
+            <button
+              type="button"
+              onClick={onCloseScoreTip}
+              aria-label="説明を閉じる"
+              className="grid size-10 shrink-0 place-items-center rounded-full hover:bg-white/15 md:size-8"
+            >
+              <CloseIcon className="size-4" />
+            </button>
+          </p>
+        )}
         {hidden > 0 && status.kind === "ok" && (
           <button
             type="button"
