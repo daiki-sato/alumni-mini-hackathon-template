@@ -100,6 +100,19 @@ export function usageLeft(kind: UsageKind): number {
   return Math.max(0, DAILY_LIMITS[kind] - usageCount(kind));
 }
 
+/**
+ * 上限を確かめて、通れば1回分を足す（同期で一度に済ませる）。
+ * await の前に呼ぶこと。確認と加算のあいだに await があると、同時の呼び出しがすり抜ける。
+ * 通ったあとで失敗しても戻さない（呼び出しが Google に届いたかは分からないため、安全側に数える）
+ */
+export function tryUse(kind: UsageKind): boolean {
+  const v = read();
+  if (v[kind] >= DAILY_LIMITS[kind]) return false;
+  v[kind]++;
+  write(v);
+  return true;
+}
+
 /** 1回分を足す */
 export function addUsage(kind: UsageKind): void {
   const v = read();

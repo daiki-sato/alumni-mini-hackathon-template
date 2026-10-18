@@ -567,46 +567,55 @@ export function MapApp() {
       const s = scored.find((x) => x.place.id === selRef.current);
       const loc = s?.place.location;
       if (!s || !loc) return;
+      // 計算中は二重に走らせない（ボタンも無効にしているが、連打や別の経路からの呼び出しに備える）
+      if (routeBusy.current) return;
+      routeBusy.current = true;
       const placeId = s.place.id;
       setRouteState({ placeId, mode, status: "loading" });
-      const pos = await locate();
-      if (!pos) {
-        setRouteState({ placeId, mode, status: "error" });
-        return;
-      }
       try {
-        const r = await computeRoute(
-          { lat: pos.lat, lng: pos.lng },
-          { lat: loc.latitude, lng: loc.longitude },
-          mode,
-        );
-        if (selRef.current !== placeId) return;
-        if (!r) {
+        const pos = await locate();
+        if (!pos) {
           setRouteState({ placeId, mode, status: "error" });
           return;
         }
-        setRoute({ placeId, name: placeName(s.place), mode, ...r });
-        setRouteState(null);
-        if (mobile) {
-          setView("map");
-          onBackRef.current();
+        try {
+          const r = await computeRoute(
+            { lat: pos.lat, lng: pos.lng },
+            { lat: loc.latitude, lng: loc.longitude },
+            mode,
+          );
+          if (selRef.current !== placeId) return;
+          if (!r) {
+            setRouteState({ placeId, mode, status: "error" });
+            return;
+          }
+          setRoute({ placeId, name: placeName(s.place), mode, ...r });
+          setRouteState(null);
+          if (mobile) {
+            setView("map");
+            onBackRef.current();
+          }
+        } catch (e) {
+          console.warn(
+            "[ジブンマップ] 経路を取得できませんでした（Routes API の有効化・キーの制限を確認）",
+            e,
+          );
+          setRouteState({
+            placeId,
+            mode,
+            status: "error",
+            message: e instanceof RouteLimitError ? e.message : undefined,
+          });
         }
-      } catch (e) {
-        console.warn(
-          "[ジブンマップ] 経路を取得できませんでした（Routes API の有効化・キーの制限を確認）",
-          e,
-        );
-        setRouteState({
-          placeId,
-          mode,
-          status: "error",
-          message: e instanceof RouteLimitError ? e.message : undefined,
-        });
+      } finally {
+        routeBusy.current = false;
       }
     },
     [scored, locate, mobile, setView],
   );
   const onBackRef = useRef<() => void>(() => {});
+  /** 経路を計算中か（二重に走らせない） */
+  const routeBusy = useRef(false);
 
   /** 現在地のまわりで探す。距離は点数にも画面にも使わない（「家の近さは関係ない」方針） */
   const onNear = useCallback(

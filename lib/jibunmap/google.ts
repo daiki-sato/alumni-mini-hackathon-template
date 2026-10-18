@@ -4,7 +4,7 @@
 // 検索・経路・写真の回数に、このブラウザで1日あたりの上限（usage.ts）。
 
 import type { Bounds, Place, PriceLevel, Review } from "./place";
-import { addUsage, DAILY_LIMITS, usageCount, usageLeft } from "./usage";
+import { DAILY_LIMITS, tryUse, usageLeft } from "./usage";
 
 export const BROWSER_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? "";
 export const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID || "DEMO_MAP_ID";
@@ -298,9 +298,8 @@ const shownPhotos = new Set<string>();
  */
 export function photoAllowed(url: string): boolean {
   if (shownPhotos.has(url)) return true;
-  if (usageLeft("photo") <= 0) return false;
+  if (!tryUse("photo")) return false;
   shownPhotos.add(url);
-  addUsage("photo");
   return true;
 }
 
@@ -416,13 +415,13 @@ export async function searchPlaces(
     : cacheKey(q, opts.area ? bounds : undefined);
   const hit = readCache(key);
   if (hit) return { places: hit, cached: true };
-  if (usageCount("search") >= SEARCH_LIMIT) {
+  // 上限の確認と加算は、await の前に同期で済ませる（同時に呼ばれてもすり抜けない）
+  if (!tryUse("search")) {
     throw new SearchLimitError(
       `今日の検索の上限（1日${SEARCH_LIMIT}回）に達しました。明日また使えます。`,
     );
   }
   const { Place } = await importLibrary<PlacesLib>("places");
-  addUsage("search");
   const req: Record<string, unknown> = {
     textQuery: opts.textQuery?.trim() || q,
     fields: PLACE_FIELDS,
@@ -483,11 +482,11 @@ export async function computeRoute(
   destination: LatLngLiteral,
   mode: TravelMode,
 ): Promise<RouteResult | null> {
-  if (usageCount("route") >= ROUTE_LIMIT) {
+  // 上限の確認と加算は、await の前に同期で済ませる
+  if (!tryUse("route")) {
     throw new RouteLimitError(`今日の経路の上限（1日${ROUTE_LIMIT}回）に達しました。`);
   }
   const { Route } = await importLibrary<RoutesLib>("routes");
-  addUsage("route");
   const { routes } = await Route.computeRoutes({
     origin,
     destination,
