@@ -120,10 +120,34 @@
   --font-sans: var(--font-noto-sans-jp), system-ui, "Hiragino Sans", sans-serif;
 }
 
+/* iPhone が文字を自動で大きくしない。ページ全体は横にはみ出しても動かない（保険） */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: clip;
+}
+
 body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
+  overflow-x: clip;
+}
+
+/* overflow: clip が使えない環境では hidden で代える */
+@supports not (overflow-x: clip) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+}
+
+/* 全画面のシート・ドロワーの縦スクロールの面: 横には動かさず、外へスクロールを伝えない */
+.jm-sheet-scroll {
+  overflow-x: clip;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 /* キーボード操作のときだけ見えるフォーカスリング */

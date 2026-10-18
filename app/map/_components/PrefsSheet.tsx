@@ -44,7 +44,7 @@ function WordEditor({
     <div>
       <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-2">
         <h3 className="font-bold text-[15px] md:text-sm">{title}</h3>
-        <span className="min-w-0 text-muted text-xs">{hint}</span>
+        <span className="min-w-0 text-muted text-xs [overflow-wrap:anywhere]">{hint}</span>
       </div>
       <ul className="mt-2 flex min-w-0 flex-wrap gap-1.5" aria-label={title}>
         {words.map((w) => {
@@ -76,7 +76,9 @@ function WordEditor({
                   </span>
                 </button>
               )}
-              <span className={`min-w-0 truncate ${onSoloOnly ? "" : "pl-1.5"}`}>{w}</span>
+              <span className={`min-w-0 [overflow-wrap:anywhere] ${onSoloOnly ? "" : "pl-1.5"}`}>
+                {w}
+              </span>
               <button
                 type="button"
                 aria-label={`「${w}」を${title}から外す`}
@@ -214,7 +216,7 @@ export function PrefsSheet({
         }
       }}
       // スマホは画面にぴったりの全画面（dialog の既定の幅・余白を打ち消す）。横にはみ出したら切る
-      className="fixed inset-0 m-0 box-border h-dvh max-h-none w-full max-w-full overflow-x-hidden bg-surface p-0 text-ink backdrop:bg-black/40 md:left-auto md:w-[420px] md:border-line md:border-l md:shadow-e2"
+      className="fixed inset-0 m-0 box-border h-dvh max-h-none w-full max-w-full overflow-hidden overscroll-contain bg-surface p-0 text-ink backdrop:bg-black/40 md:left-auto md:w-[420px] md:border-line md:border-l md:shadow-e2"
     >
       <div className="flex h-full w-full min-w-0 flex-col overflow-x-clip">
         <div className="flex items-center justify-between border-line border-b px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
@@ -235,7 +237,7 @@ export function PrefsSheet({
             <CloseIcon />
           </button>
         </div>
-        <div className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overflow-x-clip px-4 pt-4 pb-6">
+        <div className="jm-sheet-scroll min-h-0 w-full min-w-0 flex-1 px-4 pt-4 pb-6">
           <p className="text-muted text-sm">
             口コミにこの語が出ると、点数が上がったり下がったりします。この端末の中にだけ保存します。
           </p>
@@ -284,7 +286,7 @@ export function PrefsSheet({
           <button
             type="button"
             onClick={onClose}
-            className="mt-1 h-11 w-full whitespace-nowrap rounded-full bg-brand px-5 font-bold text-on-brand text-sm hover:opacity-90"
+            className="mt-1 min-h-11 w-full rounded-full bg-brand px-5 py-2 font-bold text-on-brand text-sm [overflow-wrap:anywhere] hover:opacity-90"
           >
             この条件で並べる
           </button>
