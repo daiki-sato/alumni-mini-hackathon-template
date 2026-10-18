@@ -140,6 +140,18 @@ export function MapApp() {
   const [places, setPlaces] = useState<Place[]>(() => (HAS_KEY ? [] : demoSearch(FIRST_DEMO_TOWN)));
   const [now, setNow] = useState(DEMO_NOW);
   const [status, setStatus] = useState<Status>({ kind: HAS_KEY ? "idle" : "ok" });
+  /** 圏外か（navigator.onLine と online/offline のイベント） */
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    const sync = () => setOffline(!navigator.onLine);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
   /** 実データで検索を1回終えたか（ホーム画面に追加の案内は、そのあとに出す） */
   const [searchedOnce, setSearchedOnce] = useState(false);
   /** 検索中に来た次の検索の語（前の検索が終わったら自動で探す。表示にも使う） */
@@ -1002,6 +1014,18 @@ export function MapApp() {
         )}
       </div>
 
+      {offline && !pinnedDemo && (
+        // 圏外: Google の店は出せないので、通信なしのデモへ案内する（外枠は Service Worker が持っている）
+        <div className="z-20 flex items-center gap-2 bg-lo-soft px-4 py-2 text-sm" role="status">
+          <InfoIcon className="size-4 shrink-0 text-lo" />
+          <span className="min-w-0 flex-1">
+            通信が必要です。
+            <a href="/map?demo=1" className="ml-1 font-bold underline">
+              通信なしのデモはこちら
+            </a>
+          </span>
+        </div>
+      )}
       {fellBack ? (
         <div
           className="z-20 flex items-center gap-2 bg-accent-soft px-4 py-1.5 text-xs"

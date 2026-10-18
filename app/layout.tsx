@@ -2,6 +2,13 @@ import type { Metadata, Viewport } from "next";
 import { Noto_Sans_JP } from "next/font/google";
 
 import "./globals.css";
+import { SwRegister } from "./_components/SwRegister";
+
+/**
+ * Service Worker の版。デプロイごとのコミット（Vercel がビルド時に渡す）。
+ * ビルドの中で同じ値になるものを使う（時刻だとページごとに違う値になる）
+ */
+const SW_VERSION = (process.env.VERCEL_GIT_COMMIT_SHA ?? "local").slice(0, 12);
 
 const notoSansJp = Noto_Sans_JP({
   subsets: ["latin"],
@@ -27,7 +34,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ja" className={`${notoSansJp.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <SwRegister version={SW_VERSION} />
+      </body>
     </html>
   );
 }
