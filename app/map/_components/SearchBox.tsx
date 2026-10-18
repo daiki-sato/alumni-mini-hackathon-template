@@ -8,12 +8,14 @@ import {
   DEMO_GENRE_NAMES,
   GENRE_WORDS,
   LIVE_EXAMPLES,
+  nearGenre,
   suggestQueries,
   type Town,
 } from "@/lib/jibunmap/suggest";
-import { CloseIcon, PinIcon, SearchIcon } from "./Icons";
+import { CloseIcon, MyLocationIcon, PinIcon, SearchIcon } from "./Icons";
 
 type Item =
+  | { kind: "near"; genre: string }
   | { kind: "query"; q: string }
   | { kind: "suggest"; q: string }
   | { kind: "place"; id: string; name: string; sub: string };
@@ -34,12 +36,15 @@ export function SearchBox({
   onChange,
   onSearch,
   onPickPlace,
+  onNear,
 }: {
   demo: boolean;
   value: string;
   onChange: (v: string) => void;
   onSearch: (q: string) => void;
   onPickPlace: (id: string, q: string) => void;
+  /** 現在地の近くでジャンルを探す（位置はこのとき初めて取る） */
+  onNear: (genre: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -48,13 +53,16 @@ export function SearchBox({
 
   const items = useMemo<Item[]>(() => {
     const q = value.trim();
+    // 現在地はデモでは使わない（サンプルの街は架空の場所のため）
+    const canNear = !demo && typeof navigator !== "undefined" && "geolocation" in navigator;
+    const near: Item[] = canNear ? [{ kind: "near", genre: nearGenre(q) }] : [];
     if (!q) {
-      return (demo ? DEMO_EXAMPLES : LIVE_EXAMPLES).map((x) => ({
-        kind: "suggest" as const,
-        q: x,
-      }));
+      return [
+        ...near,
+        ...(demo ? DEMO_EXAMPLES : LIVE_EXAMPLES).map((x) => ({ kind: "suggest" as const, q: x })),
+      ];
     }
-    const out: Item[] = [{ kind: "query", q }];
+    const out: Item[] = [...near, { kind: "query", q }];
     const sug = demo ? suggestQueries(q, DEMO_SUGGEST_TOWNS, DEMO_GENRES) : suggestQueries(q);
     for (const x of sug) out.push({ kind: "suggest", q: x });
     if (demo) {
@@ -82,6 +90,10 @@ export function SearchBox({
     inputRef.current?.blur();
     if (it.kind === "place") {
       onPickPlace(it.id, it.name);
+      return;
+    }
+    if (it.kind === "near") {
+      onNear(it.genre);
       return;
     }
     onChange(it.q);
@@ -206,13 +218,21 @@ export function SearchBox({
           {items.map((it, i) => {
             const selected = i === active;
             const icon =
-              it.kind === "place" ? (
+              it.kind === "near" ? (
+                <MyLocationIcon className="size-5" />
+              ) : it.kind === "place" ? (
                 <PinIcon className="size-5" />
               ) : (
                 <SearchIcon className="size-5" />
               );
             const label =
-              it.kind === "query" ? `「${it.q}」で探す` : it.kind === "suggest" ? it.q : it.name;
+              it.kind === "near"
+                ? `現在地の近くで ${it.genre}`
+                : it.kind === "query"
+                  ? `「${it.q}」で探す`
+                  : it.kind === "suggest"
+                    ? it.q
+                    : it.name;
             const sub = it.kind === "place" ? it.sub : "";
             return (
               <div

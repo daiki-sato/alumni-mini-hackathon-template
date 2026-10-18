@@ -10,7 +10,13 @@ import {
   demoSearch,
   demoSearchBounds,
 } from "@/lib/jibunmap/demo";
-import { BROWSER_KEY, SearchLimitError, searchesLeft, searchPlaces } from "@/lib/jibunmap/google";
+import {
+  BROWSER_KEY,
+  type LatLngLiteral,
+  SearchLimitError,
+  searchesLeft,
+  searchPlaces,
+} from "@/lib/jibunmap/google";
 import type { Bounds, Place } from "@/lib/jibunmap/place";
 import { MAX_QUERY_LENGTH, placeName } from "@/lib/jibunmap/place";
 import {
@@ -25,7 +31,7 @@ import { foodQuery } from "@/lib/jibunmap/suggest";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
 import { GoogleMapView } from "./GoogleMapView";
-import { InfoIcon, ListIcon, MapIcon, SearchIcon, TuneIcon } from "./Icons";
+import { InfoIcon, ListIcon, MapIcon, MyLocationIcon, SearchIcon, TuneIcon } from "./Icons";
 import { ListPanel, PeekCard } from "./ListPanel";
 import { PrefsSheet } from "./PrefsSheet";
 import { SearchBox } from "./SearchBox";
@@ -55,6 +61,7 @@ function urlFor(
 const SEARCH_TIMEOUT_MS = 12_000;
 
 type View = "list" | "map";
+type MyPos = { lat: number; lng: number; acc: number };
 
 const MOBILE_QUERY = "(max-width: 767px)";
 
@@ -107,6 +114,10 @@ export function MapApp() {
   const [prefsOpen, setPrefsOpen] = useState(false);
   /** 「並びが変わりました」などの短い知らせ */
   const [toast, setToast] = useState<string | null>(null);
+  /** 現在地。state にだけ持つ（localStorage・URL・ログには残さない） */
+  const [me, setMe] = useState<MyPos | null>(null);
+  /** 現在地を取り直したら地図をそこへ動かすための番号 */
+  const [meKey, setMeKey] = useState(0);
   /** マイ条件を開いたときの並び（閉じたときに変わったかを見る） */
   const rankAtOpen = useRef<string>("");
   // ひとりで／友だちと。保存はしない（毎回「ひとりで」から）。URL の ?scene=friends には載せる
@@ -122,14 +133,20 @@ export function MapApp() {
   const boundsRef = useRef<Bounds | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searching = useRef(false);
-  type RunOpts = { bounds?: Bounds; fit: boolean; select?: string };
+  type RunOpts = {
+    bounds?: Bounds;
+    fit: boolean;
+    select?: string;
+    /** 現在地のまわりで探す（位置は state にだけ持ち、URL や保存には残さない） */
+    near?: LatLngLiteral;
+  };
   /** 検索中に来た、いちばん新しい検索（古い保留は上書きして捨てる） */
   const pending = useRef<{ q: string; opts: RunOpts } | null>(null);
   const runRef = useRef<(q: string, opts: RunOpts) => void>(() => {});
   /** いちばん新しい検索の番号。古い検索の結果やエラーは捨てる */
   const seq = useRef(0);
   /** 最後に Google で探した語（「もう一度試す」用） */
-  const lastLive = useRef<{ q: string; select?: string } | null>(null);
+  const lastLive = useRef<{ q: string; select?: string; near?: LatLngLiteral } | null>(null);
   /** URL に載せる検索語（デモに切り替わっても、入力した語のまま） */
   const urlQ = useRef("");
   /** 詳細を開くとき履歴を1つ積んだか（積んだなら、閉じるときは history.back() で戻る） */
@@ -236,12 +253,13 @@ export function MapApp() {
         return;
       }
       setBusy(null);
-      const label = q.trim() || "このエリア";
+      const label = opts.near ? `現在地の近く（${q}）` : q.trim() || "このエリア";
       setSelId(null);
       setMoved(false);
       fromCard.current = null;
       placePushed.current = false;
-      if (!opts.bounds) urlQ.current = q;
+      // 現在地のまわりの検索は URL に語を載せない（再読み込みで、位置なしの検索にならないように）
+      if (!opts.bounds) urlQ.current = opts.near ? "" : q;
       const found0 = (found: Place[]) => {
         const sel = opts.select && found.some((p) => p.id === opts.select) ? opts.select : null;
         // 検索したらリストを出す（エリアの再検索は地図のまま）。起動時の URL に view があればそれ
@@ -266,7 +284,7 @@ export function MapApp() {
         return;
       }
       const my = ++seq.current;
-      if (!opts.bounds) lastLive.current = { q, select: opts.select };
+      if (!opts.bounds) lastLive.current = { q, select: opts.select, near: opts.near };
       searching.current = true;
       setStatus({ kind: "loading" });
       setTitle(label);
@@ -276,6 +294,7 @@ export function MapApp() {
           searchPlaces(q, opts.bounds ?? boundsRef.current ?? undefined, {
             area: !!opts.bounds,
             textQuery: foodQuery(q || "飲食店"),
+            near: opts.near,
           }),
           SEARCH_TIMEOUT_MS,
         );
@@ -347,12 +366,44 @@ export function MapApp() {
     setStatus({ kind: "idle" });
     const last = lastLive.current;
     if (last?.q.trim()) {
-      setQuery(last.q);
-      run(last.q, { fit: true, select: last.select });
+      setQuery(last.near ? "" : last.q);
+      run(last.q, { fit: true, select: last.select, near: last.near });
     } else {
       setQuery("");
     }
   }, [run, setDemo, resetView]);
+
+  /** 現在地を取る。ボタンや「現在地の近くで」を押したときに初めて呼ぶ（開いただけでは許可を求めない） */
+  const locate = useCallback((): Promise<MyPos | null> => {
+    return new Promise((resolve) => {
+      const fail = () => {
+        setToast("現在地を取得できませんでした");
+        resolve(null);
+      };
+      if (!("geolocation" in navigator)) return fail();
+      navigator.geolocation.getCurrentPosition(
+        (p) => {
+          const pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
+          setMe(pos);
+          setMeKey((k) => k + 1);
+          resolve(pos);
+        },
+        fail,
+        { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+      );
+    });
+  }, []);
+
+  /** 現在地のまわりで探す。距離は点数にも画面にも使わない（「家の近さは関係ない」方針） */
+  const onNear = useCallback(
+    async (genre: string) => {
+      const pos = await locate();
+      if (!pos) return;
+      setQuery("");
+      run(genre, { fit: true, near: { lat: pos.lat, lng: pos.lng } });
+    },
+    [locate, run],
+  );
 
   const onSearch = useCallback(
     (q: string) => {
@@ -532,6 +583,7 @@ export function MapApp() {
             onChange={setQuery}
             onSearch={onSearch}
             onPickPlace={onPickPlace}
+            onNear={onNear}
           />
           <button
             type="button"
@@ -644,7 +696,23 @@ export function MapApp() {
               onUserMove={onUserMove}
               onFail={fallBack}
               boundsRef={boundsRef}
+              me={me}
+              meKey={meKey}
             />
+          )}
+          {!demo && (
+            <button
+              type="button"
+              aria-label="現在地を表示"
+              onClick={() => locate()}
+              className={`absolute right-3 z-10 grid size-11 place-items-center rounded-full bg-surface text-ink shadow-e2 hover:bg-surface-2 ${
+                mapView && peek && !selected
+                  ? "bottom-[calc(10rem+env(safe-area-inset-bottom))]"
+                  : "bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-6"
+              }`}
+            >
+              <MyLocationIcon className="size-6" />
+            </button>
           )}
           {!demo && moved && status.kind !== "loading" && (
             <button
@@ -706,6 +774,7 @@ export function MapApp() {
                 onOpenPrefs={openPrefs}
                 onSelect={onSelect}
                 onHover={setHoverId}
+                onNear={demo ? null : () => onNear("飲食店")}
                 onPickExample={(q) => {
                   setQuery(q);
                   onSearch(q);

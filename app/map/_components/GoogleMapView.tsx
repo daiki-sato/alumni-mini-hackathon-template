@@ -18,7 +18,15 @@ type GMap = {
   addListener(ev: string, fn: () => void): Listener;
 };
 type GBounds = { extend(ll: LatLngLiteral): void; contains(ll: LatLngLiteral): boolean };
-type MapsLib = { Map: new (el: HTMLElement, opts: Record<string, unknown>) => GMap };
+type GCircle = {
+  setMap(m: GMap | null): void;
+  setCenter(c: LatLngLiteral): void;
+  setRadius(r: number): void;
+};
+type MapsLib = {
+  Map: new (el: HTMLElement, opts: Record<string, unknown>) => GMap;
+  Circle: new (opts: Record<string, unknown>) => GCircle;
+};
 type CoreLib = { LatLngBounds: new () => GBounds };
 type Marker = {
   map: GMap | null;
@@ -64,6 +72,8 @@ export function GoogleMapView({
   onUserMove,
   onFail,
   boundsRef,
+  me,
+  meKey,
 }: {
   items: Scored[];
   rankIds: string[];
@@ -76,10 +86,15 @@ export function GoogleMapView({
   /** 読み込めなかったとき（呼ぶ側でデモに切り替える） */
   onFail: (why: string, detail?: unknown) => void;
   boundsRef: React.RefObject<Bounds | null>;
+  /** 現在地（青い点と精度の円で出す） */
+  me: { lat: number; lng: number; acc: number } | null;
+  /** 現在地を取り直したら変わる番号（そのときだけ地図をそこへ動かす） */
+  meKey: number;
 }) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<GMap | null>(null);
-  const libs = useRef<{ core: CoreLib; marker: MarkerLib } | null>(null);
+  const libs = useRef<{ maps: MapsLib; core: CoreLib; marker: MarkerLib } | null>(null);
+  const meMarker = useRef<{ m: Marker; circle: GCircle } | null>(null);
   const markers = useRef(new Map<string, Entry>());
   const programmatic = useRef(false);
   const [ready, setReady] = useState(false);
@@ -121,7 +136,7 @@ export function GoogleMapView({
             : "greedy",
         });
         mapRef.current = map;
-        libs.current = { core, marker };
+        libs.current = { maps, core, marker };
         subs.push(
           map.addListener("idle", () => {
             const b = map.getBounds();
@@ -234,6 +249,60 @@ export function GoogleMapView({
     for (const l of locs) b.extend({ lat: l.latitude, lng: l.longitude });
     map.fitBounds(b, 56);
   }, [ready, fitKey]);
+
+  // 現在地: 青い点と精度の円
+  useEffect(() => {
+    const map = mapRef.current;
+    const L = libs.current;
+    if (!ready || !map || !L || !me) return;
+    const center = { lat: me.lat, lng: me.lng };
+    if (!meMarker.current) {
+      const el = document.createElement("div");
+      el.className = "jm-me";
+      el.setAttribute("aria-hidden", "true");
+      const m = new L.marker.AdvancedMarkerElement({
+        map,
+        position: center,
+        content: el,
+        zIndex: 2000,
+      });
+      const circle = new L.maps.Circle({
+        map,
+        center,
+        radius: me.acc,
+        clickable: false,
+        strokeColor: "#1a73e8",
+        strokeOpacity: 0.4,
+        strokeWeight: 1,
+        fillColor: "#1a73e8",
+        fillOpacity: 0.12,
+      });
+      meMarker.current = { m, circle };
+    } else {
+      meMarker.current.m.position = center;
+      meMarker.current.circle.setCenter(center);
+      meMarker.current.circle.setRadius(me.acc);
+    }
+  }, [ready, me]);
+
+  // 現在地を取り直したとき（meKey）だけ、そこへ動かす
+  // biome-ignore lint/correctness/useExhaustiveDependencies: me が変わっても meKey が同じなら動かさない
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !me || !meKey) return;
+    programmatic.current = true;
+    map.panTo({ lat: me.lat, lng: me.lng });
+    map.setZoom(16);
+  }, [ready, meKey]);
+
+  useEffect(
+    () => () => {
+      meMarker.current?.circle.setMap(null);
+      if (meMarker.current) meMarker.current.m.map = null;
+      meMarker.current = null;
+    },
+    [],
+  );
 
   // 選んだ店が画面の外なら寄せる
   useEffect(() => {
