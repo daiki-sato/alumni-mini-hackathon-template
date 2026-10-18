@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!types/database.types.ts"]
+    "includes": ["**", "!types/database.types.ts", "!public/prototypes"]
   },
   "formatter": {
     "enabled": true,
