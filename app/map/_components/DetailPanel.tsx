@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { placeName, type Review } from "@/lib/jibunmap/place";
+import { type Money, type Place, placeName, type Review } from "@/lib/jibunmap/place";
 import {
-  type AxisKey,
-  axisObj,
   band,
-  type Evidence,
   keyQuote,
-  partyChance,
+  partyText,
+  reasonChips,
   reviewText,
   type Scored,
   verdict,
@@ -18,6 +16,7 @@ import {
 import { Author, Highlighted } from "./Highlighted";
 import { BackIcon } from "./Icons";
 import { BAND_TEXT, GoogleRankBadge } from "./ListPanel";
+import { PlacePhotoImg } from "./PlacePhotoImg";
 
 const BAND_COLOR = { hi: "var(--hi)", mid: "var(--mid)", lo: "var(--lo)" } as const;
 
@@ -55,92 +54,6 @@ function Gauge({ v }: { v: number }) {
   );
 }
 
-function EvidenceList({ items, words }: { items: Evidence[]; words: WordLists }) {
-  if (!items.length) return null;
-  return (
-    <ul className="mt-1.5 grid gap-1 pl-1">
-      {items.map((e) => (
-        <li key={`${e.text}-${e.quote ?? ""}`} className="text-muted text-xs leading-relaxed">
-          {e.quote ? (
-            <>
-              <span className="text-ink">
-                「<Highlighted text={e.quote} words={words} />」
-              </span>
-              {e.author && (
-                <span className="ml-1">
-                  — <Author name={e.author} uri={e.authorUri} />
-                </span>
-              )}
-            </>
-          ) : (
-            e.text
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/** 計算の内訳。±0 の行は出さない */
-function PartsBars({ s, words }: { s: Scored; words: WordLists }) {
-  // 横棒は左右に振り分け、25点で半分の幅
-  const SCALE = 25;
-  return (
-    <ul className="grid gap-3">
-      {s.parts
-        .filter((p) => p.key === "base" || p.value !== 0)
-        .map((p) => {
-          const v = p.value;
-          const w = Math.min(50, (Math.abs(v) / SCALE) * 50);
-          const isBase = p.key === "base";
-          return (
-            <li key={p.key}>
-              <div className="flex items-center justify-between gap-2 text-sm">
-                <span>{p.label}</span>
-                <span
-                  className={`font-bold tabular-nums ${
-                    isBase ? "text-muted" : v > 0 ? "text-hi" : "text-lo"
-                  }`}
-                >
-                  {isBase ? v : v > 0 ? `+${v}` : `−${Math.abs(v)}`}
-                </span>
-              </div>
-              {!isBase && (
-                <div className="relative mt-1 h-2 rounded-full bg-surface-2" aria-hidden="true">
-                  <span className="absolute inset-y-0 left-1/2 w-px bg-line" />
-                  <span
-                    className={`absolute inset-y-0 rounded-full transition-all duration-500 ${v > 0 ? "bg-hi" : "bg-lo"}`}
-                    style={
-                      v > 0 ? { left: "50%", width: `${w}%` } : { right: "50%", width: `${w}%` }
-                    }
-                  />
-                </div>
-              )}
-              <EvidenceList items={p.reasons} words={words} />
-            </li>
-          );
-        })}
-      <li className="flex items-center justify-between border-line border-t pt-2 font-bold text-sm">
-        <span>合計（0〜100に収める）</span>
-        <span className="tabular-nums">{s.score}</span>
-      </li>
-    </ul>
-  );
-}
-
-/** 並ぶ人の予想（ゲージと役目が重なるので、内訳の中に小さく置く） */
-function Party({ s }: { s: Scored }) {
-  const pc = partyChance(s.signals);
-  return (
-    <p className="text-muted text-xs leading-relaxed">
-      前後に並ぶ組が「仲間」（うれしいワード側の客）である見込みは
-      <b className="mx-0.5 text-ink tabular-nums">{Math.round(pc.good * 100)}%</b>。 うれしいワード
-      {s.signals.good.length}語と NG ワード{s.signals.ng.length}語
-      {s.signals.goodForGroups ? "・グループ向き" : ""}からの推定です（どちらも0なら50%）。
-    </p>
-  );
-}
-
 function ReviewItem({ r, words }: { r: Review; words: WordLists }) {
   const text = reviewText(r);
   if (!text) return null;
@@ -150,12 +63,11 @@ function ReviewItem({ r, words }: { r: Review; words: WordLists }) {
         <span className="truncate">
           <Author name={r.authorAttribution?.displayName} uri={r.authorAttribution?.uri} />
         </span>
-        <span className="shrink-0 tabular-nums">
-          {typeof r.rating === "number" ? `★${r.rating}` : ""}
-          {r.relativePublishTimeDescription ? `・${r.relativePublishTimeDescription}` : ""}
-        </span>
+        {r.relativePublishTimeDescription && (
+          <span className="shrink-0">{r.relativePublishTimeDescription}</span>
+        )}
       </div>
-      <p className="mt-1.5 text-sm leading-relaxed">
+      <p className="mt-1.5 text-[15px] leading-relaxed md:text-sm">
         <Highlighted text={text} words={words} />
       </p>
     </li>
@@ -164,8 +76,8 @@ function ReviewItem({ r, words }: { r: Review; words: WordLists }) {
 
 function Fold({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <details className="group border-line border-t pt-3">
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg py-1 font-bold [&::-webkit-details-marker]:hidden">
+    <details className="group border-line border-t pt-2">
+      <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg font-bold [&::-webkit-details-marker]:hidden">
         <span
           aria-hidden="true"
           className="inline-block text-muted text-xs transition-transform group-open:rotate-90"
@@ -174,31 +86,97 @@ function Fold({ title, children }: { title: string; children: React.ReactNode })
         </span>
         {title}
       </summary>
-      <div className="mt-3">{children}</div>
+      <div className="mt-2">{children}</div>
     </details>
   );
 }
 
+function yen(m?: Money): string | null {
+  if (!m?.units) return null;
+  const n = Number(m.units);
+  if (!Number.isFinite(n)) return null;
+  return m.currencyCode && m.currencyCode !== "JPY"
+    ? `${n.toLocaleString("ja-JP")} ${m.currencyCode}`
+    : `¥${n.toLocaleString("ja-JP")}`;
+}
+
+const PRICE_WORD: Record<string, string> = {
+  PRICE_LEVEL_FREE: "無料",
+  PRICE_LEVEL_INEXPENSIVE: "安め",
+  PRICE_LEVEL_MODERATE: "ふつう",
+  PRICE_LEVEL_EXPENSIVE: "高め",
+  PRICE_LEVEL_VERY_EXPENSIVE: "とても高い",
+};
+
+function priceText(p: Place): string | null {
+  const lo = yen(p.priceRange?.startPrice);
+  const hi = yen(p.priceRange?.endPrice);
+  if (lo) return hi ? `${lo}〜${hi}` : `${lo}〜`;
+  return p.priceLevel ? (PRICE_WORD[p.priceLevel] ?? null) : null;
+}
+
+/** 営業時間。今日の分を強調し、全曜日は畳む（Google の文言は月曜始まり） */
+function Hours({ list }: { list: string[] }) {
+  const today = (new Date().getDay() + 6) % 7;
+  const t = list[today];
+  return (
+    <div>
+      {t && (
+        <p className="text-[15px] md:text-sm">
+          <b>今日</b> {t.replace(/^[^:：]+[:：]\s*/, "")}
+        </p>
+      )}
+      <details className="mt-1">
+        <summary className="inline-flex min-h-10 cursor-pointer items-center text-muted text-xs underline">
+          すべての曜日
+        </summary>
+        <ul className="mt-1 grid gap-0.5 text-xs">
+          {list.map((d, i) => (
+            <li key={d} className={i === today ? "font-bold" : "text-muted"}>
+              {d}
+            </li>
+          ))}
+        </ul>
+      </details>
+    </div>
+  );
+}
+
+/** 経路の URL（Google マップの経路検索。店名と place_id で目的地を決める） */
+export function directionsUrl(p: Place): string {
+  const q = new URLSearchParams({
+    api: "1",
+    destination: placeName(p),
+    destination_place_id: p.id,
+  });
+  return `https://www.google.com/maps/dir/?${q}`;
+}
+
 /**
- * 店の詳細。並びは「結論（店名と点数）→ 人の一文 → 理由 → 決め手の口コミ → 内訳（畳む）→ 口コミ全文（畳む）」
+ * 店の詳細。並びは「写真 → 店名・点数・ひと言の評価 → 人の一文 → 理由 → 決め手の口コミ →
+ * 店の情報 → 経路 → 口コミ全文（畳む）」。数値は点数（と Google の検索結果での順番）だけ出す
  */
 export function DetailPanel({
   s,
   rank,
-  axes,
   words,
   demo,
+  sceneNote,
   onBack,
 }: {
   s: Scored;
   rank: number;
-  axes: AxisKey[];
   words: WordLists;
   demo: boolean;
+  /** 友だちとモードで外した語の説明（なければ null） */
+  sceneNote: string | null;
   onBack: () => void;
 }) {
   const p = s.place;
   const kq = keyQuote(s);
+  const chips = reasonChips(s);
+  const price = priceText(p);
+  const hours = p.regularOpeningHours?.weekdayDescriptions ?? [];
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // 開いたら見出しに移る（読み上げで店名から始まるように）。店ごとに作り直されるので、店が変わるたびに走る
@@ -207,26 +185,48 @@ export function DetailPanel({
   }, []);
 
   return (
-    <article className="anim-panel-in px-4 pt-2 pb-8" aria-labelledby="detail-title">
-      <div className="sticky top-0 z-10 -mx-4 flex items-center gap-2 bg-surface/95 px-2 py-2 backdrop-blur">
+    <article
+      className="anim-panel-in px-4 pb-[calc(2rem+env(safe-area-inset-bottom))]"
+      aria-labelledby="detail-title"
+    >
+      <div className="sticky top-0 z-10 -mx-4 flex items-center gap-1 bg-surface/95 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 backdrop-blur">
         <button
           type="button"
           onClick={onBack}
-          aria-label="一覧に戻る"
-          className="grid size-10 place-items-center rounded-full hover:bg-surface-2"
+          className="flex h-10 items-center gap-1 rounded-full pr-4 pl-2 font-medium text-[15px] hover:bg-surface-2 md:text-sm"
         >
           <BackIcon />
+          戻る
         </button>
-        <span className="truncate text-muted text-sm">一覧に戻る</span>
       </div>
 
-      <header className="mt-1">
-        {rank > 0 && (
-          <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 font-bold text-on-accent text-xs">
-            今日の3軒・{rank}番
-          </span>
+      {/* 写真（最大4枚、横スクロール）。デモではジャンルのアイコンを置く */}
+      <div className="scrollbar-none -mx-4 mt-1 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4">
+        {demo || !p.photos?.length ? (
+          <PlacePhotoImg place={p} size="large" className="h-44 w-full shrink-0 rounded-2xl" />
+        ) : (
+          p.photos.map((ph, i) => (
+            <PlacePhotoImg
+              key={ph.large}
+              place={p}
+              index={i}
+              size="large"
+              className="h-44 w-[78%] shrink-0 snap-start rounded-2xl md:w-[85%]"
+            />
+          ))
         )}
-        <div className="flex items-start justify-between gap-3">
+      </div>
+
+      <header className="mt-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {rank > 0 && (
+            <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-0.5 font-bold text-on-accent text-xs">
+              今日の3軒・{rank}番
+            </span>
+          )}
+          <GoogleRankBadge rank={p.googleRank} />
+        </div>
+        <div className="mt-1 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1
               id="detail-title"
@@ -248,50 +248,31 @@ export function DetailPanel({
             </span>
           </div>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
-          <GoogleRankBadge rank={p.googleRank} />
-          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted tabular-nums">
-            口コミ{s.signals.reviewsUsed}件から判定
-          </span>
-          {typeof p.rating === "number" && (
-            <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted tabular-nums">
-              比較用: Google ★{p.rating.toFixed(1)}・{p.userRatingCount ?? 0}件
-            </span>
-          )}
-        </div>
-        {p.googleMapsUri && (
-          <a
-            href={p.googleMapsUri}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="mt-2 inline-block rounded-full border border-line px-3 py-1 font-medium text-xs hover:bg-surface-2"
-          >
-            Google マップで開く ↗
-          </a>
-        )}
       </header>
 
-      <p className="mt-4 rounded-2xl bg-accent-soft p-3 text-sm leading-relaxed">{whoText(s)}</p>
+      <div className="mt-3 rounded-2xl bg-accent-soft p-3 text-[15px] leading-relaxed md:text-sm">
+        <p>{whoText(s)}</p>
+        <p className="mt-1">{partyText(s)}。</p>
+      </div>
       {p.editorialSummary?.text && (
         <p className="mt-1.5 text-muted text-xs">Google による紹介: {p.editorialSummary.text}</p>
       )}
 
-      {axes.length > 0 && (
-        <section className="mt-4" aria-labelledby="why-title">
-          <h2 id="why-title" className="font-bold text-sm">
-            いまの判断軸で見ると
-          </h2>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
-            {axes.map((k) => {
-              const a = axisObj(k);
-              return a ? (
-                <li key={k} className="rounded-full bg-surface-2 px-2.5 py-1 text-xs">
-                  <span className="text-muted">{a.l}: </span>
-                  {a.w(s)}
-                </li>
-              ) : null;
-            })}
+      {(chips.length > 0 || sceneNote) && (
+        <section className="mt-4" aria-label="点数を動かした理由">
+          <ul className="flex flex-wrap gap-1.5">
+            {chips.map((c) => (
+              <li
+                key={`${c.tone}-${c.text}`}
+                className={`rounded-full px-3 py-1 text-[13px] ${
+                  c.tone === "plus" ? "bg-hi-soft text-hi" : "bg-lo-soft text-lo"
+                }`}
+              >
+                {c.text}
+              </li>
+            ))}
           </ul>
+          {sceneNote && <p className="mt-2 text-muted text-xs">{sceneNote}</p>}
         </section>
       )}
 
@@ -300,7 +281,7 @@ export function DetailPanel({
           決め手の口コミ
         </h2>
         {kq?.quote ? (
-          <blockquote className="mt-2 rounded-2xl bg-surface-2 p-3 text-sm leading-relaxed">
+          <blockquote className="mt-2 rounded-2xl bg-surface-2 p-3 text-[15px] leading-relaxed md:text-sm">
             「<Highlighted text={kq.quote} words={words} />」
             {kq.author && (
               <span className="ml-1 text-muted text-xs">
@@ -313,19 +294,53 @@ export function DetailPanel({
         )}
       </section>
 
-      <div className="mt-5 grid gap-3">
-        <Fold title={`なぜ${s.score}点か`}>
-          <PartsBars s={s} words={words} />
-          <div className="mt-3">
-            <Party s={s} />
+      {(hours.length > 0 || price || p.nationalPhoneNumber || p.websiteUri) && (
+        <section className="mt-4 grid gap-2 border-line border-t pt-3" aria-label="店の情報">
+          {hours.length > 0 && <Hours list={hours} />}
+          {price && (
+            <p className="text-[15px] md:text-sm">
+              <b>価格帯</b> {price}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-1.5">
+            {p.nationalPhoneNumber && (
+              <a
+                href={`tel:${p.nationalPhoneNumber.replace(/[^\d+]/g, "")}`}
+                className="inline-flex h-10 items-center rounded-full border border-line px-3.5 text-sm hover:bg-surface-2"
+              >
+                電話 {p.nationalPhoneNumber}
+              </a>
+            )}
+            {p.websiteUri && (
+              <a
+                href={p.websiteUri}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex h-10 items-center rounded-full border border-line px-3.5 text-sm hover:bg-surface-2"
+              >
+                Web サイト ↗
+              </a>
+            )}
           </div>
-        </Fold>
+        </section>
+      )}
 
-        {p.reviews && p.reviews.length > 0 && (
-          <Fold
-            title={`口コミ全文（${demo ? "架空" : "Google マップ"}・${s.signals.reviewsUsed}件）`}
-          >
+      {!demo && (
+        <a
+          href={directionsUrl(p)}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="mt-4 flex h-11 items-center justify-center rounded-full bg-brand font-bold text-on-brand text-sm hover:opacity-90"
+        >
+          経路を見る（Google マップ）
+        </a>
+      )}
+
+      {p.reviews && p.reviews.length > 0 && (
+        <div className="mt-4">
+          <Fold title={`口コミ全文（${demo ? "架空" : "Google マップ"}）`}>
             <p className="mb-2 text-muted text-xs">
+              この口コミから判定しています。
               <mark className="rounded bg-hi-soft px-1 text-hi">緑</mark>
               はうれしいワード、
               <mark className="rounded bg-lo-soft px-1 text-lo">赤</mark>は NG ワード。
@@ -337,8 +352,8 @@ export function DetailPanel({
               ))}
             </ul>
           </Fold>
-        )}
-      </div>
+        </div>
+      )}
     </article>
   );
 }

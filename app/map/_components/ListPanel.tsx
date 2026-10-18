@@ -20,6 +20,7 @@ import {
 import { LIVE_EXAMPLES } from "@/lib/jibunmap/suggest";
 import { Highlighted } from "./Highlighted";
 import { CloseIcon, InfoIcon, PlusIcon } from "./Icons";
+import { PhotoCredit, PlacePhotoImg } from "./PlacePhotoImg";
 import type { Prefs } from "./usePrefs";
 
 export const BAND_TEXT = { hi: "text-hi", mid: "text-mid", lo: "text-lo" } as const;
@@ -294,7 +295,7 @@ function TopCard({
 }: CardProps & { rank: number; words: WordLists }) {
   // タグは2つまで（NG が出ていればそれを先に）
   const tags = [
-    ...(s.signals.ng.length ? [{ t: `NG ${s.signals.ng.length}語`, ng: true }] : []),
+    ...(s.signals.ng.length ? [{ t: "NGワードあり", ng: true }] : []),
     ...constraintTags(s.signals).map((t) => ({ t, ng: false })),
   ].slice(0, 2);
   const kq = keyQuote(s);
@@ -309,8 +310,11 @@ function TopCard({
           hot ? "border-brand ring-1 ring-brand" : "border-line"
         }`}
       >
-        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent font-bold text-on-accent tabular-nums">
-          {rank}
+        <span className="relative size-16 shrink-0">
+          <PlacePhotoImg place={s.place} size="thumb" className="size-16 rounded-xl" />
+          <span className="absolute -top-1.5 -left-1.5 grid size-7 place-items-center rounded-full border-2 border-surface bg-accent font-bold text-on-accent text-sm tabular-nums">
+            {rank}
+          </span>
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate font-bold group-hover:underline">
@@ -350,13 +354,9 @@ function TopCard({
           <span className={`whitespace-nowrap font-bold text-[11px] ${BAND_TEXT[band(s.score)]}`}>
             {verdict(s.score)}
           </span>
-          {typeof s.place.rating === "number" && (
-            <span className="text-[10px] text-muted tabular-nums" title="Google の評価（比較用）">
-              G ★{s.place.rating.toFixed(1)}
-            </span>
-          )}
         </span>
       </button>
+      <PhotoCredit photo={s.place.photos?.[0]} className="mt-0.5 px-1" />
     </li>
   );
 }
@@ -377,8 +377,8 @@ function Row({ s, hot, onSelect, onHover }: CardProps) {
           <span className="block truncate text-sm">{placeName(s.place)}</span>
           <span className="block truncate text-muted text-xs">
             {verdict(s.score)}・{s.place.primaryTypeDisplayName?.text ?? "飲食店"}
-            {s.place.googleRank ? `・Google ${s.place.googleRank}番目` : ""}
-            {s.signals.ng.length ? `・NG${s.signals.ng.length}語` : ""}
+            {s.place.googleRank ? `・Google の検索結果では${s.place.googleRank}番目` : ""}
+            {s.signals.ng.length ? "・NGワードあり" : ""}
           </span>
         </span>
         <ScoreBadge v={s.score} />

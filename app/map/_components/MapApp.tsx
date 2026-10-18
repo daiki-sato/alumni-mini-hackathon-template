@@ -492,7 +492,7 @@ export function MapApp() {
                 key={selected.place.id}
                 s={selected}
                 rank={rank}
-                axes={prefs.axes}
+                sceneNote={null}
                 words={words}
                 demo={demo}
                 onBack={onBack}

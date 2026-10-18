@@ -492,10 +492,22 @@ export function partyChance(s: Signals): { good: number; other: number } {
   return { good, other: 1 - good };
 }
 
+/** 口コミの件数を、数値を出さずに言う */
+export function popularityWord(n: number): string {
+  return n <= 5
+    ? "口コミはまだ少ない"
+    : n < 30
+      ? "口コミが少なめ"
+      : n <= 300
+        ? "知る人ぞ知る"
+        : n < 1000
+          ? "やや人気"
+          : "とても人気";
+}
+
+/** ここに並ぶ人の一文（数値は出さない） */
 export function whoText(s: Scored): string {
   const g = s.signals;
-  const n = g.count;
-  const size = n <= 5 ? "まだ少ない" : n <= 300 ? "ほどほど" : n < 1000 ? "やや多い" : "とても多い";
   let t = g.good.length
     ? `口コミに「${g.good.map((h) => h.word).join("」「")}」が出ます。`
     : "口コミにうれしいワードは出ていません。";
@@ -504,9 +516,73 @@ export function whoText(s: Scored): string {
     : "NGワードは出ていません。";
   const tags = constraintTags(g);
   t += tags.length ? `制約は${tags.join("・")}。` : "目立つ制約はなし。";
-  t += `口コミ件数は${n}件で${size}。`;
+  t += `${popularityWord(g.count)}店です。`;
   if (g.chain) t += "チェーン店の可能性があります。";
   return t;
+}
+
+/** 前後に並ぶ人の予想（数値は出さない） */
+export function partyText(s: Scored): string {
+  const pc = partyChance(s.signals).good;
+  if (pc >= 0.65) return "前後に並ぶのは、一人客や常連が多そう";
+  if (pc <= 0.35) return "前後に並ぶのは、グループやカップルが多そう";
+  return "前後に並ぶ人は、いろいろいそう";
+}
+
+export type ReasonChip = { text: string; tone: "plus" | "minus" };
+
+/** 点数を動かした理由だけを、数値なしの文で（±0 の項目は出さない） */
+export function reasonChips(s: Scored): ReasonChip[] {
+  const out: ReasonChip[] = [];
+  const g = s.signals;
+  const v = (k: PartKey) => partValue(s.parts, k);
+  if (v("minority") !== 0) {
+    out.push({ text: popularityWord(g.count), tone: v("minority") > 0 ? "plus" : "minus" });
+  }
+  if (g.rating !== null && g.rating >= 4.6 && g.count >= 100) {
+    out.push({ text: "高評価に偏りすぎ", tone: "minus" });
+  }
+  if (g.dated >= 3 && g.recent >= 3) out.push({ text: "最近急に口コミが増えた", tone: "minus" });
+  if (v("good") > 0)
+    for (const h of g.good) out.push({ text: `口コミに「${h.word}」`, tone: "plus" });
+  for (const h of g.ng) out.push({ text: `口コミに「${h.word}」`, tone: "minus" });
+  if (g.cashOnly) out.push({ text: "現金のみ", tone: "plus" });
+  if (g.notReservable) out.push({ text: "予約不可", tone: "plus" });
+  if (g.goodForGroups) out.push({ text: "グループ向き", tone: "minus" });
+  if (g.chain) out.push({ text: "チェーンらしい", tone: "minus" });
+  return out;
+}
+
+/* ---------- シーン（ひとりで／友だちと） ---------- */
+
+export type Scene = "solo" | "friends";
+
+/** 「ひとりのときだけ」の語の初期値（友だちと行くときは数えない） */
+export const DEFAULT_SOLO_ONLY = ["一人", "ひとり", "おひとりさま", "カウンター"];
+
+/**
+ * シーンに合わせた語のリスト。友だちとのときは「ひとりのときだけ」の語をうれしいワードから外す。
+ * NG ワードはそのまま（「大人数」などは友だちとでも苦手なので残す）
+ */
+export function wordsForScene(words: WordLists, soloOnly: string[], scene: Scene): WordLists {
+  if (scene === "solo") return words;
+  return { good: words.good.filter((w) => !soloOnly.includes(w)), ng: words.ng };
+}
+
+/** シーンに合わせた判断軸。友だちとのときは「グループ向きでない」を外す */
+export function axesForScene(axes: AxisKey[], scene: Scene): AxisKey[] {
+  return scene === "solo" ? axes : axes.filter((k) => k !== "groups");
+}
+
+/** シーンを加味して採点する（純粋な関数） */
+export function scorePlaceInScene(
+  p: Place,
+  now: number,
+  words: WordLists,
+  soloOnly: string[],
+  scene: Scene,
+): Scored {
+  return scorePlace(p, now, wordsForScene(words, soloOnly, scene));
 }
 
 /* ---------- 判断軸 ---------- */
