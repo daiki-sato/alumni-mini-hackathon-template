@@ -45,6 +45,13 @@ export default async function Home() {
       <h1 className="text-2xl font-bold">Next.js × Supabase テンプレート</h1>
       <p className="mt-2 text-sm opacity-70">このページは疎通確認用です。</p>
 
+      <a
+        className="mt-6 block rounded-lg border border-amber-500/50 bg-amber-500/10 p-4 font-medium"
+        href="/prototypes"
+      >
+        行列と距離の試作（60本）を見る →
+      </a>
+
       <section className="mt-10">
         <h2 className="text-lg font-semibold">Supabase との接続</h2>
 
