@@ -132,10 +132,21 @@ function TopCard({
           {/* 写真の帰属表示を置く場所（リンクはボタンの中に置けないので、下で重ねる） */}
           {credit && <span className="h-4" aria-hidden="true" />}
         </span>
-        {/* 幅 360px 未満では、点数を右上の小さなバッジにして、店名とバッジ類の幅を空ける */}
-        <span className="min-w-0 flex-1 max-[360px]:pr-11">
+        {/* 幅 360px 未満では、右の点数の列をやめて、点数とひと言の評価を店名のすぐ下に1行で置く
+            （右上に浮かせると、評価の分だけ下の行のバッジに重なっていた） */}
+        <span className="min-w-0 flex-1">
           <span className="block truncate font-bold group-hover:underline max-[360px]:line-clamp-2 max-[360px]:whitespace-normal">
             {placeName(s.place)}
+          </span>
+          <span className="mt-0.5 hidden items-center gap-1.5 max-[360px]:flex">
+            <span
+              className={`rounded-md px-1.5 py-0.5 font-bold text-[13px] tabular-nums ${BAND_BG[band(s.score)]} ${BAND_TEXT[band(s.score)]}`}
+            >
+              {s.score}
+            </span>
+            <span className={`truncate font-bold text-[11px] ${BAND_TEXT[band(s.score)]}`}>
+              {verdict(s.score)}
+            </span>
           </span>
           {/* 住所は詳細だけに出す。カードはジャンルと営業状況 */}
           <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-muted text-xs">
@@ -173,7 +184,7 @@ function TopCard({
             </span>
           )}
         </span>
-        <span className="flex shrink-0 flex-col items-end gap-1 max-[360px]:absolute max-[360px]:top-2 max-[360px]:right-2 max-[360px]:origin-top-right max-[360px]:scale-90">
+        <span className="flex shrink-0 flex-col items-end gap-1 max-[360px]:hidden">
           <ScoreBadge v={s.score} />
           <span className={`whitespace-nowrap font-bold text-[11px] ${BAND_TEXT[band(s.score)]}`}>
             {verdict(s.score)}
