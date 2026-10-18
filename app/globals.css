@@ -203,6 +203,13 @@ body {
   animation: shimmer 1.4s linear infinite;
 }
 
+/* 見出しを単語の途中で折り返さない（句ごとに折り返す）。auto-phrase に対応しないブラウザでは
+   句を inline-block で包んである。balance で行の長さもそろえる */
+.jm-phrase {
+  word-break: auto-phrase;
+  text-wrap: balance;
+}
+
 /* 口コミの語の印（一覧のカードと詳細の口コミで同じ見た目） */
 .jm-mark-good,
 .jm-mark-ng {
