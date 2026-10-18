@@ -36,7 +36,7 @@ import {
   wordsForScene,
 } from "@/lib/jibunmap/score";
 import { foodQuery, nearbyQueries } from "@/lib/jibunmap/suggest";
-import { popAction } from "@/lib/jibunmap/url-state";
+import { bootPlan, popAction } from "@/lib/jibunmap/url-state";
 import { visibleTimeout } from "@/lib/jibunmap/visible-timer";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
@@ -504,30 +504,28 @@ export function MapApp() {
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
-    const sp = new URLSearchParams(window.location.search);
+    // URL から最初にすることを決める（デモでも実データでも同じ道。place・scene・genre・view を保つ）
+    const plan = bootPlan(window.location.search, {
+      demo: demoRef.current,
+      demoHas: (q) => demoSearch(q).length > 0,
+      fallbackTown: FIRST_DEMO_TOWN,
+      maxLength: MAX_QUERY_LENGTH,
+    });
     // 審査員向けの固定デモ: 通信も API も使わず、デモの街を決まった語で開く
-    if (forcedDemo()) {
+    if (plan.forcedDemo) {
       setDemo(true);
       setPinnedDemo(true);
       urlExtra.current = { ...urlExtra.current, demo: "1" };
-      const dq = sp.get("q")?.trim() || FIRST_DEMO_TOWN;
-      const q0 = demoSearch(dq).length ? dq : FIRST_DEMO_TOWN;
-      setQuery(q0);
-      run(q0, { fit: true, history: "replace" });
-      return;
     }
-    const v = sp.get("view");
-    if (v === "list" || v === "map") bootView.current = v;
-    if (sp.get("scene") === "friends") setScene("friends");
-    const g = sp.get("genre");
-    if (g) {
-      setGenre(g);
+    const st = plan.state;
+    if (st.view) bootView.current = st.view;
+    if (st.scene === "friends") setScene("friends");
+    if (st.genre) {
+      setGenre(st.genre);
       keepGenreOnce.current = true;
     }
-    const q = sp.get("q")?.trim().slice(0, MAX_QUERY_LENGTH);
+    const q = plan.query;
     if (!q) return;
-    // デモデータに当たらない語（例: 高円寺）なら、最初のサンプルの街のままにする
-    if (demoRef.current && !demoSearch(q).length) return;
     // 今日の検索の上限に達していたら、開いただけでは探さない（自分で検索ボタンを押せば、上限の案内が出る）
     if (!demoRef.current && searchesLeft() <= 0) {
       setQuery(q);
@@ -539,7 +537,8 @@ export function MapApp() {
       return;
     }
     setQuery(q);
-    run(q, { fit: true, select: sp.get("place") ?? undefined, history: "replace" });
+    // place は、探した結果の中にあれば詳細を開き、なければ開かずに URL から外す（found0）
+    run(q, { fit: true, select: plan.select ?? undefined, history: "replace" });
   }, [run, setScene, setGenre, setDemo]);
 
   /** デモから Google に戻してもう一度探す */
