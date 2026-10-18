@@ -10,6 +10,7 @@ import {
   demoSearch,
   demoSearchBounds,
 } from "@/lib/jibunmap/demo";
+import { genreByKey, genreChips, genreOf } from "@/lib/jibunmap/genre";
 import {
   BROWSER_KEY,
   type LatLngLiteral,
@@ -27,7 +28,7 @@ import {
   wordHits,
   wordsForScene,
 } from "@/lib/jibunmap/score";
-import { foodQuery, nearbyQueries } from "@/lib/jibunmap/suggest";
+import { foodQuery, nearbyQueries, TOKYO_TOWNS } from "@/lib/jibunmap/suggest";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
 import { GoogleMapView } from "./GoogleMapView";
@@ -181,14 +182,32 @@ export function MapApp() {
   );
   // 点数の高い順（同点は Google の検索結果の順）
   const ranked = useMemo(() => rankByScore(scored), [scored]);
-  const rankIds = useMemo(() => ranked.map((s) => s.place.id), [ranked]);
   /** 最低点で隠したものを、一時的に全部出す（新しい検索で戻す） */
   const [showAll, setShowAll] = useState(false);
+  // ジャンルの絞り込み（1つだけ）。URL の &genre= に載せ、保存はしない
+  const [genre, setGenreState] = useState<string | null>(null);
+  /** 起動時の URL の genre を、最初の検索で消さないための印 */
+  const keepGenreOnce = useRef(false);
+  const setGenre = useCallback((g: string | null) => {
+    urlExtra.current = { ...urlExtra.current, genre: g ?? undefined };
+    setGenreState(g);
+  }, []);
   // 点数の高い順なので、隠れるのは末尾だけ（順位の番号はずれない）。一覧と地図に同じ絞り込みを当てる
-  const visible = useMemo(
-    () => (showAll ? ranked : ranked.filter((s) => s.score >= prefs.minScore)),
-    [ranked, showAll, prefs.minScore],
+  // ジャンルのチップ: いまの結果に含まれるジャンルだけ。押すと手元で絞り込む（API は呼ばない）
+  const chips = useMemo(() => genreChips(places), [places]);
+  const inGenre = useMemo(
+    () => (genre ? ranked.filter((s) => genreOf(s.place).key === genre) : ranked),
+    [ranked, genre],
   );
+  const visible = useMemo(
+    () => (showAll ? inGenre : inGenre.filter((s) => s.score >= prefs.minScore)),
+    [inGenre, showAll, prefs.minScore],
+  );
+  // 番号は、いま出している並びの順位（一覧と地図のピンでそろえる）
+  const rankIds = useMemo(() => visible.map((s) => s.place.id), [visible]);
+  const genreLabel = genre
+    ? (chips.find((c) => c.key === genre)?.label ?? genreByKey(genre)?.label ?? null)
+    : null;
   const selected: Scored | undefined = scored.find((s) => s.place.id === selId);
 
   // 一覧と詳細を切り替えたら、パネルを上まで戻す
@@ -264,6 +283,9 @@ export function MapApp() {
       setSelId(null);
       setMoved(false);
       setShowAll(false);
+      // 新しい検索ではジャンルの絞り込みを外す（起動時の URL のものと、エリアの再検索は残す）
+      if (keepGenreOnce.current) keepGenreOnce.current = false;
+      else if (!opts.bounds) setGenre(null);
       fromCard.current = null;
       placePushed.current = false;
       // 現在地のまわりの検索は URL に語を載せない（再読み込みで、位置なしの検索にならないように）
@@ -342,7 +364,7 @@ export function MapApp() {
         }
       }
     },
-    [fallBack, setView],
+    [fallBack, setView, setGenre],
   );
   runRef.current = run;
 
@@ -356,13 +378,18 @@ export function MapApp() {
     const v = sp.get("view");
     if (v === "list" || v === "map") bootView.current = v;
     if (sp.get("scene") === "friends") setScene("friends");
+    const g = sp.get("genre");
+    if (g) {
+      setGenre(g);
+      keepGenreOnce.current = true;
+    }
     const q = sp.get("q")?.trim().slice(0, MAX_QUERY_LENGTH);
     if (!q) return;
     // デモデータに当たらない語（例: 高円寺）なら、最初のサンプルの街のままにする
     if (demoRef.current && !demoSearch(q).length) return;
     setQuery(q);
     run(q, { fit: true, select: sp.get("place") ?? undefined });
-  }, [run, setScene]);
+  }, [run, setScene, setGenre]);
 
   /** デモから Google に戻してもう一度探す */
   const retry = useCallback(() => {
@@ -533,6 +560,24 @@ export function MapApp() {
     window.history.replaceState(null, "", urlFor(urlQ.current, selRef.current, urlExtra.current));
   };
 
+  /** ジャンルを選ぶ（もう一度押すと「すべて」）。手元で絞り込むだけで、再検索しない */
+  const changeGenre = (g: string | null) => {
+    setGenre(g);
+    setPeekId(null);
+    window.history.replaceState(null, "", urlFor(urlQ.current, selRef.current, urlExtra.current));
+  };
+
+  /** 選んだジャンルが今の結果にないとき: そのジャンルで検索し直す（押したときだけ1リクエスト） */
+  const searchGenre = () => {
+    const g = genre ? (chips.find((c) => c.key === genre) ?? genreByKey(genre)) : null;
+    if (!g) return;
+    const town =
+      TOKYO_TOWNS.find((t) => urlQ.current.includes(t.name))?.name ?? urlQ.current.trim();
+    const q = `${town} ${g.word}`.trim();
+    setQuery(q);
+    run(q, { fit: true });
+  };
+
   const openPrefs = () => {
     rankAtOpen.current = rankIds.join();
     setPrefsOpen(true);
@@ -609,7 +654,7 @@ export function MapApp() {
             しくみ
           </Link>
         </header>
-        <div className="flex items-center gap-2 border-line border-b bg-surface py-1.5 pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(0.75rem,env(safe-area-inset-left))] md:px-4">
+        <div className="flex flex-wrap items-center gap-2 border-line border-b bg-surface py-1.5 md:flex-nowrap pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(0.75rem,env(safe-area-inset-left))] md:px-4">
           {/* ひとりで／友だちと。押すとすぐ並び直す（再検索しない） */}
           <fieldset className="flex rounded-full bg-surface-2 p-0.5">
             <legend className="sr-only">誰と行くか</legend>
@@ -632,9 +677,31 @@ export function MapApp() {
               </button>
             ))}
           </fieldset>
-          <p className="min-w-0 truncate text-muted text-xs">
-            {scene === "friends" ? "「ひとり」の印の語と、グループ向きの減点を外しています" : ""}
-          </p>
+          {chips.length > 1 && (
+            <nav
+              aria-label="ジャンルで絞り込む"
+              className="scrollbar-none -mx-3 flex min-w-0 gap-1.5 overflow-x-auto px-3 max-md:w-[calc(100%+1.5rem)] md:mx-0 md:flex-1 md:px-0"
+            >
+              {[{ key: "", label: "すべて" }, ...chips].map((c) => {
+                const on = (genre ?? "") === c.key;
+                return (
+                  <button
+                    key={c.key || "all"}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => changeGenre(c.key && !on ? c.key : null)}
+                    className={`h-10 shrink-0 rounded-full border px-3.5 text-[13px] transition-colors md:h-8 ${
+                      on
+                        ? "border-brand bg-brand font-bold text-on-brand"
+                        : "border-line bg-surface hover:bg-surface-2"
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+            </nav>
+          )}
         </div>
       </div>
 
@@ -780,7 +847,19 @@ export function MapApp() {
                 minScore={prefs.minScore}
                 onMinScore={(minScore) => update((p) => ({ ...p, minScore }))}
                 hidden={ranked.length - visible.length}
-                onShowAll={() => setShowAll(true)}
+                hiddenWhy={[
+                  genre ? "ほかのジャンル" : "",
+                  !showAll && inGenre.length > visible.length ? `${prefs.minScore}点未満` : "",
+                ]
+                  .filter(Boolean)
+                  .join("・")}
+                onShowAll={() => {
+                  setShowAll(true);
+                  changeGenre(null);
+                }}
+                genreLabel={genreLabel}
+                genreEmpty={!!genre && inGenre.length === 0}
+                onGenreSearch={searchGenre}
                 nearby={demo ? [] : nearbyQueries(urlQ.current)}
                 onSearchArea={demo || !boundsRef.current ? null : searchArea}
                 words={words}
