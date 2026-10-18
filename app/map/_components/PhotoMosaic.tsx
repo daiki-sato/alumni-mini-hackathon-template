@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Place } from "@/lib/jibunmap/place";
 import { BackIcon } from "./Icons";
 import { PhotoGallery } from "./PhotoGallery";
@@ -166,12 +167,13 @@ function PhotoGrid({ place, onClose }: { place: Place; onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [close]);
 
-  return (
+  // body に出す（パネルの中だと全画面にならない）。拡大（z-100）より下、ヘッダーより上
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label={`${place.displayName?.text ?? "店"}のすべての写真`}
-      className="fixed inset-0 z-[55] flex flex-col bg-surface text-ink"
+      className="fixed inset-0 z-[90] flex flex-col bg-surface text-ink"
     >
       <div className="flex items-center gap-1 border-line border-b px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
         <button
@@ -202,6 +204,7 @@ function PhotoGrid({ place, onClose }: { place: Place; onClose: () => void }) {
         </ul>
       </div>
       {gallery !== null && <PhotoGallery place={place} start={gallery} onClose={closeGallery} />}
-    </div>
+    </div>,
+    document.body,
   );
 }
