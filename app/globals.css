@@ -17,9 +17,10 @@
   --line: #dde1d8;
   --logo: #1f2a26;
 
-  --hi: #2e7d5b;
-  --mid: #c58a00;
-  --lo: #b4543a;
+  /* 文字に使うので、明るい面と soft の背景の上で 4.5:1 以上になる濃さにする */
+  --hi: #286f50;
+  --mid: #855d00;
+  --lo: #a24a32;
   --hi-soft: #e2f1ea;
   --mid-soft: #f8edd0;
   --lo-soft: #f6e4df;
@@ -67,7 +68,7 @@
 
     --hi: #5dbb8e;
     --mid: #e0aa2e;
-    --lo: #d9806a;
+    --lo: #de8a75;
     --hi-soft: #1d3329;
     --mid-soft: #362c14;
     --lo-soft: #3a2420;
