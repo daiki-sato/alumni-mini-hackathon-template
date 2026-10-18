@@ -35,6 +35,7 @@ import {
   wordsForScene,
 } from "@/lib/jibunmap/score";
 import { foodQuery, nearbyQueries } from "@/lib/jibunmap/suggest";
+import { visibleTimeout } from "@/lib/jibunmap/visible-timer";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
 import { GoogleMapView } from "./GoogleMapView";
@@ -92,12 +93,16 @@ type Status = { kind: "idle" | "loading" | "ok" } | { kind: "error"; message: st
 
 class TimeoutError extends Error {}
 
+/**
+ * ms までに p が終わらなければ TimeoutError。ページが見えているあいだだけ数える
+ * （裏のタブではブラウザが通信を絞るので、そのあいだに止まっていても失敗にしない）
+ */
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let cancel = () => {};
   const t = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new TimeoutError(`${ms}ms で応答がありません`)), ms);
+    cancel = visibleTimeout(ms, () => reject(new TimeoutError(`${ms}ms で応答がありません`)));
   });
-  return Promise.race([p, t]).finally(() => clearTimeout(timer));
+  return Promise.race([p, t]).finally(() => cancel());
 }
 
 export function MapApp() {
@@ -110,6 +115,10 @@ export function MapApp() {
   // キーがあっても、Google に届かなければデモに切り替える（fellBack）
   const [demo, setDemoState] = useState(!HAS_KEY);
   const [fellBack, setFellBack] = useState(false);
+  /** タイムアウトで切り替わったので、自動の再試行を待っている */
+  const [autoRetry, setAutoRetry] = useState(false);
+  /** 自動の再試行はページを開いているあいだに1回だけ */
+  const autoRetried = useRef(false);
   /** 固定デモ（?demo=1）で開いている */
   const [pinnedDemo, setPinnedDemo] = useState(false);
   const demoRef = useRef(!HAS_KEY);
@@ -299,8 +308,10 @@ export function MapApp() {
 
   /** Google に届かないとき: デモの店と SVG の地図に切り替える。詳しい理由は console にだけ出す */
   const fallBack = useCallback(
-    (why: string, detail?: unknown) => {
+    (why: string, detail?: unknown, kind?: "timeout") => {
       if (demoRef.current) return;
+      // タイムアウトのときは、ページが見えている状態で1回だけ自動で実データに戻してみる
+      if (kind === "timeout" && !autoRetried.current) setAutoRetry(true);
       console.warn(
         `[ジブンマップ] Google に接続できないため、デモデータに切り替えます（${why}）`,
         detail ?? "",
@@ -429,6 +440,7 @@ export function MapApp() {
               ? `検索が ${SEARCH_TIMEOUT_MS / 1000} 秒で返らない`
               : "Place.searchByText が失敗（Places API (New) の有効化・リファラ制限を確認）",
             e,
+            e instanceof TimeoutError ? "timeout" : undefined,
           );
         }
       } finally {
@@ -497,6 +509,22 @@ export function MapApp() {
       setQuery("");
     }
   }, [run, setDemo, resetView]);
+
+  // タイムアウトでデモに切り替えたあと: ページが見えていれば（隠れていれば見えたときに）1回だけ自動で再試行する。
+  // 2回目以降は「もう一度試す」ボタンで
+  useEffect(() => {
+    if (!autoRetry) return;
+    const go = () => {
+      if (document.hidden) return;
+      autoRetried.current = true;
+      setAutoRetry(false);
+      console.info("[ジブンマップ] タイムアウトのあとなので、1回だけ自動で実データを読み直します");
+      retry();
+    };
+    document.addEventListener("visibilitychange", go);
+    go();
+    return () => document.removeEventListener("visibilitychange", go);
+  }, [autoRetry, retry]);
 
   /** 現在地を取る。ボタンや「現在地の近くで」を押したときに初めて呼ぶ（開いただけでは許可を求めない） */
   const locate = useCallback((): Promise<MyPos | null> => {

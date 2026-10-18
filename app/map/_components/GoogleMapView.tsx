@@ -6,6 +6,7 @@ import { boundsOf, type GLatLngBounds, importLibrary, MAP_ID } from "@/lib/jibun
 import type { Bounds } from "@/lib/jibunmap/place";
 import { placeName } from "@/lib/jibunmap/place";
 import { type Scored, verdict } from "@/lib/jibunmap/score";
+import { visibleTimeout } from "@/lib/jibunmap/visible-timer";
 
 /* Maps JavaScript API の最小限の型（npm の型パッケージは足さない） */
 type Listener = { remove(): void };
@@ -88,7 +89,7 @@ export function GoogleMapView({
   onHover: (id: string | null) => void;
   onUserMove: () => void;
   /** 読み込めなかったとき（呼ぶ側でデモに切り替える） */
-  onFail: (why: string, detail?: unknown) => void;
+  onFail: (why: string, detail?: unknown, kind?: "timeout") => void;
   boundsRef: React.RefObject<Bounds | null>;
   /** 現在地（青い点と精度の円で出す） */
   me: { lat: number; lng: number; acc: number } | null;
@@ -118,11 +119,16 @@ export function GoogleMapView({
     if (forcedDemo()) return;
     let cancelled = false;
     const subs: Listener[] = [];
-    const timer = setTimeout(() => {
+    // 見えているあいだだけ数える（裏のタブで開いたときに、読み込みが絞られて失敗扱いにならないように）
+    const stopTimer = visibleTimeout(LOAD_TIMEOUT_MS, () => {
       if (cancelled || mapRef.current) return;
       setError(true);
-      cb.current.onFail(`地図の読み込みが ${LOAD_TIMEOUT_MS / 1000} 秒で終わらない`);
-    }, LOAD_TIMEOUT_MS);
+      cb.current.onFail(
+        `地図の読み込みが ${LOAD_TIMEOUT_MS / 1000} 秒で終わらない`,
+        undefined,
+        "timeout",
+      );
+    });
     (async () => {
       try {
         const [maps, core, marker] = await Promise.all([
@@ -158,10 +164,10 @@ export function GoogleMapView({
             if (!programmatic.current) cb.current.onUserMove();
           }),
         );
-        clearTimeout(timer);
+        stopTimer();
         setReady(true);
       } catch (e) {
-        clearTimeout(timer);
+        stopTimer();
         if (cancelled) return;
         setError(true);
         cb.current.onFail(
@@ -172,7 +178,7 @@ export function GoogleMapView({
     })();
     return () => {
       cancelled = true;
-      clearTimeout(timer);
+      stopTimer();
       for (const s of subs) s.remove();
     };
   }, [boundsRef]);
