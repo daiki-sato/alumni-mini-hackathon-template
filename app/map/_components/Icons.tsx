@@ -55,6 +55,11 @@ export const PinIcon = (p: P) => (
     <path d="M12 2a7 7 0 0 0-7 7c0 5.3 7 13 7 13s7-7.7 7-13a7 7 0 0 0-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z" />
   </Svg>
 );
+export const MapIcon = (p: P) => (
+  <Svg {...p}>
+    <path d="m15 5.1-6-2.1-6 2.3v16.2l6-2.3 6 2.1 6-2.3V2.8l-6 2.3Zm-.9 13.6-4.2-1.5V5.3l4.2 1.5v11.9ZM5 6.6l3-1.1v11.9l-3 1.2v-12Zm11 10.8V5.5l3-1.2v12l-3 1.1Z" />
+  </Svg>
+);
 export const ListIcon = (p: P) => (
   <Svg {...p}>
     <path d="M3 13h2v-2H3v2Zm0 4h2v-2H3v2Zm0-8h2V7H3v2Zm4 4h14v-2H7v2Zm0 4h14v-2H7v2ZM7 7v2h14V7H7Z" />

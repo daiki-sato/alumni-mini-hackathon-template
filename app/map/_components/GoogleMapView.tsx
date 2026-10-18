@@ -84,6 +84,8 @@ export function GoogleMapView({
   const programmatic = useRef(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
+  /** 最初のタイルが出たか（出るまでは読み込み中の表示を重ねる） */
+  const [tiles, setTiles] = useState(false);
 
   // 最新のコールバックを ref で持つ（地図のリスナーは一度だけ登録するため）
   const cb = useRef({ onSelect, onHover, onUserMove, onFail });
@@ -113,7 +115,10 @@ export function GoogleMapView({
           streetViewControl: false,
           fullscreenControl: false,
           clickableIcons: false,
-          gestureHandling: "greedy",
+          // スマホでは2本指で地図を動かす（1本指はページのスクロールに使う）
+          gestureHandling: window.matchMedia("(max-width: 767px)").matches
+            ? "cooperative"
+            : "greedy",
         });
         mapRef.current = map;
         libs.current = { core, marker };
@@ -123,6 +128,7 @@ export function GoogleMapView({
             if (b) boundsRef.current = boundsOf(b);
             programmatic.current = false;
           }),
+          map.addListener("tilesloaded", () => setTiles(true)),
           map.addListener("dragstart", () => cb.current.onUserMove()),
           map.addListener("zoom_changed", () => {
             if (!programmatic.current) cb.current.onUserMove();
@@ -246,9 +252,14 @@ export function GoogleMapView({
   return (
     <div className="absolute inset-0">
       <div ref={divRef} className="absolute inset-0 bg-surface-2" />
-      {!ready && !error && (
-        <div className="absolute inset-0 grid place-items-center text-muted text-sm">
-          地図を読み込んでいます…
+      {!tiles && !error && (
+        <div
+          className="jm-shimmer pointer-events-none absolute inset-0 grid place-items-center"
+          role="status"
+        >
+          <span className="rounded-full bg-surface/90 px-4 py-2 text-muted text-sm shadow-e1">
+            地図を読み込んでいます…
+          </span>
         </div>
       )}
       {error && (
