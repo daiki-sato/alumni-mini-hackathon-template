@@ -203,7 +203,7 @@ function ConditionCard({
       <div className="mt-4 grid gap-4 border-line border-t pt-4">
         <WordEditor
           title="うれしいワード"
-          hint="口コミに出たら1語 +4（最大 +24）"
+          hint="口コミに出たら1語 +4（1人 +4・合計 +24 まで）"
           kind="good"
           words={prefs.good}
           onChange={(good) => update((p) => ({ ...p, good }))}
