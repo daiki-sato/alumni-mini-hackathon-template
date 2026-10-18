@@ -11,9 +11,9 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     lang: "ja",
-    // 面の色（ライト）。起動時の画面とステータスバーの色
+    // アイコンの地色にそろえる（起動時の画面とステータスバーの色）
     background_color: ICON_BG,
-    theme_color: "#ffffff",
+    theme_color: ICON_BG,
     icons: [
       { src: "/icon/192", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icon/512", sizes: "512x512", type: "image/png", purpose: "any" },
