@@ -42,17 +42,17 @@ function WordEditor({
 
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-2">
+      <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-2">
         <h3 className="font-bold text-[15px] md:text-sm">{title}</h3>
-        <span className="text-muted text-xs">{hint}</span>
+        <span className="min-w-0 text-muted text-xs">{hint}</span>
       </div>
-      <ul className="mt-2 flex flex-wrap gap-1.5" aria-label={title}>
+      <ul className="mt-2 flex min-w-0 flex-wrap gap-1.5" aria-label={title}>
         {words.map((w) => {
           const solo = soloOnly?.includes(w) ?? false;
           return (
             <li
               key={w}
-              className={`flex items-center gap-0.5 rounded-full border py-0.5 pr-0.5 pl-1 text-[15px] md:text-[13px] ${tone}`}
+              className={`flex min-w-0 max-w-full items-center gap-0.5 rounded-full border py-0.5 pr-0.5 pl-1 text-[15px] md:text-[13px] ${tone}`}
             >
               {onSoloOnly && (
                 <button
@@ -65,7 +65,7 @@ function WordEditor({
                       solo ? (soloOnly ?? []).filter((x) => x !== w) : [...(soloOnly ?? []), w],
                     )
                   }
-                  className={`-my-1.5 grid h-10 min-w-10 place-items-center rounded-full px-1.5 text-[11px] md:h-6 md:min-w-6 ${
+                  className={`-my-1.5 grid h-10 min-w-10 shrink-0 place-items-center rounded-full px-1.5 text-[11px] md:h-6 md:min-w-6 ${
                     solo ? "font-bold" : "opacity-50"
                   }`}
                 >
@@ -76,7 +76,7 @@ function WordEditor({
                   </span>
                 </button>
               )}
-              <span className={onSoloOnly ? "" : "pl-1.5"}>{w}</span>
+              <span className={`min-w-0 truncate ${onSoloOnly ? "" : "pl-1.5"}`}>{w}</span>
               <button
                 type="button"
                 aria-label={`「${w}」を${title}から外す`}
@@ -84,7 +84,7 @@ function WordEditor({
                   onChange(words.filter((x) => x !== w));
                   if (solo) onSoloOnly?.((soloOnly ?? []).filter((x) => x !== w));
                 }}
-                className="-my-1.5 grid size-10 place-items-center rounded-full hover:bg-black/10 md:my-0 md:size-6 dark:hover:bg-white/10"
+                className="-my-1.5 grid size-10 shrink-0 place-items-center rounded-full hover:bg-black/10 md:my-0 md:size-6 dark:hover:bg-white/10"
               >
                 <CloseIcon className="size-3.5" />
               </button>
@@ -94,7 +94,7 @@ function WordEditor({
         {!words.length && <li className="text-muted text-xs">まだありません</li>}
       </ul>
       <form
-        className="mt-2 flex gap-1.5"
+        className="mt-2 flex min-w-0 gap-1.5"
         onSubmit={(e) => {
           e.preventDefault();
           add();
@@ -155,7 +155,8 @@ export function MinScoreSlider({
         step={MIN_SCORE_STEP}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-2 h-10 w-full accent-[var(--brand)]"
+        // つまみが端で半分切れないよう、左右につまみの半径分の余白を取る
+        className="mt-2 box-border h-10 w-full px-3 accent-[var(--brand)]"
       />
       <p className="text-muted text-xs">これより低い店は、一覧と地図に出しません。</p>
     </div>
@@ -184,11 +185,16 @@ export function PrefsSheet({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (open && !d.open) d.showModal();
+    if (open && !d.open) {
+      d.showModal();
+      // showModal は最初のボタン（閉じる）にフォーカスを当て、iPhone では輪が出たままになる。見出しに移す
+      titleRef.current?.focus();
+    }
     if (!open && d.open) d.close();
   }, [open]);
 
@@ -207,11 +213,17 @@ export function PrefsSheet({
           onClose();
         }
       }}
-      className="m-0 h-dvh max-h-none w-full max-w-none bg-surface p-0 text-ink backdrop:bg-black/40 md:ml-auto md:w-[420px] md:border-line md:border-l md:shadow-e2"
+      // スマホは画面にぴったりの全画面（dialog の既定の幅・余白を打ち消す）。横にはみ出したら切る
+      className="fixed inset-0 m-0 box-border h-dvh max-h-none w-full max-w-full overflow-x-hidden bg-surface p-0 text-ink backdrop:bg-black/40 md:left-auto md:w-[420px] md:border-line md:border-l md:shadow-e2"
     >
-      <div className="flex h-full flex-col">
+      <div className="flex h-full w-full min-w-0 flex-col overflow-x-clip">
         <div className="flex items-center justify-between border-line border-b px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
-          <h2 id="prefs-title" className="font-bold text-lg">
+          <h2
+            id="prefs-title"
+            ref={titleRef}
+            tabIndex={-1}
+            className="font-bold text-lg outline-none"
+          >
             マイ条件
           </h2>
           <button
@@ -223,7 +235,7 @@ export function PrefsSheet({
             <CloseIcon />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        <div className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overflow-x-clip px-4 pt-4 pb-6">
           <p className="text-muted text-sm">
             口コミにこの語が出ると、点数が上がったり下がったりします。この端末の中にだけ保存します。
           </p>
@@ -250,31 +262,32 @@ export function PrefsSheet({
               onChange={(ng) => update((p) => ({ ...p, ng }))}
             />
           </div>
-          <div className="mt-5 flex justify-between gap-2">
-            <div className="flex flex-wrap gap-1">
-              <button
-                type="button"
-                onClick={onReset}
-                className="h-10 rounded-full px-4 text-muted text-sm hover:bg-surface-2"
-              >
-                初期値に戻す
-              </button>
-              <button
-                type="button"
-                onClick={onRestart}
-                className="h-10 rounded-full px-4 text-muted text-sm hover:bg-surface-2"
-              >
-                はじめの設定をやり直す
-              </button>
-            </div>
+        </div>
+        {/* 下部の帯: 不透明の地に細い線。主ボタンは1行、ほかは上に小さな文字リンク。ホームバーの分だけ余白 */}
+        <div className="shrink-0 border-line border-t bg-surface px-4 pt-2 pb-[max(16px,env(safe-area-inset-bottom))]">
+          <div className="flex flex-wrap justify-center gap-x-4">
             <button
               type="button"
-              onClick={onClose}
-              className="h-10 rounded-full bg-brand px-5 font-bold text-on-brand text-sm hover:opacity-90"
+              onClick={onReset}
+              className="min-h-10 text-muted text-sm underline underline-offset-2"
             >
-              この条件で並べる
+              初期値に戻す
+            </button>
+            <button
+              type="button"
+              onClick={onRestart}
+              className="min-h-10 text-muted text-sm underline underline-offset-2"
+            >
+              はじめの設定をやり直す
             </button>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-1 h-11 w-full whitespace-nowrap rounded-full bg-brand px-5 font-bold text-on-brand text-sm hover:opacity-90"
+          >
+            この条件で並べる
+          </button>
         </div>
       </div>
     </dialog>
