@@ -459,15 +459,22 @@ export type Scored = {
   score: number;
 };
 
-export function scorePlace(p: Place, now: number, words: WordLists): Scored {
-  const sg = signals(p, now, words);
+export type ScoreOptions = {
+  /** グループ向きの減点をしない（友だちと行くとき） */
+  ignoreGroups?: boolean;
+};
+
+export function scorePlace(
+  p: Place,
+  now: number,
+  words: WordLists,
+  opts: ScoreOptions = {},
+): Scored {
+  const raw = signals(p, now, words);
+  // 理由のチップや並ぶ人の予想とずれないよう、外した材料は signals からも外す
+  const sg = opts.ignoreGroups ? { ...raw, goodForGroups: false } : raw;
   const ps = parts(sg);
   return { place: p, signals: sg, parts: ps, score: totalScore(ps) };
-}
-
-/** 口コミの怪しい点 */
-export function flags(s: Scored): string[] {
-  return (s.parts.find((p) => p.key === "natural")?.reasons ?? []).map((e) => e.text);
 }
 
 /** 店の制約のタグ（Google の店舗情報＋うれしいワードに入った制約の語） */
@@ -569,12 +576,10 @@ export function wordsForScene(words: WordLists, soloOnly: string[], scene: Scene
   return { good: words.good.filter((w) => !soloOnly.includes(w)), ng: words.ng };
 }
 
-/** シーンに合わせた判断軸。友だちとのときは「グループ向きでない」を外す */
-export function axesForScene(axes: AxisKey[], scene: Scene): AxisKey[] {
-  return scene === "solo" ? axes : axes.filter((k) => k !== "groups");
-}
-
-/** シーンを加味して採点する（純粋な関数） */
+/**
+ * シーンを加味して採点する（純粋な関数）。友だちとのときは「ひとりのときだけ」の語を数えず、
+ * グループ向きの減点もしない（NG ワードはそのまま）
+ */
 export function scorePlaceInScene(
   p: Place,
   now: number,
@@ -582,110 +587,22 @@ export function scorePlaceInScene(
   soloOnly: string[],
   scene: Scene,
 ): Scored {
-  return scorePlace(p, now, wordsForScene(words, soloOnly, scene));
+  return scorePlace(p, now, wordsForScene(words, soloOnly, scene), {
+    ignoreGroups: scene === "friends",
+  });
 }
 
-/* ---------- 判断軸 ---------- */
+/* ---------- 並び順 ---------- */
 
-export type AxisKey = "good" | "ng" | "cons" | "rev" | "few" | "groups" | "chain";
-
-export type Axis = {
-  k: AxisKey;
-  l: string;
-  /** 条件の要約に使う短い名前 */
-  s: string;
-  /** 0〜1。大きいほど軸に合う */
-  v: (s: Scored) => number;
-  /** 選ばれた理由の一言 */
-  w: (s: Scored) => string;
-};
-
-export const AXES: Axis[] = [
-  {
-    k: "good",
-    s: "うれしい多",
-    l: "うれしいワードが多い",
-    // 1人あたりの上限をかけたあとの点で見る（同じ人が語を並べても軸だけ上がらない）
-    v: (s) => Math.min(partValue(s.parts, "good") / GOOD_POINT, 4) / 4,
-    w: (s) => `うれしいワード${s.signals.good.length}語`,
-  },
-  {
-    k: "ng",
-    s: "NG少",
-    l: "NGワードが少ない",
-    v: (s) => 1 - Math.min(s.signals.ng.length, 4) / 4,
-    w: (s) => (s.signals.ng.length ? `NGワード${s.signals.ng.length}語` : "NGワードなし"),
-  },
-  {
-    k: "cons",
-    s: "制約あり",
-    l: "制約がある",
-    v: (s) => partValue(s.parts, "cons") / 10,
-    w: (s) => `制約${constraintTags(s.signals).length}つ`,
-  },
-  {
-    k: "rev",
-    s: "口コミ自然",
-    l: "口コミが自然",
-    v: (s) => 1 + partValue(s.parts, "natural") / 20,
-    w: (s) => {
-      const f = flags(s).length;
-      return f ? `怪しい点${f}つ` : "怪しい点なし";
-    },
-  },
-  {
-    k: "few",
-    s: "件数ほどほど",
-    l: "件数がほどほど",
-    v: (s) => (partValue(s.parts, "minority") + 15) / 27,
-    w: (s) => `口コミ${s.signals.count}件`,
-  },
-  {
-    k: "groups",
-    s: "グループ向きでない",
-    l: "グループ向きでない",
-    v: (s) => (s.signals.goodForGroups ? 0 : 1),
-    w: (s) => (s.signals.goodForGroups ? "グループ向き" : "グループ向きではない"),
-  },
-  {
-    k: "chain",
-    s: "チェーンでない",
-    l: "チェーンらしくない",
-    v: (s) => (s.signals.chain ? 0 : 1),
-    w: (s) => (s.signals.chain ? "チェーンの可能性" : "個人店らしい"),
-  },
-];
-
-export const DEFAULT_AXES: AxisKey[] = ["good", "ng", "rev"];
-export const MAX_AXES = 3;
-
-export function axisObj(k: AxisKey): Axis | undefined {
-  return AXES.find((a) => a.k === k);
-}
-
-export function isAxisKey(k: unknown): k is AxisKey {
-  return typeof k === "string" && AXES.some((a) => a.k === k);
-}
-
-export function rankVal(s: Scored, axes: AxisKey[]): number {
-  let t = 0;
-  for (const k of axes) {
-    const a = axisObj(k);
-    if (a) t += a.v(s);
-  }
-  return t + s.score / 1000;
-}
-
-/** 判断軸の合計で並べる。先頭3件が「今日の3軒」。Google の並び順は使わない */
-export function computeTop(cands: Scored[], axes: AxisKey[]): Scored[] {
+/**
+ * 点数（score）の高い順に並べる。同点なら Google の検索結果の順（順番がないものは後ろ）、
+ * それも同じなら id の順（描画のたびに並びが揺れないように）
+ */
+export function rankByScore(cands: Scored[]): Scored[] {
+  const g = (s: Scored) => s.place.googleRank ?? Number.POSITIVE_INFINITY;
   return cands
     .slice()
-    .sort(
-      (a, b) =>
-        rankVal(b, axes) - rankVal(a, axes) ||
-        b.score - a.score ||
-        a.place.id.localeCompare(b.place.id),
-    );
+    .sort((a, b) => b.score - a.score || g(a) - g(b) || a.place.id.localeCompare(b.place.id));
 }
 
 /**

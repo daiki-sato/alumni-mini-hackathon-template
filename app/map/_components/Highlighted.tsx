@@ -1,6 +1,6 @@
 import { highlight, type WordLists } from "@/lib/jibunmap/score";
 
-/** 口コミの本文。うれしいワードは緑、NG ワードは赤で印を付ける */
+/** 口コミの本文。うれしいワードは緑、NG ワードは赤で印を付ける（一覧と詳細で同じ見た目） */
 export function Highlighted({ text, words }: { text: string; words: WordLists }) {
   const segs = highlight(text, words);
   let pos = 0;
@@ -10,12 +10,7 @@ export function Highlighted({ text, words }: { text: string; words: WordLists })
         const key = `${pos}-${s.kind ?? "t"}`;
         pos += s.text.length;
         return s.kind ? (
-          <mark
-            key={key}
-            className={`rounded px-0.5 font-bold ${
-              s.kind === "good" ? "bg-hi-soft text-hi" : "bg-lo-soft text-lo"
-            }`}
-          >
+          <mark key={key} className={s.kind === "good" ? "jm-mark-good" : "jm-mark-ng"}>
             {s.text}
           </mark>
         ) : (

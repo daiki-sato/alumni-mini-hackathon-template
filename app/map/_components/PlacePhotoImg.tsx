@@ -22,7 +22,7 @@ export function PhotoCredit({ photo, className = "" }: { photo?: PlacePhoto; cla
   const a = photo?.authorAttributions ?? [];
   if (!a.length) return null;
   return (
-    <span className={`block truncate text-[10px] text-muted ${className}`}>
+    <span className={`block truncate text-[11px] text-muted leading-tight ${className}`}>
       写真:{" "}
       {a.map((x, i) => (
         <span key={x.displayName}>
@@ -41,7 +41,7 @@ export function PhotoCredit({ photo, className = "" }: { photo?: PlacePhoto; cla
 }
 
 /**
- * 店の写真1枚。画像を1枚読むごとに課金されるので、今日の3軒のサムネイルと詳細（最大4枚）だけで使う。
+ * 店の写真1枚。画像を1枚読むごとに課金されるので、上位3つのサムネイルと詳細（最大4枚）だけで使う。
  * セッションの上限を超えたら、写真の代わりにジャンルのアイコンを出す
  */
 export function PlacePhotoImg({

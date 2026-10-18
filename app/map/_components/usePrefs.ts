@@ -2,25 +2,24 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  type AxisKey,
-  DEFAULT_AXES,
   DEFAULT_GOOD_WORDS,
   DEFAULT_NG_WORDS,
-  isAxisKey,
-  MAX_AXES,
+  DEFAULT_SOLO_ONLY,
   MAX_WORD_LENGTH,
   MAX_WORDS,
 } from "@/lib/jibunmap/score";
 
-// 保存するのは判断軸と2つの語のリストだけ（店のデータは保存しない）
+// 保存するのは2つの語のリストと「ひとりのときだけ」の印だけ（店のデータ・シーンは保存しない）
 const KEY = "jibunmap-v1";
+/** 保存形式の版。2 で soloOnly（ひとりのときだけ数える語）を足し、判断軸（axes）をやめた */
+const VERSION = 2;
 
-export type Prefs = { axes: AxisKey[]; good: string[]; ng: string[] };
+export type Prefs = { good: string[]; ng: string[]; soloOnly: string[] };
 
 export const DEFAULT_PREFS: Prefs = {
-  axes: DEFAULT_AXES,
   good: DEFAULT_GOOD_WORDS,
   ng: DEFAULT_NG_WORDS,
+  soloOnly: DEFAULT_SOLO_ONLY,
 };
 
 function cleanWords(v: unknown): string[] | null {
@@ -34,18 +33,25 @@ function cleanWords(v: unknown): string[] | null {
   return out.slice(0, MAX_WORDS);
 }
 
+/**
+ * 保存された値を今の形に直す。版のない古い形式（v1）には soloOnly がないので、
+ * 初期値の4語のうち、うれしいワードに残っている語に印を付ける。v1 の axes は読み捨てる
+ */
+export function migrate(d: Record<string, unknown>): Prefs {
+  const good = cleanWords(d.good) ?? DEFAULT_PREFS.good;
+  const solo = cleanWords(d.soloOnly) ?? DEFAULT_SOLO_ONLY;
+  return {
+    good,
+    ng: cleanWords(d.ng) ?? DEFAULT_PREFS.ng,
+    soloOnly: solo.filter((w) => good.includes(w)),
+  };
+}
+
 function load(): Prefs | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    const d = JSON.parse(raw) as Record<string, unknown>;
-    return {
-      axes: Array.isArray(d.axes)
-        ? d.axes.filter(isAxisKey).slice(0, MAX_AXES)
-        : DEFAULT_PREFS.axes,
-      good: cleanWords(d.good) ?? DEFAULT_PREFS.good,
-      ng: cleanWords(d.ng) ?? DEFAULT_PREFS.ng,
-    };
+    return migrate(JSON.parse(raw) as Record<string, unknown>);
   } catch {
     return null;
   }
@@ -53,7 +59,7 @@ function load(): Prefs | null {
 
 function save(p: Prefs): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(p));
+    localStorage.setItem(KEY, JSON.stringify({ v: VERSION, ...p }));
   } catch {
     // 保存できない環境（プライベートモードなど）でも動くようにする
   }

@@ -221,7 +221,7 @@ export function DetailPanel({
         <div className="flex flex-wrap items-center gap-1.5">
           {rank > 0 && (
             <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-0.5 font-bold text-on-accent text-xs">
-              今日の3軒・{rank}番
+              {rank}位
             </span>
           )}
           <GoogleRankBadge rank={p.googleRank} />
@@ -341,9 +341,9 @@ export function DetailPanel({
           <Fold title={`口コミ全文（${demo ? "架空" : "Google マップ"}）`}>
             <p className="mb-2 text-muted text-xs">
               この口コミから判定しています。
-              <mark className="rounded bg-hi-soft px-1 text-hi">緑</mark>
+              <mark className="jm-mark-good">緑</mark>
               はうれしいワード、
-              <mark className="rounded bg-lo-soft px-1 text-lo">赤</mark>は NG ワード。
+              <mark className="jm-mark-ng">赤</mark>は NG ワード。
               すぐ後ろで打ち消された語（「入りにくい」など）は数えません。
             </p>
             <ul className="grid gap-2">

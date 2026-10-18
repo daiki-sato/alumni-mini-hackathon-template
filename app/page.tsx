@@ -340,8 +340,8 @@ export default function Home() {
               <p className="mt-4 text-muted text-xs leading-relaxed">
                 点数の横には、ひと言の評価を出します（80以上「{verdict(80)}」・60以上「{verdict(60)}
                 」・35以上「
-                {verdict(35)}」・それ未満「{verdict(0)}」）。
-                今日の3軒は、選んだ判断軸（最大3つ）の合計が高い順。同点なら集まる度の高い順です。
+                {verdict(35)}」・それ未満「{verdict(0)}」）。 並びは点数の高い順。同点なら Google
+                の検索結果の順です。
               </p>
             </div>
           </div>
