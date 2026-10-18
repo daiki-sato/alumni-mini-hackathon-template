@@ -117,3 +117,22 @@ export function suggestQueries(
   }
   return out;
 }
+
+/** ジャンル語のほかに「飲食の検索だ」と分かる語（これがあれば「飲食店」を足さない） */
+const FOOD_HINTS = ["飲食", "食堂", "レストラン", "グルメ", "ランチ", "ごはん"];
+
+/**
+ * Places に送る語。ジャンル語がないとき（例:「高円寺」）は末尾に「 飲食店」を足す。
+ * 街の名前だけだと駅や公園ばかり返るため。画面の見出しとキャッシュのキーは入力のままにする
+ */
+export function foodQuery(input: string): string {
+  const q = input.trim();
+  if (!q) return q;
+  const tokens = q
+    .split(/[\s　]+/)
+    .map(norm)
+    .filter(Boolean);
+  const hasGenre = GENRE_WORDS.some((g) => tokens.some((t) => hits(g, t)));
+  const hasHint = FOOD_HINTS.some((h) => norm(q).includes(h));
+  return hasGenre || hasHint ? q : `${q} 飲食店`;
+}

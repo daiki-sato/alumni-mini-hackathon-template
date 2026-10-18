@@ -14,6 +14,7 @@ import { BROWSER_KEY, SearchLimitError, searchesLeft, searchPlaces } from "@/lib
 import type { Bounds, Place } from "@/lib/jibunmap/place";
 import { MAX_QUERY_LENGTH, placeName } from "@/lib/jibunmap/place";
 import { computeTop, type Scored, scorePlace } from "@/lib/jibunmap/score";
+import { foodQuery } from "@/lib/jibunmap/suggest";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
 import { GoogleMapView } from "./GoogleMapView";
@@ -158,7 +159,10 @@ export function MapApp() {
       try {
         // 地図が出ているときは、表示中の範囲に寄せる（絞り込みではない）
         const { places: found } = await withTimeout(
-          searchPlaces(q, opts.bounds ?? boundsRef.current ?? undefined, { area: !!opts.bounds }),
+          searchPlaces(q, opts.bounds ?? boundsRef.current ?? undefined, {
+            area: !!opts.bounds,
+            textQuery: foodQuery(q || "飲食店"),
+          }),
           SEARCH_TIMEOUT_MS,
         );
         if (my !== seq.current) return;

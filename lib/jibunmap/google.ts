@@ -261,18 +261,55 @@ function writeCache(key: string, places: Place[]): void {
   }
 }
 
+/** 飲食の店の種類（Places の primaryType）。これ以外（駅・公園など）は一覧と地図に出さない */
+const FOOD_TYPES = new Set([
+  "restaurant",
+  "food",
+  "cafe",
+  "coffee_shop",
+  "tea_house",
+  "cafeteria",
+  "bakery",
+  "bar",
+  "pub",
+  "wine_bar",
+  "meal_takeaway",
+  "meal_delivery",
+  "food_court",
+  "diner",
+  "deli",
+  "steak_house",
+  "sandwich_shop",
+  "bagel_shop",
+  "donut_shop",
+  "dessert_shop",
+  "ice_cream_shop",
+  "juice_shop",
+  "confectionery",
+  "chocolate_shop",
+  "candy_store",
+]);
+
+/** 飲食の店か。種類が分からないものは残す（外しすぎない） */
+export function isFoodPlace(p: Place): boolean {
+  const t = p.primaryType;
+  if (!t) return true;
+  return FOOD_TYPES.has(t) || t.endsWith("_restaurant") || t.endsWith("_bar");
+}
+
 export class SearchLimitError extends Error {}
 
 export type SearchResult = { places: Place[]; cached: boolean };
 
 /**
  * Text Search を1回だけ呼ぶ（ページ送りはしない）。
- * bounds は寄せる範囲（locationBias）。area が true のときだけ、範囲もキャッシュのキーに入れる
+ * bounds は寄せる範囲（locationBias）。area が true のときだけ、範囲もキャッシュのキーに入れる。
+ * textQuery は Google に送る語（例:「高円寺 飲食店」）。キャッシュのキーは query（入力のまま）で作る
  */
 export async function searchPlaces(
   query: string,
   bounds?: Bounds,
-  opts: { area?: boolean } = {},
+  opts: { area?: boolean; textQuery?: string } = {},
 ): Promise<SearchResult> {
   const q = query.trim() || "飲食店";
   const key = cacheKey(q, opts.area ? bounds : undefined);
@@ -286,7 +323,7 @@ export async function searchPlaces(
   const { Place } = await importLibrary<PlacesLib>("places");
   bumpCount();
   const req: Record<string, unknown> = {
-    textQuery: q,
+    textQuery: opts.textQuery?.trim() || q,
     fields: PLACE_FIELDS,
     language: "ja",
     region: "JP",
@@ -301,8 +338,11 @@ export async function searchPlaces(
     };
   }
   const { places } = await Place.searchByText(req);
-  // Google が返した並び順を残す（「Google の検索結果では◯番目」と見せるため）
-  const out = (places ?? []).map((p, i) => ({ ...fromJsPlace(p), googleRank: i + 1 }));
+  // Google が返した並び順を残す（「Google の検索結果では◯番目」と見せるため）。
+  // 順番を付けてから飲食でないものを外すので、番号は Google の結果のままになる
+  const out = (places ?? [])
+    .map((p, i) => ({ ...fromJsPlace(p), googleRank: i + 1 }))
+    .filter(isFoodPlace);
   writeCache(key, out);
   return { places: out, cached: false };
 }
