@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Logo } from "@/app/_components/Logo";
 import {
   DEMO_NOW,
@@ -18,25 +18,50 @@ import { foodQuery } from "@/lib/jibunmap/suggest";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
 import { GoogleMapView } from "./GoogleMapView";
-import { InfoIcon, ListIcon, SearchIcon } from "./Icons";
-import { ListPanel } from "./ListPanel";
+import { InfoIcon, ListIcon, MapIcon, SearchIcon } from "./Icons";
+import { ListPanel, PeekCard } from "./ListPanel";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_PREFS, usePrefs } from "./usePrefs";
 
 // キーはビルド時に埋め込まれる。サーバーとブラウザで同じ値なので、最初の描画がずれない
 const HAS_KEY = !!BROWSER_KEY;
 const FIRST_DEMO_TOWN = DEMO_TOWNS[0].name;
-/** URL（?q=検索語&place=店の id）。検索語と選んだ店を、共有と戻るボタンのために載せる */
-function urlFor(q: string, place: string | null): string {
+/**
+ * URL（?q=検索語&place=店の id&view=list|map）。検索語・選んだ店・スマホの表示を、
+ * 共有・再読み込み・戻るボタンのために載せる（位置などの個人の情報は載せない）
+ */
+function urlFor(
+  q: string,
+  place: string | null,
+  extra: Record<string, string | undefined> = {},
+): string {
   const sp = new URLSearchParams();
   if (q.trim()) sp.set("q", q.trim());
   if (place) sp.set("place", place);
+  for (const [k, v] of Object.entries(extra)) if (v) sp.set(k, v);
   const s = sp.toString();
   return `${window.location.pathname}${s ? `?${s}` : ""}`;
 }
 
 /** 検索がこれ以上かかったら、Google に届いていないとみなしてデモに切り替える */
 const SEARCH_TIMEOUT_MS = 12_000;
+
+type View = "list" | "map";
+
+const MOBILE_QUERY = "(max-width: 767px)";
+
+/** スマホの幅か（サーバーと最初の描画では false。hydration のずれを防ぐ） */
+function useIsMobile(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const m = window.matchMedia(MOBILE_QUERY);
+      m.addEventListener("change", cb);
+      return () => m.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(MOBILE_QUERY).matches,
+    () => false,
+  );
+}
 
 type Status = { kind: "idle" | "loading" | "ok" } | { kind: "error"; message: string };
 
@@ -72,6 +97,14 @@ export function MapApp() {
   const [fitKey, setFitKey] = useState(0);
   const [moved, setMoved] = useState(false);
   const [condOpen, setCondOpen] = useState(false);
+  // スマホ（768px 未満）は地図とリストを全画面で切り替える。検索前は地図、検索後はリスト
+  const [view, setViewState] = useState<View>("map");
+  const viewRef = useRef<View>("map");
+  /** 起動時の URL にあった view（最初の検索の結果を出すときに1回だけ使う） */
+  const bootView = useRef<View | null>(null);
+  /** スマホの地図全画面で、ピンを押して下に出している店 */
+  const [peekId, setPeekId] = useState<string | null>(null);
+  const mobile = useIsMobile();
   const boundsRef = useRef<Bounds | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searching = useRef(false);
@@ -93,6 +126,13 @@ export function MapApp() {
   selRef.current = selId;
   const placesRef = useRef(places);
   placesRef.current = places;
+  /** URL に一緒に載せる値（表示モードなど）。コールバックの依存にしないよう ref で持つ */
+  const urlExtra = useRef<Record<string, string | undefined>>({ view: "map" });
+  const setView = useCallback((v: View) => {
+    viewRef.current = v;
+    urlExtra.current = { ...urlExtra.current, view: v };
+    setViewState(v);
+  }, []);
 
   const words = useMemo(() => ({ good: prefs.good, ng: prefs.ng }), [prefs.good, prefs.ng]);
   const scored = useMemo(() => places.map((p) => scorePlace(p, now, words)), [places, now, words]);
@@ -137,7 +177,7 @@ export function MapApp() {
       // URL の検索語は入力した語のまま残す（「もう一度試す」や再読み込みで Google に聞き直せるように）
       placePushed.current = false;
       fromCard.current = null;
-      window.history.replaceState(null, "", urlFor(urlQ.current, null));
+      window.history.replaceState(null, "", urlFor(urlQ.current, null, urlExtra.current));
       const q = lastLive.current?.q.trim() ?? "";
       const hits = q ? demoSearch(q) : [];
       const label = hits.length ? q : FIRST_DEMO_TOWN;
@@ -178,7 +218,11 @@ export function MapApp() {
       if (!opts.bounds) urlQ.current = q;
       const found0 = (found: Place[]) => {
         const sel = opts.select && found.some((p) => p.id === opts.select) ? opts.select : null;
-        window.history.replaceState(null, "", urlFor(urlQ.current, sel));
+        // 検索したらリストを出す（エリアの再検索は地図のまま）。起動時の URL に view があればそれ
+        if (!opts.bounds) setView(bootView.current ?? "list");
+        bootView.current = null;
+        setPeekId(null);
+        window.history.replaceState(null, "", urlFor(urlQ.current, sel, urlExtra.current));
         if (sel) setSelId(sel);
       };
       if (demoRef.current) {
@@ -245,7 +289,7 @@ export function MapApp() {
         }
       }
     },
-    [fallBack],
+    [fallBack, setView],
   );
   runRef.current = run;
 
@@ -256,6 +300,8 @@ export function MapApp() {
     if (booted.current) return;
     booted.current = true;
     const sp = new URLSearchParams(window.location.search);
+    const v = sp.get("view");
+    if (v === "list" || v === "map") bootView.current = v;
     const q = sp.get("q")?.trim().slice(0, MAX_QUERY_LENGTH);
     if (!q) return;
     // デモデータに当たらない語（例: 高円寺）なら、最初のサンプルの街のままにする
@@ -304,9 +350,9 @@ export function MapApp() {
   const onSelect = useCallback((id: string) => {
     if (selRef.current === id) return;
     if (selRef.current) {
-      window.history.replaceState(null, "", urlFor(urlQ.current, id));
+      window.history.replaceState(null, "", urlFor(urlQ.current, id, urlExtra.current));
     } else {
-      window.history.pushState(null, "", urlFor(urlQ.current, id));
+      window.history.pushState(null, "", urlFor(urlQ.current, id, urlExtra.current));
       placePushed.current = true;
       fromCard.current = id;
     }
@@ -320,7 +366,7 @@ export function MapApp() {
       window.history.back();
       return;
     }
-    window.history.replaceState(null, "", urlFor(urlQ.current, null));
+    window.history.replaceState(null, "", urlFor(urlQ.current, null, urlExtra.current));
     setSelId(null);
   }, []);
 
@@ -375,9 +421,44 @@ export function MapApp() {
 
   const rank = selected ? rankIds.indexOf(selected.place.id) + 1 : 0;
 
+  /** スマホ: 地図とリストを切り替える。地図に戻したら、隠れていた間の大きさで範囲を合わせ直す */
+  const toggleView = () => {
+    const next: View = viewRef.current === "list" ? "map" : "list";
+    setView(next);
+    setPeekId(null);
+    window.history.replaceState(null, "", urlFor(urlQ.current, selRef.current, urlExtra.current));
+    if (next === "map") setFitKey((k) => k + 1);
+  };
+
+  /** ピンを押したとき。スマホの地図全画面では、下に小さなカードを出す（タップで詳細） */
+  const onPin = useCallback(
+    (id: string) => {
+      if (mobile && viewRef.current === "map") setPeekId(id);
+      else onSelect(id);
+    },
+    [mobile, onSelect],
+  );
+  const peek = peekId ? ranked.find((s) => s.place.id === peekId) : undefined;
+  const mapView = mobile && view === "map";
+
+  // スマホで詳細を全画面で開いている間は、後ろのページをスクロールさせない
+  useEffect(() => {
+    if (!mobile || !selId) return;
+    const el = document.documentElement;
+    const prev = el.style.overflow;
+    el.style.overflow = "hidden";
+    return () => {
+      el.style.overflow = prev;
+    };
+  }, [mobile, selId]);
+
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-bg text-ink">
-      <header className="relative z-30 flex items-center gap-3 border-line border-b bg-surface px-3 py-2 md:px-4">
+    <div
+      className={`flex flex-col bg-bg text-ink md:h-dvh md:overflow-hidden ${
+        view === "map" ? "max-md:h-dvh max-md:overflow-hidden" : "max-md:min-h-dvh"
+      }`}
+    >
+      <header className="sticky top-0 z-30 flex items-center gap-2 border-line border-b bg-surface pt-[max(0.5rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-2 pl-[max(0.75rem,env(safe-area-inset-left))] md:relative md:gap-3 md:px-4">
         <Logo compact />
         <SearchBox
           demo={demo}
@@ -388,7 +469,7 @@ export function MapApp() {
         />
         <Link
           href="/#how"
-          className="shrink-0 rounded-full px-3 py-2 font-medium text-sm hover:bg-surface-2"
+          className="hidden h-10 shrink-0 items-center rounded-full px-3 font-medium text-sm hover:bg-surface-2 md:inline-flex"
         >
           しくみ
         </Link>
@@ -406,7 +487,7 @@ export function MapApp() {
           <button
             type="button"
             onClick={retry}
-            className="shrink-0 rounded-full border border-line bg-surface px-3 py-1 font-medium hover:bg-surface-2"
+            className="h-10 shrink-0 rounded-full border border-line bg-surface px-3 font-medium hover:bg-surface-2 md:h-8"
           >
             もう一度試す
           </button>
@@ -427,10 +508,12 @@ export function MapApp() {
         )
       )}
 
-      <main className="relative flex min-h-0 flex-1 flex-col md:flex-row">
+      <main className="relative flex flex-1 flex-col md:min-h-0 md:flex-row">
         <section
           aria-label="地図"
-          className="relative h-[42dvh] shrink-0 md:order-2 md:h-auto md:flex-1"
+          className={`relative md:order-2 md:flex md:flex-1 ${
+            view === "map" ? "max-md:flex max-md:min-h-[240px] max-md:flex-1" : "max-md:hidden"
+          }`}
         >
           {demo ? (
             <DemoMapView
@@ -441,19 +524,19 @@ export function MapApp() {
               }
               items={scored}
               rankIds={rankIds}
-              selId={selId}
+              selId={selId ?? peekId}
               hoverId={hoverId}
-              onSelect={onSelect}
+              onSelect={onPin}
               onHover={setHoverId}
             />
           ) : (
             <GoogleMapView
               items={scored}
               rankIds={rankIds}
-              selId={selId}
+              selId={selId ?? peekId}
               hoverId={hoverId}
               fitKey={fitKey}
-              onSelect={onSelect}
+              onSelect={onPin}
               onHover={setHoverId}
               onUserMove={onUserMove}
               onFail={fallBack}
@@ -464,20 +547,40 @@ export function MapApp() {
             <button
               type="button"
               onClick={searchArea}
-              className="anim-pop-in absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-surface px-4 py-2 font-medium text-sm shadow-e2 hover:bg-surface-2"
+              className="anim-pop-in absolute top-3 left-1/2 z-10 flex h-10 -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-surface px-4 font-medium text-sm shadow-e2 hover:bg-surface-2"
             >
               <SearchIcon className="size-4" />
               このエリアで再検索
               <span className="text-muted text-xs tabular-nums">（残り{searchesLeft()}回）</span>
             </button>
           )}
+          {mapView && peek && !selected && (
+            <div className="absolute inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10">
+              <PeekCard
+                s={peek}
+                rank={rankIds.indexOf(peek.place.id) + 1}
+                words={words}
+                onOpen={() => onSelect(peek.place.id)}
+                onClose={() => setPeekId(null)}
+              />
+            </div>
+          )}
         </section>
 
         <aside
           aria-label={selected ? `${placeName(selected.place)}の詳細` : "店の一覧"}
-          className="relative z-10 -mt-4 flex min-h-0 flex-1 flex-col rounded-t-3xl border-line bg-surface shadow-e2 md:order-1 md:mt-0 md:w-[400px] md:flex-none md:rounded-none md:border-r md:shadow-none"
+          className={`relative z-10 flex flex-col bg-surface md:order-1 md:min-h-0 md:w-[400px] md:flex-none md:border-line md:border-r ${
+            view === "map" && !selected ? "max-md:hidden" : "max-md:flex-1"
+          }`}
         >
-          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div
+            ref={scrollRef}
+            className={`md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain ${
+              selected
+                ? "max-md:fixed max-md:inset-0 max-md:z-50 max-md:overflow-y-auto max-md:overscroll-contain max-md:bg-surface"
+                : ""
+            }`}
+          >
             {selected ? (
               <DetailPanel
                 key={selected.place.id}
@@ -511,20 +614,20 @@ export function MapApp() {
               />
             )}
           </div>
-          {selected && (
-            <div className="border-line border-t p-2 md:hidden">
-              <button
-                type="button"
-                onClick={onBack}
-                className="flex w-full items-center justify-center gap-2 rounded-full py-2 font-medium text-sm hover:bg-surface-2"
-              >
-                <ListIcon />
-                一覧に戻る
-              </button>
-            </div>
-          )}
         </aside>
       </main>
+
+      {/* スマホ: 地図とリストの切り替え。親指で届く画面下の中央に浮かせる */}
+      {!selected && (
+        <button
+          type="button"
+          onClick={toggleView}
+          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-40 flex h-12 -translate-x-1/2 items-center gap-2 rounded-full bg-brand px-5 font-bold text-[15px] text-on-brand shadow-e2 md:hidden"
+        >
+          {view === "list" ? <MapIcon className="size-5" /> : <ListIcon className="size-5" />}
+          {view === "list" ? "地図で見る" : "リストで見る"}
+        </button>
+      )}
     </div>
   );
 }

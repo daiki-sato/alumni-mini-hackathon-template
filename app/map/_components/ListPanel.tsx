@@ -83,7 +83,7 @@ function WordEditor({
               type="button"
               aria-label={`「${w}」を${title}から外す`}
               onClick={() => onChange(words.filter((x) => x !== w))}
-              className="grid size-8 place-items-center rounded-full hover:bg-black/10 md:size-6 dark:hover:bg-white/10"
+              className="-my-1.5 grid size-10 place-items-center rounded-full hover:bg-black/10 md:my-0 md:size-6 dark:hover:bg-white/10"
             >
               <CloseIcon className="size-3.5" />
             </button>
@@ -107,12 +107,12 @@ function WordEditor({
           maxLength={MAX_WORD_LENGTH}
           aria-label={`${title}に足す語`}
           placeholder="語を足す"
-          className="h-9 min-w-0 flex-1 rounded-full border border-line bg-surface px-3 text-sm outline-none focus:border-[var(--focus)]"
+          className="h-10 min-w-0 flex-1 rounded-full border border-line bg-surface px-3 text-base outline-none focus:border-[var(--focus)] md:h-9 md:text-sm"
         />
         <button
           type="submit"
           aria-label={`${title}に足す`}
-          className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 text-ink hover:bg-surface-3 disabled:opacity-40"
+          className="grid size-10 shrink-0 place-items-center rounded-full bg-surface-2 text-ink hover:bg-surface-3 disabled:opacity-40 md:size-9"
           disabled={!draft.trim()}
         >
           <PlusIcon className="size-5" />
@@ -161,7 +161,7 @@ function ConditionCard({
           aria-expanded={open}
           aria-controls="cond-body"
           onClick={() => onOpen(!open)}
-          className="h-9 shrink-0 rounded-full border border-line bg-surface px-3.5 font-medium text-[13px] hover:bg-surface-3"
+          className="h-10 shrink-0 rounded-full border border-line bg-surface px-3.5 font-medium text-[13px] hover:bg-surface-3 md:h-9"
         >
           {open ? "閉じる" : "条件を変える"}
         </button>
@@ -189,7 +189,7 @@ function ConditionCard({
             <button
               type="button"
               onClick={onReset}
-              className="rounded-full px-3 py-1.5 text-muted text-xs hover:bg-surface-3"
+              className="h-10 rounded-full px-3 text-muted text-xs hover:bg-surface-3 md:h-8"
             >
               初期値に戻す
             </button>
@@ -370,6 +370,55 @@ function Skeleton() {
   );
 }
 
+/** スマホの地図全画面で、ピンを押したときに下に出す小さなカード（タップで詳細） */
+export function PeekCard({
+  s,
+  rank,
+  words,
+  onOpen,
+  onClose,
+}: {
+  s: Scored;
+  rank: number;
+  words: WordLists;
+  onOpen: () => void;
+  onClose: () => void;
+}) {
+  const kq = keyQuote(s);
+  return (
+    <div className="anim-pop-in relative rounded-2xl border border-line bg-surface shadow-e2">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full items-center gap-3 p-3 pr-12 text-left"
+      >
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent font-bold text-on-accent tabular-nums">
+          {rank}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-bold text-[15px]">{placeName(s.place)}</span>
+          <span className={`block font-bold text-xs ${BAND_TEXT[band(s.score)]}`}>
+            {s.score}点・{verdict(s.score)}
+          </span>
+          {kq?.quote && (
+            <span className="mt-0.5 block truncate text-xs">
+              「<Highlighted text={kq.quote} words={words} />」
+            </span>
+          )}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="カードを閉じる"
+        className="absolute top-1 right-1 grid size-10 place-items-center rounded-full text-muted hover:bg-surface-2"
+      >
+        <CloseIcon className="size-4" />
+      </button>
+    </div>
+  );
+}
+
 /* ---------- 一覧パネル ---------- */
 
 /** 上位いくつを、写真つきの大きめのカードにするか */
@@ -421,7 +470,7 @@ export function ListPanel({
           ? `${title}の店 ${total}軒を、点数の高い順に出しました`
           : "";
   return (
-    <div className="anim-panel-in grid min-w-0 grid-cols-1 gap-5 px-4 pt-3 pb-[calc(2rem+env(safe-area-inset-bottom))] md:pt-4">
+    <div className="anim-panel-in grid min-w-0 grid-cols-1 gap-5 px-4 pt-3 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pt-4 md:pb-[calc(2rem+env(safe-area-inset-bottom))]">
       <header className="min-w-0">
         <p className="sr-only" aria-live="polite">
           {live}

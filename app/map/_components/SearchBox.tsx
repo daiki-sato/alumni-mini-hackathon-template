@@ -118,10 +118,11 @@ export function SearchBox({
   const empty = !value.trim();
 
   return (
-    <div className="relative min-w-0 flex-1 md:max-w-xl">
+    // スマホでは候補の一覧を画面の横幅いっぱいに出す（位置の基準をヘッダーにするため relative にしない）
+    <div className="min-w-0 flex-1 md:relative md:max-w-xl">
       <div
-        className={`flex h-11 items-center gap-1 rounded-full bg-surface-2 pr-1 pl-1 transition-shadow ${
-          showList ? "rounded-b-none rounded-t-3xl bg-surface shadow-e2" : "hover:shadow-e1"
+        className={`flex h-11 items-center gap-1 rounded-full bg-surface-2 pr-1 pl-3 transition-shadow md:pl-1 ${
+          showList ? "bg-surface shadow-e2 md:rounded-t-3xl md:rounded-b-none" : "hover:shadow-e1"
         }`}
       >
         <button
@@ -130,7 +131,7 @@ export function SearchBox({
           disabled={empty}
           onMouseDown={(e) => e.preventDefault()}
           onClick={submit}
-          className="grid size-9 shrink-0 place-items-center rounded-full text-muted enabled:hover:bg-surface-3 enabled:hover:text-ink disabled:cursor-default"
+          className="hidden size-9 shrink-0 md:grid place-items-center rounded-full text-muted enabled:hover:bg-surface-3 enabled:hover:text-ink disabled:cursor-default"
         >
           <SearchIcon className="size-5" />
         </button>
@@ -161,7 +162,7 @@ export function SearchBox({
           }}
           onBlur={() => setOpen(false)}
           onKeyDown={onKeyDown}
-          className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted [&::-webkit-search-cancel-button]:hidden"
+          className="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted md:text-[15px] [&::-webkit-search-cancel-button]:hidden"
         />
         {value && (
           <button
@@ -172,19 +173,22 @@ export function SearchBox({
               onChange("");
               inputRef.current?.focus();
             }}
-            className="grid size-9 shrink-0 place-items-center rounded-full text-muted hover:bg-surface-3"
+            className="grid size-10 shrink-0 place-items-center rounded-full text-muted hover:bg-surface-3 md:size-9"
           >
             <CloseIcon />
           </button>
         )}
         <button
           type="button"
+          aria-label="検索"
           disabled={empty}
           onMouseDown={(e) => e.preventDefault()}
           onClick={submit}
-          className="h-9 shrink-0 rounded-full bg-brand px-4 font-bold text-on-brand text-sm transition-opacity enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="grid h-9 min-w-10 shrink-0 place-items-center rounded-full bg-brand font-bold text-on-brand text-sm transition-opacity enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 md:px-4"
         >
-          検索
+          {/* スマホは虫眼鏡のボタン、広い画面は「検索」の文字 */}
+          <SearchIcon className="size-5 md:hidden" />
+          <span className="hidden md:inline">検索</span>
         </button>
       </div>
       {showList && (
@@ -192,7 +196,7 @@ export function SearchBox({
           id={listId}
           role="listbox"
           aria-label="検索の候補"
-          className="anim-pop-in absolute inset-x-0 top-full z-40 overflow-hidden rounded-b-3xl border-line border-t bg-surface pb-2 shadow-e2"
+          className="anim-pop-in absolute inset-x-0 top-full z-40 max-h-[70dvh] overflow-y-auto border-line border-t bg-surface pb-2 shadow-e2 md:overflow-hidden md:rounded-b-3xl"
         >
           {empty && (
             <p className="px-4 pt-3 pb-1 font-medium text-muted text-xs">
@@ -222,13 +226,13 @@ export function SearchBox({
                   choose(it);
                 }}
                 onMouseEnter={() => setActive(i)}
-                className={`flex cursor-pointer items-center gap-3 px-4 py-2.5 ${selected ? "bg-surface-2" : ""}`}
+                className={`flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2.5 ${selected ? "bg-surface-2" : ""}`}
               >
                 <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-muted">
                   {icon}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm">{label}</span>
+                  <span className="block truncate text-[15px] md:text-sm">{label}</span>
                   {sub && <span className="block truncate text-muted text-xs">{sub}</span>}
                 </span>
               </div>

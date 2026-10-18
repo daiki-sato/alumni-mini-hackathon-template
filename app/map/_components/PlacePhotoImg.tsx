@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { photoAllowed } from "@/lib/jibunmap/google";
 import type { Place, PlacePhoto } from "@/lib/jibunmap/place";
 
@@ -62,7 +62,8 @@ export function PlacePhotoImg({
   const url = photo ? (size === "thumb" ? photo.thumb : photo.large) : null;
   // 上限の確認は URL ごとに1回（描画のたびに数え直さない）
   const ok = useMemo(() => (url ? photoAllowed(url) : false), [url]);
-  if (!url || !ok) {
+  const [state, setState] = useState<"loading" | "done" | "failed">("loading");
+  if (!url || !ok || state === "failed") {
     return (
       <span
         className={`grid place-items-center bg-surface-2 ${size === "thumb" ? "text-2xl" : "text-5xl"} ${className}`}
@@ -73,14 +74,18 @@ export function PlacePhotoImg({
     );
   }
   return (
-    <figure className={`relative m-0 overflow-hidden bg-surface-2 ${className}`}>
+    <figure
+      className={`relative m-0 overflow-hidden bg-surface-2 ${state === "loading" ? "jm-shimmer" : ""} ${className}`}
+    >
       {/* biome-ignore lint/performance/noImgElement: Places の写真 URL は外部のもので、next/image の remotePatterns（next.config）を変えないため */}
       <img
         src={url}
         alt={`${place.displayName?.text ?? "店"}の写真`}
         loading="lazy"
         decoding="async"
-        className="size-full object-cover"
+        onLoad={() => setState("done")}
+        onError={() => setState("failed")}
+        className={`size-full object-cover transition-opacity ${state === "done" ? "opacity-100" : "opacity-0"}`}
       />
       {credit && (
         <figcaption className="absolute inset-x-0 bottom-0 bg-black/45 px-2 py-0.5 [&_*]:text-white">
