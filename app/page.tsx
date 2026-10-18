@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  BASE_POINT,
   DEFAULT_GOOD_WORDS,
   DEFAULT_NG_WORDS,
   GOOD_MAX,
@@ -24,9 +25,9 @@ function OpenMap({ className = "" }: { className?: string }) {
 /** アプリ画面のプレビュー（画像は使わず CSS と SVG で描く） */
 function Preview() {
   const cards = [
-    { n: "中華そば 小石", s: 82, w: ["一人", "カウンター", "常連"] },
-    { n: "麺処 たけ", s: 78, w: ["食券", "通って"] },
-    { n: "定食 まるやま", s: 74, w: ["一人", "常連"] },
+    { n: "中華そば 小石", s: 84, w: ["一人", "カウンター", "常連"] },
+    { n: "麺処 たけ", s: 84, w: ["食券", "通って"] },
+    { n: "定食 まるやま", s: 80, w: ["一人", "常連"] },
   ];
   return (
     <div
@@ -178,7 +179,7 @@ const FEATURES = [
 ];
 
 const FORMULA: { l: string; v: string; tone: "base" | "plus" | "minus" }[] = [
-  { l: "基本", v: "40", tone: "base" },
+  { l: "基本", v: String(BASE_POINT), tone: "base" },
   { l: "少数派（口コミ30〜300件がちょうどいい。1000件以上は減点）", v: "+12 〜 −15", tone: "plus" },
   {
     l: `うれしいワードが口コミに出る（1語）`,

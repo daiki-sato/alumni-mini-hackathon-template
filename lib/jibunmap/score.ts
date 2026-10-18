@@ -269,6 +269,8 @@ export type PartKey = "base" | "minority" | "natural" | "good" | "ng" | "cons" |
 
 export type Part = { key: PartKey; label: string; value: number; reasons: Evidence[] };
 
+/** 基本点（何も材料がない店の点） */
+export const BASE_POINT = 50;
 export const GOOD_POINT = 4;
 export const GOOD_MAX = 24;
 /** 同じ投稿者の口コミからの加点は、1人あたりここまで */
@@ -325,7 +327,7 @@ export function goodPoints(hits: Hit[]): { value: number; capped: boolean } {
 export function parts(s: Signals): Part[] {
   const n = s.count;
   const out: Part[] = [
-    { key: "base", label: "基本", value: 40, reasons: [] },
+    { key: "base", label: "基本", value: BASE_POINT, reasons: [] },
     {
       key: "minority",
       label: "少数派（口コミ件数）",
