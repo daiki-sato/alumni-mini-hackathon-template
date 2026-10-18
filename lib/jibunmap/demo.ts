@@ -3,6 +3,15 @@
 
 import type { Bounds, Place, Review } from "./place";
 
+/**
+ * 審査員向けの固定デモ（/map?demo=1）か。キーがあっても、このときはデモデータで動き、Google には接続しない
+ */
+export function forcedDemo(): boolean {
+  return (
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1"
+  );
+}
+
 /** デモの「いま」。口コミの日付はここから数える（描画のたびに値が変わらないよう固定） */
 export const DEMO_NOW = Date.parse("2026-10-01T12:00:00+09:00");
 

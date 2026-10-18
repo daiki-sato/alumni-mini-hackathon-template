@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { forcedDemo } from "@/lib/jibunmap/demo";
 import { boundsOf, type GLatLngBounds, importLibrary, MAP_ID } from "@/lib/jibunmap/google";
 import type { Bounds } from "@/lib/jibunmap/place";
 import { placeName } from "@/lib/jibunmap/place";
@@ -113,6 +114,8 @@ export function GoogleMapView({
   cb.current = { onSelect, onHover, onUserMove, onFail };
 
   useEffect(() => {
+    // 固定デモ（?demo=1）では読み込まない（親が最初の描画のあとでデモに切り替える）
+    if (forcedDemo()) return;
     let cancelled = false;
     const subs: Listener[] = [];
     const timer = setTimeout(() => {

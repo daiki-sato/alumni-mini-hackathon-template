@@ -436,6 +436,9 @@ export default function Home() {
             <a href="/prototypes" className="hover:text-ink hover:underline">
               試作アーカイブ（60本）
             </a>
+            <Link href="/map?demo=1" className="hover:text-ink hover:underline">
+              通信なしのデモ
+            </Link>
             <Link href="/dev" className="hover:text-ink hover:underline">
               開発者向け: 接続確認
             </Link>
