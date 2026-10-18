@@ -19,6 +19,7 @@ import {
   importLibrary,
   type LatLngLiteral,
   RouteLimitError,
+  SEARCH_LIMIT,
   SearchLimitError,
   searchesLeft,
   searchPlaces,
@@ -489,6 +490,16 @@ export function MapApp() {
     if (!q) return;
     // デモデータに当たらない語（例: 高円寺）なら、最初のサンプルの街のままにする
     if (demoRef.current && !demoSearch(q).length) return;
+    // 今日の検索の上限に達していたら、開いただけでは探さない（自分で検索ボタンを押せば、上限の案内が出る）
+    if (!demoRef.current && searchesLeft() <= 0) {
+      setQuery(q);
+      setTitle(q);
+      setStatus({
+        kind: "error",
+        message: `今日の検索の上限（1日${SEARCH_LIMIT}回）に達したため、自動では探しませんでした。明日また使えます。`,
+      });
+      return;
+    }
     setQuery(q);
     run(q, { fit: true, select: sp.get("place") ?? undefined });
   }, [run, setScene, setGenre, setDemo]);
@@ -1047,7 +1058,9 @@ export function MapApp() {
             >
               <SearchIcon className="size-4" />
               このエリアで再検索
-              <span className="text-muted text-xs tabular-nums">（残り{searchesLeft()}回）</span>
+              <span className="text-muted text-xs tabular-nums">
+                （今日の残り{searchesLeft()}回）
+              </span>
             </button>
           )}
           {mapView && route && !selected && (

@@ -1,16 +1,18 @@
 // ブラウザ側で Maps JavaScript API を読み、Place.searchByText で店を探す。
 // キーは HTTP リファラで制限したブラウザ用の1本（NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY）。
-// 費用の安全策: 同じ検索は sessionStorage に10分だけ置いて再検索しない／1セッションの検索回数に上限。
+// 費用の安全策: 同じ検索は sessionStorage に10分だけ置いて再検索しない／
+// 検索・経路・写真の回数に、このブラウザで1日あたりの上限（usage.ts）。
 
 import type { Bounds, Place, PriceLevel, Review } from "./place";
+import { addUsage, DAILY_LIMITS, usageCount, usageLeft } from "./usage";
 
 export const BROWSER_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? "";
 export const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID || "DEMO_MAP_ID";
 
-export const SEARCH_LIMIT = 30;
+/** 検索の上限（このブラウザで1日あたり） */
+export const SEARCH_LIMIT = DAILY_LIMITS.search;
 const CACHE_MS = 10 * 60 * 1000;
 const CACHE_PREFIX = "jibunmap-cache:";
-const COUNT_KEY = "jibunmap-search-count";
 
 /**
  * 取得する項目（JS 版の名前）。課金の区分は要求した項目のうち最も高いものになる。
@@ -45,11 +47,10 @@ export const PLACE_FIELDS = [
 /** 1店あたり持っておく写真の数（Places が返す分＝最大10枚。読むのは画面に入ったものだけ） */
 export const PHOTOS_PER_PLACE = 10;
 /**
- * 1セッションで読む写真の上限。写真は1枚ごとに Place Details Photos（無料枠は月1,000回）に数えられるため。
- * 上限を超えたら写真の代わりにプレースホルダーを出す
+ * 写真の上限（このブラウザで1日あたり）。写真は1枚ごとに Place Details Photos（無料枠は月1,000回）に
+ * 数えられるため。上限を超えたら写真の代わりにプレースホルダーを出す
  */
-export const PHOTO_LIMIT = 100;
-const PHOTO_KEY = "jibunmap-photo-urls";
+export const PHOTO_LIMIT = DAILY_LIMITS.photo;
 
 /* ---------- Maps JavaScript API の最小限の型 ---------- */
 
@@ -288,63 +289,26 @@ export function fromJsPlace(p: JsPlace): Place {
 
 /* ---------- 写真の上限 ---------- */
 
+/** このページで読んだ写真の URL（同じ写真を出し直しても数え直さない） */
 const shownPhotos = new Set<string>();
 
-function loadShown(): void {
-  try {
-    for (const u of JSON.parse(sessionStorage.getItem(PHOTO_KEY) ?? "[]") as string[]) {
-      shownPhotos.add(u);
-    }
-  } catch {
-    // 読めなければメモリ上だけで数える
-  }
-}
-let shownLoaded = false;
-
 /**
- * この写真の URL を読んでよいか。一度読んだ URL はそのまま許す（数え直さない）。
- * 新しい URL は、セッションの上限 PHOTO_LIMIT までだけ許す
+ * この写真の URL を読んでよいか。このページで一度読んだ URL はそのまま許す（数え直さない）。
+ * 新しい URL は、1日の上限 PHOTO_LIMIT までだけ許す
  */
 export function photoAllowed(url: string): boolean {
-  if (!shownLoaded) {
-    shownLoaded = true;
-    loadShown();
-  }
   if (shownPhotos.has(url)) return true;
-  if (shownPhotos.size >= PHOTO_LIMIT) return false;
+  if (usageLeft("photo") <= 0) return false;
   shownPhotos.add(url);
-  try {
-    sessionStorage.setItem(PHOTO_KEY, JSON.stringify([...shownPhotos]));
-  } catch {
-    // 保存できなくてもメモリ上で数える
-  }
+  addUsage("photo");
   return true;
 }
 
 /* ---------- 一時キャッシュと回数 ---------- */
 
-let memCount = 0;
-
-function readCount(): number {
-  try {
-    const v = Number(sessionStorage.getItem(COUNT_KEY));
-    return Number.isFinite(v) ? Math.max(v, memCount) : memCount;
-  } catch {
-    return memCount;
-  }
-}
-
-function bumpCount(): void {
-  memCount = readCount() + 1;
-  try {
-    sessionStorage.setItem(COUNT_KEY, String(memCount));
-  } catch {
-    // 保存できなくてもメモリ上で数える
-  }
-}
-
+/** 今日の検索の残り回数 */
 export function searchesLeft(): number {
-  return Math.max(0, SEARCH_LIMIT - readCount());
+  return usageLeft("search");
 }
 
 /**
@@ -452,13 +416,13 @@ export async function searchPlaces(
     : cacheKey(q, opts.area ? bounds : undefined);
   const hit = readCache(key);
   if (hit) return { places: hit, cached: true };
-  if (readCount() >= SEARCH_LIMIT) {
+  if (usageCount("search") >= SEARCH_LIMIT) {
     throw new SearchLimitError(
-      `このデモの検索回数の上限（1セッション${SEARCH_LIMIT}回）に達しました。`,
+      `今日の検索の上限（1日${SEARCH_LIMIT}回）に達しました。明日また使えます。`,
     );
   }
   const { Place } = await importLibrary<PlacesLib>("places");
-  bumpCount();
+  addUsage("search");
   const req: Record<string, unknown> = {
     textQuery: opts.textQuery?.trim() || q,
     fields: PLACE_FIELDS,
@@ -489,21 +453,10 @@ export async function searchPlaces(
 /* ---------- 経路（Maps JavaScript API の Routes ライブラリ） ---------- */
 
 /**
- * 1セッションの経路の回数の上限（検索とは別に数える）。
+ * 経路の上限（このブラウザで1日あたり。検索とは別に数える）。
  * Route.computeRoutes は Compute Routes Essentials（基本機能だけ。無料枠は月1万回）
  */
-export const ROUTE_LIMIT = 30;
-const ROUTE_COUNT_KEY = "jibunmap-route-count";
-let routeMem = 0;
-
-function readRouteCount(): number {
-  try {
-    const v = Number(sessionStorage.getItem(ROUTE_COUNT_KEY));
-    return Number.isFinite(v) ? Math.max(v, routeMem) : routeMem;
-  } catch {
-    return routeMem;
-  }
-}
+export const ROUTE_LIMIT = DAILY_LIMITS.route;
 
 export class RouteLimitError extends Error {}
 
@@ -530,16 +483,11 @@ export async function computeRoute(
   destination: LatLngLiteral,
   mode: TravelMode,
 ): Promise<RouteResult | null> {
-  if (readRouteCount() >= ROUTE_LIMIT) {
-    throw new RouteLimitError(`経路の上限（1セッション${ROUTE_LIMIT}回）に達しました。`);
+  if (usageCount("route") >= ROUTE_LIMIT) {
+    throw new RouteLimitError(`今日の経路の上限（1日${ROUTE_LIMIT}回）に達しました。`);
   }
   const { Route } = await importLibrary<RoutesLib>("routes");
-  routeMem = readRouteCount() + 1;
-  try {
-    sessionStorage.setItem(ROUTE_COUNT_KEY, String(routeMem));
-  } catch {
-    // 保存できなくてもメモリ上で数える
-  }
+  addUsage("route");
   const { routes } = await Route.computeRoutes({
     origin,
     destination,
