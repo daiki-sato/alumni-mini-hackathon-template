@@ -204,7 +204,7 @@ export function PrefsSheet({
           onClose();
         }
       }}
-      className="m-0 h-dvh max-h-none w-full max-w-none bg-surface p-0 text-ink backdrop:bg-black/40 md:ml-auto md:w-[420px] md:shadow-e2"
+      className="m-0 h-dvh max-h-none w-full max-w-none bg-surface p-0 text-ink backdrop:bg-black/40 md:ml-auto md:w-[420px] md:border-line md:border-l md:shadow-e2"
     >
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between border-line border-b px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
