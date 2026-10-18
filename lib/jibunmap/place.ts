@@ -26,7 +26,9 @@ export type Money = { currencyCode?: string; units?: string; nanos?: number };
 export type PlacePhoto = {
   /** サムネイル用（最大 160px） */
   thumb: string;
-  /** 詳細用（最大 600px） */
+  /** 写真の一覧（グリッド）とモザイクの小さい枠（最大 400px） */
+  mid: string;
+  /** モザイクの大きい枠（最大 800px） */
   large: string;
   /** 拡大ギャラリー用（最大 1200px。開いた写真だけ読む） */
   full: string;

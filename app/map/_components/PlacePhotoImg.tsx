@@ -54,7 +54,7 @@ export function PlacePhotoImg({
 }: {
   place: Place;
   index?: number;
-  size: "thumb" | "large" | "full";
+  size: "thumb" | "mid" | "large" | "full";
   className?: string;
   /** 写真の下に帰属表示を出すか（サムネイルでは呼ぶ側がまとめて出す） */
   credit?: boolean;

@@ -48,7 +48,7 @@ export const PHOTOS_PER_PLACE = 10;
  * 1セッションで読む写真の上限。写真は1枚ごとに Place Details Photos（無料枠は月1,000回）に数えられるため。
  * 上限を超えたら写真の代わりにプレースホルダーを出す
  */
-export const PHOTO_LIMIT = 60;
+export const PHOTO_LIMIT = 100;
 const PHOTO_KEY = "jibunmap-photo-urls";
 
 /* ---------- Maps JavaScript API の最小限の型 ---------- */
@@ -212,7 +212,8 @@ function fromJsPhoto(ph: JsPhoto) {
   return {
     // URL を作るだけでは課金されない（画像を読んだときに数えられる）
     thumb: ph.getURI({ maxWidth: 160, maxHeight: 160 }),
-    large: ph.getURI({ maxWidth: 600, maxHeight: 600 }),
+    mid: ph.getURI({ maxWidth: 400, maxHeight: 400 }),
+    large: ph.getURI({ maxWidth: 800, maxHeight: 800 }),
     full: ph.getURI({ maxWidth: 1200, maxHeight: 1200 }),
     widthPx: opt(ph.widthPx),
     heightPx: opt(ph.heightPx),

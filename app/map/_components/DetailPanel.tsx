@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { TravelMode } from "@/lib/jibunmap/google";
 import { type Money, type Place, placeName, type Review } from "@/lib/jibunmap/place";
 import {
@@ -17,7 +17,7 @@ import {
 import { Author, Highlighted } from "./Highlighted";
 import { BackIcon } from "./Icons";
 import { BAND_TEXT, GoogleRankBadge } from "./ListPanel";
-import { PhotoGallery } from "./PhotoGallery";
+import { PhotoMosaic } from "./PhotoMosaic";
 import { PlacePhotoImg } from "./PlacePhotoImg";
 
 const BAND_COLOR = { hi: "var(--hi)", mid: "var(--mid)", lo: "var(--lo)" } as const;
@@ -287,9 +287,6 @@ export function DetailPanel({
   const price = priceText(p);
   const hours = p.regularOpeningHours?.weekdayDescriptions ?? [];
   const headingRef = useRef<HTMLHeadingElement>(null);
-  /** 拡大中の写真の番号（閉じているときは null） */
-  const [gallery, setGallery] = useState<number | null>(null);
-  const closeGallery = useCallback(() => setGallery(null), []);
 
   // 開いたら見出しに移る（読み上げで店名から始まるように）。店ごとに作り直されるので、店が変わるたびに走る
   useEffect(() => {
@@ -312,26 +309,15 @@ export function DetailPanel({
         </button>
       </div>
 
-      {/* 写真（Places が返す分すべて、横スクロール）。画面に入ったものだけ読む。タップで拡大。
-          デモではジャンルのアイコンを置く。並びは Google が返す順（写真に店内・料理などの分類はない） */}
-      <div className="scrollbar-none -mx-4 mt-1 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4">
-        {demo || !p.photos?.length ? (
-          <PlacePhotoImg place={p} size="large" className="h-44 w-full shrink-0 rounded-2xl" />
+      {/* 写真は Google マップのようなモザイク。デモと写真のない店はジャンルのアイコン。
+          並びは Google が返す順（写真に店内・料理などの分類はない） */}
+      <div className="mt-1">
+        {demo ? (
+          <PlacePhotoImg place={p} size="large" className="h-44 w-full rounded-2xl" />
         ) : (
-          p.photos.map((ph, i) => (
-            <button
-              key={ph.large}
-              type="button"
-              onClick={() => setGallery(i)}
-              aria-label={`写真を大きく見る（${i + 1}枚目）`}
-              className="h-44 w-[78%] shrink-0 snap-start overflow-hidden rounded-2xl md:w-[85%]"
-            >
-              <PlacePhotoImg place={p} index={i} size="large" className="size-full" />
-            </button>
-          ))
+          <PhotoMosaic key={p.id} place={p} />
         )}
       </div>
-      {gallery !== null && <PhotoGallery place={p} start={gallery} onClose={closeGallery} />}
 
       <header className="mt-3">
         <div className="flex flex-wrap items-center gap-1.5">
