@@ -38,6 +38,12 @@ export type PlacePhoto = {
   authorAttributions: { displayName: string; uri?: string }[];
 };
 
+/** 営業時間の1区切り（day は 0=日曜。REST の Period と同じ形） */
+export type OpeningPeriod = {
+  open: { day: number; hour: number; minute: number };
+  close?: { day: number; hour: number; minute: number };
+};
+
 export type PriceLevel =
   | "PRICE_LEVEL_UNSPECIFIED"
   | "PRICE_LEVEL_FREE"
@@ -71,7 +77,7 @@ export type Place = {
   editorialSummary?: LocalizedText;
   currentOpeningHours?: { openNow?: boolean };
   photos?: PlacePhoto[];
-  regularOpeningHours?: { weekdayDescriptions?: string[] };
+  regularOpeningHours?: { weekdayDescriptions?: string[]; periods?: OpeningPeriod[] };
   priceRange?: { startPrice?: Money; endPrice?: Money };
   nationalPhoneNumber?: string;
   websiteUri?: string;

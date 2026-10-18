@@ -84,6 +84,8 @@ type JsPhoto = {
   getURI(opts?: { maxWidth?: number; maxHeight?: number }): string;
 };
 
+type JsPoint = { day: number; hour: number; minute: number };
+
 type JsPlace = {
   id: string;
   displayName?: string | null;
@@ -106,7 +108,10 @@ type JsPlace = {
   reviews?: JsReview[] | null;
   editorialSummary?: string | null;
   photos?: JsPhoto[] | null;
-  regularOpeningHours?: { weekdayDescriptions?: string[] | null } | null;
+  regularOpeningHours?: {
+    weekdayDescriptions?: string[] | null;
+    periods?: { open?: JsPoint | null; close?: JsPoint | null }[] | null;
+  } | null;
   priceRange?: { startPrice?: JsMoney | null; endPrice?: JsMoney | null } | null;
   nationalPhoneNumber?: string | null;
   websiteURI?: string | null;
@@ -251,9 +256,25 @@ export function fromJsPlace(p: JsPlace): Place {
     reviews: p.reviews ? p.reviews.map(fromJsReview) : undefined,
     editorialSummary: p.editorialSummary ? { text: p.editorialSummary } : undefined,
     photos: p.photos?.length ? p.photos.slice(0, PHOTOS_PER_PLACE).map(fromJsPhoto) : undefined,
-    regularOpeningHours: p.regularOpeningHours?.weekdayDescriptions?.length
-      ? { weekdayDescriptions: p.regularOpeningHours.weekdayDescriptions }
-      : undefined,
+    regularOpeningHours:
+      p.regularOpeningHours?.weekdayDescriptions?.length || p.regularOpeningHours?.periods?.length
+        ? {
+            weekdayDescriptions: opt(p.regularOpeningHours.weekdayDescriptions),
+            // 営業状況を手元で計算するために、区切りも持つ（同じフィールドなので費用は変わらない）
+            periods: (p.regularOpeningHours.periods ?? []).flatMap((x) =>
+              x.open
+                ? [
+                    {
+                      open: { day: x.open.day, hour: x.open.hour, minute: x.open.minute },
+                      close: x.close
+                        ? { day: x.close.day, hour: x.close.hour, minute: x.close.minute }
+                        : undefined,
+                    },
+                  ]
+                : [],
+            ),
+          }
+        : undefined,
     priceRange: p.priceRange
       ? {
           startPrice: fromJsMoney(p.priceRange.startPrice),

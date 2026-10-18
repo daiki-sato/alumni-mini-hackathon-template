@@ -104,6 +104,36 @@ export const GENRE_GROUPS: GenreGroup[] = [
 
 export const MAX_GENRE_CHIPS = 8;
 
+/** 常に出す主なジャンル（結果にあればその場で絞り込み、なければ「今の街＋ジャンル」で検索し直す） */
+export const MAIN_GENRE_KEYS = [
+  "cafe",
+  "washoku",
+  "ramen",
+  "curry",
+  "chinese",
+  "sushi",
+  "izakaya",
+  "bakery",
+];
+
+/** 検索語からジャンルの語を除いた「街」の部分（例:「高円寺 ラーメン」→「高円寺」） */
+export function townPart(query: string): string {
+  const all = GENRE_GROUPS.flatMap((g) => [g.word, g.label, ...g.words]).concat([
+    "飲食店",
+    "定食",
+    "喫茶",
+    "カフェ",
+    "うどん",
+    "そば",
+    "餃子",
+  ]);
+  return query
+    .split(/[\s　]+/)
+    .filter((t) => t && !all.some((w) => t === w || t.includes(w)))
+    .join(" ")
+    .trim();
+}
+
 export type GenreOf = { key: string; label: string; word: string };
 
 /** 店のジャンル。対応表に当たらなければ、Google の種類の表示名をそのまま使う */
