@@ -28,6 +28,8 @@ export type PlacePhoto = {
   thumb: string;
   /** 詳細用（最大 600px） */
   large: string;
+  /** 拡大ギャラリー用（最大 1200px。開いた写真だけ読む） */
+  full: string;
   widthPx?: number;
   heightPx?: number;
   /** 写真の帰属表示（規約で必要） */
