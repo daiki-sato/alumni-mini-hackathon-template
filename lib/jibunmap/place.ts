@@ -49,6 +49,8 @@ export type Place = {
   reviews?: Review[];
   editorialSummary?: LocalizedText;
   currentOpeningHours?: { openNow?: boolean };
+  /** Google の検索結果での順番（1から）。Google から取ったときだけ。デモのデータにはない */
+  googleRank?: number;
 };
 
 export type Bounds = { low: LatLng; high: LatLng };

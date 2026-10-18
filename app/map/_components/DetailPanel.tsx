@@ -8,13 +8,13 @@ import {
   constraintTags,
   type Evidence,
   flags,
-  highlight,
   partyChance,
   reviewText,
   type Scored,
   type WordLists,
   whoText,
 } from "@/lib/jibunmap/score";
+import { Author, Highlighted } from "./Highlighted";
 import { BackIcon, CheckIcon, PeopleIcon, PersonIcon, WarnIcon } from "./Icons";
 import { BAND_TEXT } from "./ListPanel";
 
@@ -51,42 +51,6 @@ function Gauge({ v }: { v: number }) {
         <div className="mt-1 text-muted text-xs">/ 100・{BAND_WORD[b]}</div>
       </div>
     </div>
-  );
-}
-
-function Highlighted({ text, words }: { text: string; words: WordLists }) {
-  const segs = highlight(text, words);
-  let pos = 0;
-  return (
-    <>
-      {segs.map((s) => {
-        const key = `${pos}-${s.kind ?? "t"}`;
-        pos += s.text.length;
-        return s.kind ? (
-          <mark
-            key={key}
-            className={`rounded px-0.5 font-bold ${
-              s.kind === "good" ? "bg-hi-soft text-hi" : "bg-lo-soft text-lo"
-            }`}
-          >
-            {s.text}
-          </mark>
-        ) : (
-          <span key={key}>{s.text}</span>
-        );
-      })}
-    </>
-  );
-}
-
-function Author({ name, uri }: { name?: string; uri?: string }) {
-  if (!name) return null;
-  return uri ? (
-    <a href={uri} target="_blank" rel="noreferrer noopener" className="underline">
-      {name}
-    </a>
-  ) : (
-    <span>{name}</span>
   );
 }
 

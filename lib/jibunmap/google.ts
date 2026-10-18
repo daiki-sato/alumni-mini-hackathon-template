@@ -301,7 +301,8 @@ export async function searchPlaces(
     };
   }
   const { places } = await Place.searchByText(req);
-  const out = (places ?? []).map(fromJsPlace);
+  // Google が返した並び順を残す（「Google の検索結果では◯番目」と見せるため）
+  const out = (places ?? []).map((p, i) => ({ ...fromJsPlace(p), googleRank: i + 1 }));
   writeCache(key, out);
   return { places: out, cached: false };
 }

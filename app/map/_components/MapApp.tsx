@@ -61,6 +61,8 @@ export function MapApp() {
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [fitKey, setFitKey] = useState(0);
   const [moved, setMoved] = useState(false);
+  const [condOpen, setCondOpen] = useState(false);
+  const [othersOpen, setOthersOpen] = useState(false);
   const boundsRef = useRef<Bounds | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searching = useRef(false);
@@ -74,10 +76,8 @@ export function MapApp() {
   const ranked = useMemo(() => computeTop(scored, prefs.axes), [scored, prefs.axes]);
   const top = useMemo(() => ranked.slice(0, 3), [ranked]);
   const topIds = useMemo(() => top.map((s) => s.place.id), [top]);
-  const others = useMemo(
-    () => ranked.slice(3).sort((a, b) => b.score - a.score || a.place.id.localeCompare(b.place.id)),
-    [ranked],
-  );
+  // ほかの候補も今日の3軒と同じ基準（判断軸の合計）で並べる
+  const others = useMemo(() => ranked.slice(3), [ranked]);
   const selected: Scored | undefined = scored.find((s) => s.place.id === selId);
 
   // 一覧と詳細を切り替えたら、パネルを上まで戻す
@@ -134,6 +134,7 @@ export function MapApp() {
       setBusy(false);
       const label = q.trim() || "このエリア";
       setSelId(null);
+      setOthersOpen(false);
       setMoved(false);
       if (demoRef.current) {
         const found = opts.bounds ? demoSearchBounds(opts.bounds) : demoSearch(q);
@@ -360,9 +361,6 @@ export function MapApp() {
           aria-label={selected ? `${placeName(selected.place)}の詳細` : "店の一覧"}
           className="relative z-10 -mt-4 flex min-h-0 flex-1 flex-col rounded-t-3xl border-line bg-surface shadow-e2 md:order-1 md:mt-0 md:w-[400px] md:flex-none md:rounded-none md:border-r md:shadow-none"
         >
-          <div className="flex justify-center pt-2 md:hidden" aria-hidden="true">
-            <span className="h-1 w-9 rounded-full bg-surface-3" />
-          </div>
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {selected ? (
               <DetailPanel
@@ -384,6 +382,12 @@ export function MapApp() {
                 top={top}
                 others={others}
                 prefs={prefs}
+                words={words}
+                hoverId={hoverId}
+                condOpen={condOpen}
+                othersOpen={othersOpen}
+                onCondOpen={setCondOpen}
+                onOthersOpen={setOthersOpen}
                 update={update}
                 onReset={onReset}
                 onSelect={onSelect}

@@ -477,6 +477,8 @@ export type AxisKey = "good" | "ng" | "cons" | "rev" | "few" | "groups" | "chain
 export type Axis = {
   k: AxisKey;
   l: string;
+  /** 条件の要約に使う短い名前 */
+  s: string;
   /** 0〜1。大きいほど軸に合う */
   v: (s: Scored) => number;
   /** 選ばれた理由の一言 */
@@ -486,6 +488,7 @@ export type Axis = {
 export const AXES: Axis[] = [
   {
     k: "good",
+    s: "うれしい多",
     l: "うれしいワードが多い",
     // 1人あたりの上限をかけたあとの点で見る（同じ人が語を並べても軸だけ上がらない）
     v: (s) => Math.min(partValue(s.parts, "good") / GOOD_POINT, 4) / 4,
@@ -493,18 +496,21 @@ export const AXES: Axis[] = [
   },
   {
     k: "ng",
+    s: "NG少",
     l: "NGワードが少ない",
     v: (s) => 1 - Math.min(s.signals.ng.length, 4) / 4,
     w: (s) => (s.signals.ng.length ? `NGワード${s.signals.ng.length}語` : "NGワードなし"),
   },
   {
     k: "cons",
+    s: "制約あり",
     l: "制約がある",
     v: (s) => partValue(s.parts, "cons") / 10,
     w: (s) => `制約${constraintTags(s.signals).length}つ`,
   },
   {
     k: "rev",
+    s: "口コミ自然",
     l: "口コミが自然",
     v: (s) => 1 + partValue(s.parts, "natural") / 20,
     w: (s) => {
@@ -514,18 +520,21 @@ export const AXES: Axis[] = [
   },
   {
     k: "few",
+    s: "件数ほどほど",
     l: "件数がほどほど",
     v: (s) => (partValue(s.parts, "minority") + 15) / 27,
     w: (s) => `口コミ${s.signals.count}件`,
   },
   {
     k: "groups",
+    s: "グループ向きでない",
     l: "グループ向きでない",
     v: (s) => (s.signals.goodForGroups ? 0 : 1),
     w: (s) => (s.signals.goodForGroups ? "グループ向き" : "グループ向きではない"),
   },
   {
     k: "chain",
+    s: "チェーンでない",
     l: "チェーンらしくない",
     v: (s) => (s.signals.chain ? 0 : 1),
     w: (s) => (s.signals.chain ? "チェーンの可能性" : "個人店らしい"),
