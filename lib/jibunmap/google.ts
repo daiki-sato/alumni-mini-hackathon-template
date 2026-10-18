@@ -164,7 +164,9 @@ function installLoader(params: Record<string, string>): void {
   };
 }
 
-export function importLibrary<T>(name: "maps" | "marker" | "places" | "core"): Promise<T> {
+export function importLibrary<T>(
+  name: "maps" | "marker" | "places" | "core" | "routes",
+): Promise<T> {
   installLoader({ key: BROWSER_KEY, v: "weekly", language: "ja", region: "JP" });
   const maps = (window as unknown as { google: { maps: { importLibrary: ImportLibrary } } }).google
     .maps;
@@ -459,6 +461,77 @@ export async function searchPlaces(
     .filter(isFoodPlace);
   writeCache(key, out);
   return { places: out, cached: false };
+}
+
+/* ---------- 経路（Maps JavaScript API の Routes ライブラリ） ---------- */
+
+/**
+ * 1セッションの経路の回数の上限（検索とは別に数える）。
+ * Route.computeRoutes は Compute Routes Essentials（基本機能だけ。無料枠は月1万回）
+ */
+export const ROUTE_LIMIT = 30;
+const ROUTE_COUNT_KEY = "jibunmap-route-count";
+let routeMem = 0;
+
+function readRouteCount(): number {
+  try {
+    const v = Number(sessionStorage.getItem(ROUTE_COUNT_KEY));
+    return Number.isFinite(v) ? Math.max(v, routeMem) : routeMem;
+  } catch {
+    return routeMem;
+  }
+}
+
+export class RouteLimitError extends Error {}
+
+export type TravelMode = "WALKING" | "TRANSIT";
+export type RouteResult = { path: LatLngLiteral[]; minutes: number | null };
+
+type JsLatLngLike = { lat: number | (() => number); lng: number | (() => number) };
+type RoutesLib = {
+  Route: {
+    computeRoutes(req: Record<string, unknown>): Promise<{
+      routes?: { path?: JsLatLngLike[]; durationMillis?: number | null }[];
+    }>;
+  };
+};
+
+const num = (v: number | (() => number)) => (typeof v === "function" ? v() : v);
+
+/**
+ * 現在地から店までの経路を1回だけ取る。fields は線（path）と所要時間（durationMillis）だけ。
+ * 経路がなければ null。回数の上限を超えたら RouteLimitError
+ */
+export async function computeRoute(
+  origin: LatLngLiteral,
+  destination: LatLngLiteral,
+  mode: TravelMode,
+): Promise<RouteResult | null> {
+  if (readRouteCount() >= ROUTE_LIMIT) {
+    throw new RouteLimitError(`経路の上限（1セッション${ROUTE_LIMIT}回）に達しました。`);
+  }
+  const { Route } = await importLibrary<RoutesLib>("routes");
+  routeMem = readRouteCount() + 1;
+  try {
+    sessionStorage.setItem(ROUTE_COUNT_KEY, String(routeMem));
+  } catch {
+    // 保存できなくてもメモリ上で数える
+  }
+  const { routes } = await Route.computeRoutes({
+    origin,
+    destination,
+    travelMode: mode,
+    fields: ["path", "durationMillis"],
+  });
+  const r = routes?.[0];
+  if (!r?.path?.length) return null;
+  return {
+    path: r.path.map((p) => ({ lat: num(p.lat), lng: num(p.lng) })),
+    minutes:
+      typeof r.durationMillis === "number"
+        ? Math.max(1, Math.round(r.durationMillis / 60000))
+        : null,
+  };
 }
 
 export function boundsOf(b: GLatLngBounds): Bounds {

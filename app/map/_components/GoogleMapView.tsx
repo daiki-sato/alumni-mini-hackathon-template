@@ -23,9 +23,11 @@ type GCircle = {
   setCenter(c: LatLngLiteral): void;
   setRadius(r: number): void;
 };
+type GPolyline = { setMap(m: GMap | null): void };
 type MapsLib = {
   Map: new (el: HTMLElement, opts: Record<string, unknown>) => GMap;
   Circle: new (opts: Record<string, unknown>) => GCircle;
+  Polyline: new (opts: Record<string, unknown>) => GPolyline;
 };
 type CoreLib = { LatLngBounds: new () => GBounds };
 type Marker = {
@@ -74,6 +76,7 @@ export function GoogleMapView({
   boundsRef,
   me,
   meKey,
+  route,
 }: {
   items: Scored[];
   rankIds: string[];
@@ -90,11 +93,14 @@ export function GoogleMapView({
   me: { lat: number; lng: number; acc: number } | null;
   /** 現在地を取り直したら変わる番号（そのときだけ地図をそこへ動かす） */
   meKey: number;
+  /** 経路の線（なければ消す）。出したら、線の全体が入るように範囲を合わせる */
+  route: { path: LatLngLiteral[] } | null;
 }) {
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<GMap | null>(null);
   const libs = useRef<{ maps: MapsLib; core: CoreLib; marker: MarkerLib } | null>(null);
   const meMarker = useRef<{ m: Marker; circle: GCircle } | null>(null);
+  const routeLine = useRef<GPolyline | null>(null);
   const markers = useRef(new Map<string, Entry>());
   const programmatic = useRef(false);
   const [ready, setReady] = useState(false);
@@ -300,6 +306,37 @@ export function GoogleMapView({
       meMarker.current?.circle.setMap(null);
       if (meMarker.current) meMarker.current.m.map = null;
       meMarker.current = null;
+    },
+    [],
+  );
+
+  // 経路の線。ブランド色の 5px。出発点と店の両方が入るように範囲を合わせる
+  useEffect(() => {
+    const map = mapRef.current;
+    const L = libs.current;
+    routeLine.current?.setMap(null);
+    routeLine.current = null;
+    if (!ready || !map || !L || !route?.path.length) return;
+    const color = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim();
+    routeLine.current = new L.maps.Polyline({
+      map,
+      path: route.path,
+      strokeColor: color || "#1f2a26",
+      strokeOpacity: 0.9,
+      strokeWeight: 5,
+      clickable: false,
+      zIndex: 10,
+    });
+    const b = new L.core.LatLngBounds();
+    for (const p of route.path) b.extend(p);
+    programmatic.current = true;
+    map.fitBounds(b, 64);
+  }, [ready, route]);
+
+  useEffect(
+    () => () => {
+      routeLine.current?.setMap(null);
+      routeLine.current = null;
     },
     [],
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { TravelMode } from "@/lib/jibunmap/google";
 import { type Money, type Place, placeName, type Review } from "@/lib/jibunmap/place";
 import {
   band,
@@ -144,13 +145,111 @@ function Hours({ list }: { list: string[] }) {
 }
 
 /** 経路の URL（Google マップの経路検索。店名と place_id で目的地を決める） */
-export function directionsUrl(p: Place): string {
+export function directionsUrl(p: Place, mode?: TravelMode): string {
   const q = new URLSearchParams({
     api: "1",
     destination: placeName(p),
     destination_place_id: p.id,
   });
+  if (mode) q.set("travelmode", mode === "WALKING" ? "walking" : "transit");
   return `https://www.google.com/maps/dir/?${q}`;
+}
+
+const MODE_LABEL: Record<TravelMode, string> = { WALKING: "徒歩", TRANSIT: "電車" };
+
+/**
+ * ここまでの経路（アプリの地図に描く）。移動手段は徒歩と電車。押したときだけ1リクエスト。
+ * 所要時間だけは道案内の情報として出す（距離は出さない）。ナビは Google マップに任せる
+ */
+function RouteBox({
+  place,
+  route,
+  state,
+  onRoute,
+  onClear,
+}: {
+  place: Place;
+  route: { mode: TravelMode; minutes: number | null } | null;
+  state: { mode: TravelMode; status: "loading" | "error"; message?: string } | null;
+  onRoute: (mode: TravelMode) => void;
+  onClear: () => void;
+}) {
+  const active = state?.mode ?? route?.mode ?? null;
+  return (
+    <section className="mt-4 rounded-2xl border border-line p-3" aria-labelledby="route-title">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="route-title" className="font-bold text-sm">
+          ここまでの経路
+        </h2>
+        <div className="flex rounded-full bg-surface-2 p-0.5">
+          {(["WALKING", "TRANSIT"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={active === m}
+              disabled={state?.status === "loading"}
+              onClick={() => {
+                // 同じ手段の結果がもう出ていれば、取り直さない
+                if (route?.mode === m && !state) return;
+                onRoute(m);
+              }}
+              className={`h-10 rounded-full px-4 font-medium text-sm md:h-8 ${
+                active === m ? "bg-brand text-on-brand" : "text-muted hover:text-ink"
+              }`}
+            >
+              {MODE_LABEL[m]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div aria-live="polite" className="mt-2 text-[15px] md:text-sm">
+        {state?.status === "loading" ? (
+          <p className="text-muted">経路を調べています…</p>
+        ) : state?.status === "error" ? (
+          <p>
+            {state.message ?? "経路を出せませんでした。"}
+            <a
+              href={directionsUrl(place, state.mode)}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="ml-1 font-bold underline"
+            >
+              Google マップで開く
+            </a>
+          </p>
+        ) : route ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p>
+              <b>
+                {MODE_LABEL[route.mode]}
+                {route.minutes ? ` 約${route.minutes}分` : ""}
+              </b>
+              <span className="ml-1 text-muted text-xs">（地図に表示中）</span>
+            </p>
+            <button
+              type="button"
+              onClick={onClear}
+              className="h-10 rounded-full px-3 text-muted text-sm underline md:h-8"
+            >
+              経路を消す
+            </button>
+          </div>
+        ) : (
+          <p className="text-muted text-sm">
+            徒歩か電車を押すと、現在地からの経路を地図に描きます。
+          </p>
+        )}
+      </div>
+      <a
+        href={directionsUrl(place, route?.mode)}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="mt-1 inline-flex min-h-10 items-center text-muted text-xs underline"
+      >
+        Google マップでナビ ↗
+      </a>
+    </section>
+  );
 }
 
 /**
@@ -163,6 +262,10 @@ export function DetailPanel({
   words,
   demo,
   sceneNote,
+  route,
+  routeState,
+  onRoute,
+  onClearRoute,
   onBack,
 }: {
   s: Scored;
@@ -171,6 +274,11 @@ export function DetailPanel({
   demo: boolean;
   /** 友だちとモードで外した語の説明（なければ null） */
   sceneNote: string | null;
+  /** この店までの経路（アプリの地図に描いているもの） */
+  route: { mode: TravelMode; minutes: number | null } | null;
+  routeState: { mode: TravelMode; status: "loading" | "error"; message?: string } | null;
+  onRoute: (mode: TravelMode) => void;
+  onClearRoute: () => void;
   onBack: () => void;
 }) {
   const p = s.place;
@@ -333,15 +441,14 @@ export function DetailPanel({
         </section>
       )}
 
-      {!demo && (
-        <a
-          href={directionsUrl(p)}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="mt-4 flex h-11 items-center justify-center rounded-full bg-brand font-bold text-on-brand text-sm hover:opacity-90"
-        >
-          経路を見る（Google マップ）
-        </a>
+      {!demo && p.location && (
+        <RouteBox
+          place={p}
+          route={route}
+          state={routeState}
+          onRoute={onRoute}
+          onClear={onClearRoute}
+        />
       )}
 
       {p.reviews && p.reviews.length > 0 && (
