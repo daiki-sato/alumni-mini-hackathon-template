@@ -12,7 +12,7 @@ const notoSansJp = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "ジブンマップ",
   description:
-    "行きたい街で、自分の意思で選ぶ人が集まる店を探せる地図。一人客・常連・店の制約・SNS露出から、行く前に今日の3軒を選びます。",
+    "行きたい街の飲食店を、自分の意思で選ぶ人が集まる順に。一人客・常連・店の制約・SNS露出から付けた点数の高い順に、理由つきで並べます。",
 };
 
 // 画面の端（ノッチ・ホームバー）まで描き、余白は env(safe-area-inset-*) で取る
