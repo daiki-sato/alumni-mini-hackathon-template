@@ -42,6 +42,7 @@ import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
 import { GoogleMapView } from "./GoogleMapView";
 import { InfoIcon, ListIcon, MapIcon, MyLocationIcon, SearchIcon, TuneIcon } from "./Icons";
+import { InstallHint } from "./InstallHint";
 import { ListPanel, PeekCard } from "./ListPanel";
 import { Onboarding, onboardingDone } from "./Onboarding";
 import { MinScoreSlider, PrefsSheet } from "./PrefsSheet";
@@ -139,6 +140,20 @@ export function MapApp() {
   const [places, setPlaces] = useState<Place[]>(() => (HAS_KEY ? [] : demoSearch(FIRST_DEMO_TOWN)));
   const [now, setNow] = useState(DEMO_NOW);
   const [status, setStatus] = useState<Status>({ kind: HAS_KEY ? "idle" : "ok" });
+  /** 圏外か（navigator.onLine と online/offline のイベント） */
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    const sync = () => setOffline(!navigator.onLine);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
+  /** 実データで検索を1回終えたか（ホーム画面に追加の案内は、そのあとに出す） */
+  const [searchedOnce, setSearchedOnce] = useState(false);
   /** 検索中に来た次の検索の語（前の検索が終わったら自動で探す。表示にも使う） */
   const [busy, setBusy] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
@@ -442,6 +457,7 @@ export function MapApp() {
           SEARCH_TIMEOUT_MS,
         );
         if (my !== seq.current) return;
+        setSearchedOnce(true);
         setPlaces(found);
         setNow(Date.now());
         setStatus(
@@ -998,6 +1014,18 @@ export function MapApp() {
         )}
       </div>
 
+      {offline && !pinnedDemo && (
+        // 圏外: Google の店は出せないので、通信なしのデモへ案内する（外枠は Service Worker が持っている）
+        <div className="z-20 flex items-center gap-2 bg-lo-soft px-4 py-2 text-sm" role="status">
+          <InfoIcon className="size-4 shrink-0 text-lo" />
+          <span className="min-w-0 flex-1">
+            通信が必要です。
+            <a href="/map?demo=1" className="ml-1 font-bold underline">
+              通信なしのデモはこちら
+            </a>
+          </span>
+        </div>
+      )}
       {fellBack ? (
         <div
           className="z-20 flex items-center gap-2 bg-accent-soft px-4 py-1.5 text-xs"
@@ -1233,6 +1261,8 @@ export function MapApp() {
           setOnboardOpen(true);
         }}
       />
+      {/* iPhone の Safari だけ: 検索を1回したあとに「ホーム画面に追加」の案内（はじめの設定や詳細の最中は出さない） */}
+      <InstallHint ready={searchedOnce && !onboardOpen && !selected && !pinnedDemo} />
       <Onboarding
         open={onboardOpen}
         prefs={prefs}
