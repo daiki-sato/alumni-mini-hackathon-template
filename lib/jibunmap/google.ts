@@ -167,7 +167,8 @@ function installLoader(params: Record<string, string>): void {
 export function importLibrary<T>(
   name: "maps" | "marker" | "places" | "core" | "routes",
 ): Promise<T> {
-  installLoader({ key: BROWSER_KEY, v: "weekly", language: "ja", region: "JP" });
+  // loading=async は、公式が推奨する読み込み方（ページの描画を止めない）
+  installLoader({ key: BROWSER_KEY, v: "weekly", language: "ja", region: "JP", loading: "async" });
   const maps = (window as unknown as { google: { maps: { importLibrary: ImportLibrary } } }).google
     .maps;
   return maps.importLibrary(name) as Promise<T>;

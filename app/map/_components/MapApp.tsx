@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { preconnect } from "react-dom";
 import { Logo } from "@/app/_components/Logo";
 import {
   DEMO_NOW,
@@ -14,6 +15,7 @@ import { genreByKey, genreChips, genreOf } from "@/lib/jibunmap/genre";
 import {
   BROWSER_KEY,
   computeRoute,
+  importLibrary,
   type LatLngLiteral,
   RouteLimitError,
   SearchLimitError,
@@ -95,6 +97,11 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 export function MapApp() {
+  // Maps の読み込み先へ早めに接続しておく（head に preconnect を差し込む）
+  if (HAS_KEY) {
+    preconnect("https://maps.googleapis.com");
+    preconnect("https://maps.gstatic.com", { crossOrigin: "anonymous" });
+  }
   const { prefs, update } = usePrefs();
   // キーがあっても、Google に届かなければデモに切り替える（fellBack）
   const [demo, setDemoState] = useState(!HAS_KEY);
@@ -276,6 +283,13 @@ export function MapApp() {
     },
     [setDemo, resetView],
   );
+
+  // Maps JS は、ページを開いた直後（検索の前）に読み始める。読むだけなら課金されない。
+  // 失敗の扱いは地図と検索の側に任せる
+  useEffect(() => {
+    if (!HAS_KEY) return;
+    importLibrary("places").catch(() => {});
+  }, []);
 
   // キーの拒否（HTTP リファラ制限・キーの誤り）は、Maps の読み込み後にこの関数で知らされる
   useEffect(() => {
@@ -815,9 +829,14 @@ export function MapApp() {
       <main className="relative flex flex-1 flex-col md:min-h-0 md:flex-row">
         <section
           aria-label="地図"
-          className={`relative md:order-2 md:flex md:flex-1 ${
-            view === "map" ? "max-md:flex max-md:min-h-[240px] max-md:flex-1" : "max-md:hidden"
+          // スマホのリスト表示のときも地図は裏で作っておく（display: none だとタイルを読まず、
+          // 切り替えた瞬間から読み始めて遅い）。見えない・押せない形で画面いっぱいに置く
+          className={`relative md:visible md:z-auto md:order-2 md:flex md:flex-1 ${
+            view === "map"
+              ? "max-md:flex max-md:min-h-[240px] max-md:flex-1"
+              : "max-md:pointer-events-none max-md:invisible max-md:fixed max-md:inset-0 max-md:-z-10"
           }`}
+          aria-hidden={mobile && view === "list" ? true : undefined}
         >
           {demo ? (
             <DemoMapView
