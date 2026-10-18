@@ -241,7 +241,7 @@ function TopCard({
     return a ? [a.w(s)] : [];
   });
   return (
-    <li>
+    <li className="min-w-0">
       <button
         type="button"
         onClick={() => onSelect(s.place.id)}
@@ -292,7 +292,7 @@ function TopCard({
             <span className="mt-1.5 block truncate text-[11px] text-muted">{why.join(" ／ ")}</span>
           )}
         </span>
-        <span className="flex flex-col items-end gap-1">
+        <span className="flex shrink-0 flex-col items-end gap-1">
           <ScoreBadge v={s.score} />
           {typeof s.place.rating === "number" && (
             <span className="text-[10px] text-muted tabular-nums" title="Google の評価（比較用）">
@@ -380,7 +380,7 @@ export function ListPanel({
 }) {
   const shown = top.length + others.length;
   return (
-    <div className="anim-panel-in grid gap-5 px-4 pt-3 pb-8 md:pt-4">
+    <div className="anim-panel-in grid min-w-0 grid-cols-1 gap-5 px-4 pt-3 pb-8 md:pt-4">
       <header>
         {title ? (
           <>
@@ -443,7 +443,7 @@ export function ListPanel({
               {status.message}
             </p>
           ) : top.length ? (
-            <ol className="grid gap-2">
+            <ol className="grid min-w-0 grid-cols-1 gap-2">
               {top.map((s, i) => (
                 <TopCard
                   key={s.place.id}
