@@ -78,6 +78,10 @@ export type Hit = {
   authorUri?: string;
   /** 同じ投稿者を見分けるキー（名前がなければ口コミの番号） */
   authorKey: string;
+  /** その語が（否定されずに）出た口コミの件数 */
+  reviewCount: number;
+  /** その語を書いた人のキー（重複なし） */
+  authorKeys: string[];
 };
 
 export function reviewText(r: Review): string {
@@ -169,36 +173,37 @@ export function sentenceAt(text: string, at: number, len: number): string {
 }
 
 /**
- * 語ごとに口コミを1件だけ拾う。
- * 同じ投稿者に偏らないよう、まだ拾っていない投稿者の口コミを優先する
+ * 語ごとに、引用する口コミを1件だけ拾い、その語が出た口コミの件数と書いた人を数える。
+ * 引用は同じ投稿者に偏らないよう、まだ拾っていない投稿者の口コミを優先する
  */
 export function wordHits(reviews: Review[], words: string[]): Hit[] {
   const out: Hit[] = [];
   const used = new Set<string>();
   for (const w of words) {
-    let pick: Hit | null = null;
+    const found: Hit[] = [];
     for (const [i, r] of reviews.entries()) {
       const text = reviewText(r);
       const at = positions(text, w, words)[0];
       if (at === undefined) continue;
       const name = r.authorAttribution?.displayName;
-      const hit: Hit = {
+      found.push({
         word: w,
         quote: sentenceAt(text, at, w.length),
         author: name,
         authorUri: r.authorAttribution?.uri,
         authorKey: name ? `n:${name}` : `r:${i}`,
-      };
-      pick ??= hit;
-      if (!used.has(hit.authorKey)) {
-        pick = hit;
-        break;
-      }
+        reviewCount: 0,
+        authorKeys: [],
+      });
     }
-    if (pick) {
-      used.add(pick.authorKey);
-      out.push(pick);
-    }
+    if (!found.length) continue;
+    const pick = found.find((h) => !used.has(h.authorKey)) ?? found[0];
+    used.add(pick.authorKey);
+    out.push({
+      ...pick,
+      reviewCount: found.length,
+      authorKeys: [...new Set(found.map((h) => h.authorKey))],
+    });
   }
   return out;
 }
@@ -278,6 +283,13 @@ export const GOOD_POINT = 4;
 export const GOOD_MAX = 24;
 /** 同じ投稿者の口コミからの加点は、1人あたりここまで */
 export const GOOD_PER_AUTHOR = 4;
+/** 同じ語が2件以上の口コミに出たら、その語の点をこの倍にする */
+export const REPEAT_WEIGHT = 1.5;
+
+/** 語の重み。1件の口コミだけなら1、2件以上なら REPEAT_WEIGHT */
+export function wordWeight(h: Hit): number {
+  return h.reviewCount >= 2 ? REPEAT_WEIGHT : 1;
+}
 export const NG_POINT = 5;
 export const NG_MAX = 25;
 
@@ -306,7 +318,9 @@ export function hitEvidence(hits: Hit[]): Evidence[] {
   const byQuote = new Map<string, Hit[]>();
   for (const h of hits) byQuote.set(h.quote, [...(byQuote.get(h.quote) ?? []), h]);
   return [...byQuote.values()].map((hs) => ({
-    text: `口コミに${hs.map((h) => `「${h.word}」`).join("")}`,
+    text: `口コミに${hs
+      .map((h) => `「${h.word}」${h.reviewCount >= 2 ? `（${h.reviewCount}件）` : ""}`)
+      .join("")}`,
     quote: hs[0].quote,
     words: hs.map((h) => h.word),
     author: hs[0].author,
@@ -314,17 +328,31 @@ export function hitEvidence(hits: Hit[]): Evidence[] {
   }));
 }
 
-/** うれしいワードの加点。1人あたり GOOD_PER_AUTHOR、合計 GOOD_MAX まで */
+/**
+ * うれしいワードの加点。語ごとに GOOD_POINT × 重み（2件以上の口コミに出たら 1.5 倍）。
+ * その点を、語を書いた人たちで等分してから、1人あたり GOOD_PER_AUTHOR、合計 GOOD_MAX までに収める
+ */
 export function goodPoints(hits: Hit[]): { value: number; capped: boolean } {
   const per = new Map<string, number>();
-  for (const h of hits) per.set(h.authorKey, (per.get(h.authorKey) ?? 0) + GOOD_POINT);
+  for (const h of hits) {
+    const keys = h.authorKeys.length ? h.authorKeys : [h.authorKey];
+    const share = (GOOD_POINT * wordWeight(h)) / keys.length;
+    for (const k of keys) per.set(k, (per.get(k) ?? 0) + share);
+  }
   let v = 0;
   let capped = false;
   for (const n of per.values()) {
     if (n > GOOD_PER_AUTHOR) capped = true;
     v += Math.min(GOOD_PER_AUTHOR, n);
   }
-  return { value: Math.min(GOOD_MAX, v), capped };
+  return { value: r1(Math.min(GOOD_MAX, v)), capped };
+}
+
+/** NG ワードの減点。語ごとに NG_POINT × 重み、合計 NG_MAX まで */
+export function ngPoints(hits: Hit[]): number {
+  let v = 0;
+  for (const h of hits) v += NG_POINT * wordWeight(h);
+  return r1(Math.min(NG_MAX, v));
 }
 
 export function parts(s: Signals): Part[] {
@@ -367,7 +395,7 @@ export function parts(s: Signals): Part[] {
   out.push({
     key: "ng",
     label: "NGワード",
-    value: -Math.min(NG_MAX, s.ng.length * NG_POINT),
+    value: -ngPoints(s.ng),
     reasons: hitEvidence(s.ng),
   });
 
@@ -407,6 +435,14 @@ export function totalScore(ps: Part[]): number {
   let t = 0;
   for (const p of ps) t += p.value;
   return Math.round(Math.max(0, Math.min(100, t)));
+}
+
+/** 点数の横に出す、ひと言の評価（一覧・詳細・地図でそろえる） */
+export function verdict(v: number): string {
+  if (v >= 80) return "◎ 仲間が多そう";
+  if (v >= 60) return "○ 合いそう";
+  if (v >= 35) return "△ ふつう";
+  return "× 合わなそう";
 }
 
 export type Band = "hi" | "mid" | "lo";

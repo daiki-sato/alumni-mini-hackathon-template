@@ -11,6 +11,7 @@ import {
   partyChance,
   reviewText,
   type Scored,
+  verdict,
   type WordLists,
   whoText,
 } from "@/lib/jibunmap/score";
@@ -19,7 +20,6 @@ import { BackIcon } from "./Icons";
 import { BAND_TEXT, GoogleRankBadge } from "./ListPanel";
 
 const BAND_COLOR = { hi: "var(--hi)", mid: "var(--mid)", lo: "var(--lo)" } as const;
-const BAND_WORD = { hi: "高い", mid: "ふつう", lo: "低い" } as const;
 
 /** 小さな半円のゲージ（店名の横に置く） */
 function Gauge({ v }: { v: number }) {
@@ -49,7 +49,7 @@ function Gauge({ v }: { v: number }) {
       </svg>
       <div className="absolute inset-x-0 bottom-0 text-center">
         <div className={`font-bold text-2xl tabular-nums leading-none ${BAND_TEXT[b]}`}>{v}</div>
-        <div className="text-[10px] text-muted">/ 100・{BAND_WORD[b]}</div>
+        <div className="text-[10px] text-muted">/ 100</div>
       </div>
     </div>
   );
@@ -241,7 +241,12 @@ export function DetailPanel({
               {p.formattedAddress ? `・${p.formattedAddress}` : ""}
             </p>
           </div>
-          <Gauge v={s.score} />
+          <div className="flex shrink-0 flex-col items-center">
+            <Gauge v={s.score} />
+            <span className={`mt-0.5 font-bold text-xs ${BAND_TEXT[band(s.score)]}`}>
+              {verdict(s.score)}
+            </span>
+          </div>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
           <GoogleRankBadge rank={p.googleRank} />

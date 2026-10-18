@@ -14,6 +14,7 @@ import {
   MAX_WORD_LENGTH,
   MAX_WORDS,
   type Scored,
+  verdict,
   type WordLists,
 } from "@/lib/jibunmap/score";
 import { LIVE_EXAMPLES } from "@/lib/jibunmap/suggest";
@@ -346,6 +347,9 @@ function TopCard({
         </span>
         <span className="flex shrink-0 flex-col items-end gap-1">
           <ScoreBadge v={s.score} />
+          <span className={`whitespace-nowrap font-bold text-[11px] ${BAND_TEXT[band(s.score)]}`}>
+            {verdict(s.score)}
+          </span>
           {typeof s.place.rating === "number" && (
             <span className="text-[10px] text-muted tabular-nums" title="Google の評価（比較用）">
               G ★{s.place.rating.toFixed(1)}
@@ -372,7 +376,7 @@ function Row({ s, hot, onSelect, onHover }: CardProps) {
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm">{placeName(s.place)}</span>
           <span className="block truncate text-muted text-xs">
-            {s.place.primaryTypeDisplayName?.text ?? "飲食店"}
+            {verdict(s.score)}・{s.place.primaryTypeDisplayName?.text ?? "飲食店"}
             {s.place.googleRank ? `・Google ${s.place.googleRank}番目` : ""}
             {s.signals.ng.length ? `・NG${s.signals.ng.length}語` : ""}
           </span>

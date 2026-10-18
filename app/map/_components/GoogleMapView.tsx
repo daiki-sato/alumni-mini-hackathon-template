@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { boundsOf, type GLatLngBounds, importLibrary, MAP_ID } from "@/lib/jibunmap/google";
 import type { Bounds } from "@/lib/jibunmap/place";
 import { placeName } from "@/lib/jibunmap/place";
-import { band, type Scored } from "@/lib/jibunmap/score";
+import { band, type Scored, verdict } from "@/lib/jibunmap/score";
 
 /* Maps JavaScript API の最小限の型（npm の型パッケージは足さない） */
 type Listener = { remove(): void };
@@ -154,7 +154,7 @@ export function GoogleMapView({
       const m = new L.marker.AdvancedMarkerElement({
         map,
         position: { lat: loc.latitude, lng: loc.longitude },
-        title: `${rank ? `今日の3軒の${rank}番 ` : ""}${placeName(s.place)}（集まる度 ${s.score}）`,
+        title: `${rank ? `今日の3軒の${rank}番 ` : ""}${placeName(s.place)}（集まる度 ${s.score}・${verdict(s.score)}）`,
         content,
         gmpClickable: true,
         zIndex: rank ? 100 - rank : 1,

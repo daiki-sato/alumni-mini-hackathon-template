@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { placeName } from "@/lib/jibunmap/place";
-import { band, type Scored } from "@/lib/jibunmap/score";
+import { band, type Scored, verdict } from "@/lib/jibunmap/score";
 import { InfoIcon } from "./Icons";
 
 const BAND_FILL = { hi: "var(--hi)", mid: "var(--mid)", lo: "var(--lo)" } as const;
@@ -151,7 +151,7 @@ export function DemoMapView({
           const id = s.place.id;
           const rank = topIds.indexOf(id) + 1;
           const sel = id === selId;
-          const label = `${placeName(s.place)}、集まる度${s.score}${rank ? `、今日の3軒の${rank}番` : ""}`;
+          const label = `${placeName(s.place)}、集まる度${s.score}（${verdict(s.score)}）${rank ? `、今日の3軒の${rank}番` : ""}`;
           return (
             // biome-ignore lint/a11y/useSemanticElements: SVG の中なので <button> は置けない
             <g
@@ -235,7 +235,9 @@ export function DemoMapView({
           role="status"
         >
           {placeName(tip.place)}
-          <span className="ml-1.5 tabular-nums opacity-70">{tip.score}</span>
+          <span className="ml-1.5 tabular-nums opacity-70">
+            {tip.score}・{verdict(tip.score)}
+          </span>
         </div>
       )}
       <div className="absolute top-3 left-1/2 flex max-w-[92%] -translate-x-1/2 items-center gap-1.5 rounded-full bg-surface/95 px-3 py-1.5 text-muted text-xs shadow-e1">

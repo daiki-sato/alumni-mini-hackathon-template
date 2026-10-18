@@ -4,10 +4,13 @@ import {
   DEFAULT_GOOD_WORDS,
   DEFAULT_NG_WORDS,
   GOOD_MAX,
+  GOOD_PER_AUTHOR,
   GOOD_POINT,
   NG_MAX,
   NG_POINT,
   RECENT_DAYS,
+  REPEAT_WEIGHT,
+  verdict,
 } from "@/lib/jibunmap/score";
 import { Logo, LogoMark } from "./_components/Logo";
 
@@ -189,6 +192,11 @@ const FORMULA: { l: string; v: string; tone: "base" | "plus" | "minus" }[] = [
     v: `+${GOOD_POINT}（最大 +${GOOD_MAX}）`,
     tone: "plus",
   },
+  {
+    l: `同じ語が2件以上の口コミに出たら、その語の点は ${REPEAT_WEIGHT} 倍（上限は同じ。同じ人からは +${GOOD_PER_AUTHOR} まで）`,
+    v: `×${REPEAT_WEIGHT}`,
+    tone: "plus",
+  },
   { l: "店の制約（現金のみ・予約不可。Google の店舗情報）", v: "各 +5", tone: "plus" },
   { l: "NGワードが口コミに出る（1語）", v: `−${NG_POINT}（最大 −${NG_MAX}）`, tone: "minus" },
   {
@@ -330,6 +338,9 @@ export default function Home() {
                 ))}
               </ul>
               <p className="mt-4 text-muted text-xs leading-relaxed">
+                点数の横には、ひと言の評価を出します（80以上「{verdict(80)}」・60以上「{verdict(60)}
+                」・35以上「
+                {verdict(35)}」・それ未満「{verdict(0)}」）。
                 今日の3軒は、選んだ判断軸（最大3つ）の合計が高い順。同点なら集まる度の高い順です。
               </p>
             </div>
