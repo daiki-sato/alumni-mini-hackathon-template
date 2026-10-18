@@ -384,6 +384,32 @@ function Compare({ pop, mine }: { pop: LpShop[]; mine: LpShop[] }) {
 
 /* ---------- 文言 ---------- */
 
+/** 物理的な距離を自分でコントロールできず、耐え続ける場面の4分類（今回扱うのは「未解決」） */
+const SORTS = [
+  {
+    k: "すでに解決できる",
+    items: ["混んだ電車 → 移動する", "狭い格安航空の席 → 大手の航空会社にする"],
+  },
+  {
+    k: "受け入れると決めた",
+    items: ["病院の待合で45分待つ → 品質が高いから", "スーパーの行列 → 生活に必須だから"],
+  },
+  {
+    k: "不快ではない",
+    items: [
+      "遅れた飛行機で、隣の人と仲良くなった",
+      "大好物のラーメン店の行列 → 大好物で、客層が良い",
+      "スキー場のリフトの列 → 服が厚く板を持っていて、体が触れにくい",
+      "個人店の蕎麦屋 → 客層が良い",
+    ],
+  },
+  {
+    k: "未解決（今回扱う）",
+    items: ["それほど行きたいわけではない人気店の行列", "混んでいるカフェ"],
+    focus: true,
+  },
+];
+
 const CONTEXTS = [
   { k: "好き", d: "同じ一杯や一皿が目当てで来ている" },
   { k: "作法", d: "食券・私語少なめ・食べたら出る" },
@@ -509,7 +535,8 @@ export default function Home() {
                 <span className="inline-block">じゃなかった。</span>
               </h1>
               <p className="mt-6 max-w-xl text-[17px] text-white/85 leading-[1.8]">
-                行きたい街の<b className="text-white">飲食店</b>を、自分の意思で選ぶ人が集まる順に。
+                行きたい街の<b className="text-white">飲食店</b>
+                を、あなたの幸福度が高くなりそうな順に。
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link
@@ -544,7 +571,8 @@ export default function Home() {
                   "そのときの",
                   "あなたの状態に",
                   "合わせて、",
-                  "いちばんいい1軒を。",
+                  "いちばん幸せになれる",
+                  "1軒を。",
                 ]}
               />
             </h2>
@@ -554,12 +582,12 @@ export default function Home() {
               。切り替えると、同じ店でも点数が変わります（下の「点数のしくみ」で試せます）。
             </p>
             <p className="mt-3 text-muted text-sm leading-[1.8]">
-              お店を決めたあとの体験には、アプリは立ち入りません。使うのは行く前だけです。
+              お店を決めたあとの体験には、直接は関わりません。使うのは行く前だけです。
             </p>
           </div>
         </section>
 
-        {/* 3. 物語（課題 → 気づき → 解決） */}
+        {/* 3. 物語（課題 → 整理 → 気づき → 解決） */}
         <section className="bg-bg" aria-labelledby="story-title">
           <div className="mx-auto w-full max-w-3xl px-4 py-16 md:px-6 md:py-20">
             <h2
@@ -577,9 +605,43 @@ export default function Home() {
                 <div className="mt-5">
                   <QueueArt />
                 </div>
+                <p className="mt-4 border-[#F2A71B] border-l-4 pl-3 font-bold text-[17px] leading-[1.8]">
+                  ストレスの高い状況を経験してまで、テンションが特別上がるわけでもない飲食店に行く。
+                  そんな状況に陥ること。
+                </p>
+                <p className="mt-3 text-[15px] leading-[1.8] md:text-base">
+                  飛行機の狭い席は、お金を払えば広い席にできる。混んだ電車は、移動すればいい。
+                  でも、それほど行きたいわけではない人気店の行列だけは、避けにくい。
+                </p>
+              </li>
+              <li>
+                <p className="font-bold text-mid text-sm">整理</p>
+                <h3 className="jm-phrase mt-1 font-bold text-2xl">
+                  <Phrases parts={["距離を自分で", "変えられない場面は、", "4つに分かれる"]} />
+                </h3>
+                <ul className="mt-5 grid gap-2 sm:grid-cols-2">
+                  {SORTS.map((g) => (
+                    <li
+                      key={g.k}
+                      className={`rounded-2xl p-4 ${
+                        g.focus
+                          ? "border-2 border-[#F2A71B] bg-surface"
+                          : "border border-line bg-surface"
+                      }`}
+                    >
+                      <p className={`font-bold ${g.focus ? "text-ink" : "text-muted"}`}>{g.k}</p>
+                      <ul className="mt-2 grid gap-1 text-sm leading-relaxed">
+                        {g.items.map((t) => (
+                          <li key={t} className={g.focus ? "" : "text-muted"}>
+                            {t}
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  ))}
+                </ul>
                 <p className="mt-4 text-[15px] leading-[1.8] md:text-base">
-                  飛行機の狭い席は、お金を払えば広い席にできる。混んだ電車は、時間をずらせる。
-                  でも、行きたいお店の行列だけは、避けられない。
+                  今回扱うのは、「とてつもなく行きたいわけではない、かつ、多少のストレスがかかる」場面です。
                 </p>
               </li>
               <li>
@@ -591,7 +653,11 @@ export default function Home() {
                   <QueueArt friends />
                 </div>
                 <p className="mt-4 text-[15px] leading-[1.8] md:text-base">
-                  自分と同じ文脈を持たない人が、意図の読めない近さに来ると、不快になる。
+                  分かっていることは2つ。とても行きたい場所なら、ストレスは下がる。
+                  そして、同じ行列でも、ストレスに感じない客層がある。
+                </p>
+                <p className="mt-3 text-[15px] leading-[1.8] md:text-base">
+                  それは、自分と同じ文脈を持つ人です。同じ文脈を持たない人から、意図の読めない近さを受けると不快になる。
                   同じ側だと感じられる人なら、同じ近さでも気にならない。同じ側だと感じる文脈は、5つありました。
                 </p>
                 <ul className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -611,16 +677,20 @@ export default function Home() {
               <li>
                 <p className="font-bold text-mid text-sm">解決</p>
                 <h3 className="jm-phrase mt-1 font-bold text-2xl">
-                  <Phrases parts={["自分の意思で", "選ぶ人が", "集まる店を、", "行く前に選ぶ"]} />
+                  <Phrases parts={["あなたの幸福度が", "高くなりそうな順に", "並べる"]} />
                 </h3>
                 <div className="mt-5">
                   <CrowdArt />
                 </div>
                 <p className="mt-4 text-[15px] leading-[1.8] md:text-base">
-                  Google
-                  マップの飲食店を、口コミの多さや広告の順ではなく、「自分の意思で選ぶ人が集まる度」の点数で並べ替えます。
-                  5つの文脈は、口コミの「うれしいワード」（一人・常連・食券・現金のみ
-                  など）と、店の制約や口コミの件数として、点数の材料になっています。
+                  数ある飲食店を、口コミの多さや広告の順ではなく、あなたの幸福度が高くなりそうな順に出します。
+                  料理・客層・店の雰囲気について、<b>プラスの感情が働くか</b>、
+                  <b>マイナスの感情を避けられるか</b>
+                  を、口コミの言葉と店の情報から判断して点数にします。
+                </p>
+                <p className="mt-3 text-[15px] leading-[1.8] md:text-base">
+                  5つの文脈は、口コミの「うれしいワード」（一人・常連・食券・現金のみ など）や、
+                  店の制約・口コミの件数として、点数の材料になっています。
                 </p>
               </li>
             </ol>
@@ -661,8 +731,11 @@ export default function Home() {
                 点数のしくみ
               </h2>
               <p className="mt-4 text-[15px] leading-[1.8] md:text-base">
-                口コミに、あなたの「うれしいワード」が出れば点数が上がり、「NG
-                ワード」が出れば下がります。 0〜100 の点数と、ひと言の評価（{verdict(80)}／
+                見るのは、料理・客層・店の雰囲気の3つです。口コミに「うれしいワード」（
+                <b>プラスの感情</b>が働く語）が出れば点数が上がり、「NG ワード」（
+                <b>マイナスの感情</b>につながる語）が出れば下がります。客層は、一人客・常連・
+                グループ向きかどうか、雰囲気は、静かさ・映え・チェーンらしさなどから見ます。料理は、好きな料理の語を
+                うれしいワードに足せます。0〜100 の点数と、ひと言の評価（{verdict(80)}／
                 {verdict(60)}／{verdict(35)}／{verdict(0)}）で並べます。
               </p>
               <figure className="mt-6 grid gap-2">
@@ -675,8 +748,8 @@ export default function Home() {
                   <span className="ml-1 text-muted text-xs">— {quotes.ng.place}（架空）</span>
                 </blockquote>
                 <figcaption className="text-muted text-xs">
-                  <mark className="jm-mark-good">緑</mark> はうれしいワード、
-                  <mark className="jm-mark-ng">赤</mark> は NG ワード。
+                  <mark className="jm-mark-good">緑</mark> はうれしいワード（プラスの感情）、
+                  <mark className="jm-mark-ng">赤</mark> は NG ワード（マイナスの感情）。
                 </figcaption>
               </figure>
             </div>
