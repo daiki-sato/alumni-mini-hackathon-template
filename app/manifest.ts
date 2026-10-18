@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "ジブンマップ",
     short_name: "ジブンマップ",
-    description: "行きたい街の飲食店を、自分の意思で選ぶ人が集まる順に。",
+    description: "行きたい街の飲食店を、あなたの幸福度が高くなりそうな順に。",
     start_url: "/map",
     scope: "/",
     display: "standalone",

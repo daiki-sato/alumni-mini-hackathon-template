@@ -7,6 +7,7 @@ import {
   band,
   constraintTags,
   keyQuote,
+  SCORE_HINT,
   type Scored,
   verdict,
   type WordLists,
@@ -26,7 +27,7 @@ export function ScoreBadge({ v, size = "md" }: { v: number; size?: "md" | "lg" }
       className={`grid shrink-0 place-items-center rounded-xl font-bold tabular-nums ${BAND_BG[b]} ${BAND_TEXT[b]} ${
         size === "lg" ? "h-12 w-14 text-xl" : "h-9 w-11 text-base"
       }`}
-      title="自分の意思で選ぶ人が集まる度"
+      title={SCORE_HINT}
     >
       {v}
     </span>
@@ -140,6 +141,7 @@ function TopCard({
           </span>
           <span className="mt-0.5 hidden items-center gap-1.5 max-[360px]:flex">
             <span
+              title={SCORE_HINT}
               className={`rounded-md px-1.5 py-0.5 font-bold text-[13px] tabular-nums ${BAND_BG[band(s.score)]} ${BAND_TEXT[band(s.score)]}`}
             >
               {s.score}
@@ -539,9 +541,7 @@ export function ListPanel({
             className="mt-1.5 flex items-center gap-1 rounded-xl bg-brand py-1 pr-1 pl-3 text-on-brand text-xs"
             role="note"
           >
-            <span className="min-w-0 flex-1">
-              100点満点。あなたの条件に合う人が集まる度合いです（○ 合いそう など）
-            </span>
+            <span className="min-w-0 flex-1">{SCORE_HINT}です（○ 合いそう など）</span>
             <button
               type="button"
               onClick={onCloseScoreTip}

@@ -437,6 +437,12 @@ export function totalScore(ps: Part[]): number {
   return Math.round(Math.max(0, Math.min(100, t)));
 }
 
+/**
+ * 点数の名前と説明（画面のどこでも同じ言葉にする）。正確な測定ではないので、必ず「目安」と言う
+ */
+export const SCORE_NAME = "幸福度の目安";
+export const SCORE_HINT = "100点満点。あなたの条件で計算した幸福度の目安";
+
 /** 点数の横に出す、ひと言の評価（一覧・詳細・地図でそろえる） */
 export function verdict(v: number): string {
   if (v >= 80) return "◎ 仲間が多そう";
