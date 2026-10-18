@@ -35,3 +35,38 @@ export function popAction(
   if (state.q && state.q !== currentQ.trim()) return { kind: "search", state };
   return { kind: "place", state };
 }
+
+export type BootPlan = {
+  /** 審査員向けの固定デモ（?demo=1） */
+  forcedDemo: boolean;
+  /** URL から読んだ状態（scene・genre・view はデモでも実データでも同じに戻す） */
+  state: UrlState;
+  /** 開いた直後に探す語（探さないなら null） */
+  query: string | null;
+  /** 結果の中にあれば詳細を開く店（なければ開かず、URL から静かに外す） */
+  select: string | null;
+};
+
+/**
+ * 開いたときの URL から、最初に何をするかを決める（デモでも実データでも同じ道を通す）。
+ * - 固定デモ: 語がデモの街に当たればその語、当たらなければ最初のサンプルの街
+ * - キーのないデモ: 語がデモに当たらなければ探さない（最初のサンプルの街のまま）
+ * - 実データ: 語があれば探す
+ * どの場合も place は select として渡し、探した結果の中にあるときだけ詳細を開く
+ */
+export function bootPlan(
+  search: string,
+  opts: {
+    demo: boolean;
+    demoHas: (q: string) => boolean;
+    fallbackTown: string;
+    maxLength: number;
+  },
+): BootPlan {
+  const state = readUrlState(search);
+  const forcedDemo = new URLSearchParams(search).get("demo") === "1";
+  let query: string | null = state.q.slice(0, opts.maxLength) || null;
+  if (forcedDemo) query = query && opts.demoHas(query) ? query : opts.fallbackTown;
+  else if (opts.demo && query && !opts.demoHas(query)) query = null;
+  return { forcedDemo, state, query, select: query ? state.place : null };
+}
