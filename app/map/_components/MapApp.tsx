@@ -13,7 +13,7 @@ import {
 import { BROWSER_KEY, SearchLimitError, searchesLeft, searchPlaces } from "@/lib/jibunmap/google";
 import type { Bounds, Place } from "@/lib/jibunmap/place";
 import { MAX_QUERY_LENGTH, placeName } from "@/lib/jibunmap/place";
-import { computeTop, type Scored, scorePlace } from "@/lib/jibunmap/score";
+import { rankByScore, type Scored, scorePlace } from "@/lib/jibunmap/score";
 import { foodQuery } from "@/lib/jibunmap/suggest";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
@@ -72,7 +72,6 @@ export function MapApp() {
   const [fitKey, setFitKey] = useState(0);
   const [moved, setMoved] = useState(false);
   const [condOpen, setCondOpen] = useState(false);
-  const [othersOpen, setOthersOpen] = useState(false);
   const boundsRef = useRef<Bounds | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searching = useRef(false);
@@ -97,11 +96,9 @@ export function MapApp() {
 
   const words = useMemo(() => ({ good: prefs.good, ng: prefs.ng }), [prefs.good, prefs.ng]);
   const scored = useMemo(() => places.map((p) => scorePlace(p, now, words)), [places, now, words]);
-  const ranked = useMemo(() => computeTop(scored, prefs.axes), [scored, prefs.axes]);
-  const top = useMemo(() => ranked.slice(0, 3), [ranked]);
-  const topIds = useMemo(() => top.map((s) => s.place.id), [top]);
-  // ほかの候補も今日の3軒と同じ基準（判断軸の合計）で並べる
-  const others = useMemo(() => ranked.slice(3), [ranked]);
+  // 点数の高い順（同点は Google の検索結果の順）
+  const ranked = useMemo(() => rankByScore(scored), [scored]);
+  const rankIds = useMemo(() => ranked.map((s) => s.place.id), [ranked]);
   const selected: Scored | undefined = scored.find((s) => s.place.id === selId);
 
   // 一覧と詳細を切り替えたら、パネルを上まで戻す
@@ -118,7 +115,6 @@ export function MapApp() {
     boundsRef.current = null;
     setSelId(null);
     setHoverId(null);
-    setOthersOpen(false);
     setMoved(false);
   }, []);
 
@@ -176,7 +172,6 @@ export function MapApp() {
       setBusy(null);
       const label = q.trim() || "このエリア";
       setSelId(null);
-      setOthersOpen(false);
       setMoved(false);
       fromCard.current = null;
       placePushed.current = false;
@@ -306,21 +301,17 @@ export function MapApp() {
   );
 
   /** 店を選ぶ。一覧から開くときは履歴を1つ積む（ブラウザの戻るで一覧に戻れるように） */
-  const onSelect = useCallback(
-    (id: string) => {
-      if (selRef.current === id) return;
-      if (selRef.current) {
-        window.history.replaceState(null, "", urlFor(urlQ.current, id));
-      } else {
-        window.history.pushState(null, "", urlFor(urlQ.current, id));
-        placePushed.current = true;
-        fromCard.current = id;
-      }
-      if (!topIds.includes(id)) setOthersOpen(true);
-      setSelId(id);
-    },
-    [topIds],
-  );
+  const onSelect = useCallback((id: string) => {
+    if (selRef.current === id) return;
+    if (selRef.current) {
+      window.history.replaceState(null, "", urlFor(urlQ.current, id));
+    } else {
+      window.history.pushState(null, "", urlFor(urlQ.current, id));
+      placePushed.current = true;
+      fromCard.current = id;
+    }
+    setSelId(id);
+  }, []);
 
   /** 詳細を閉じる。積んだ履歴があればそれを戻る（popstate で閉じる） */
   const onBack = useCallback(() => {
@@ -382,7 +373,7 @@ export function MapApp() {
     run(query.trim() || "飲食店", { bounds: boundsRef.current, fit: false });
   };
 
-  const rank = selected ? topIds.indexOf(selected.place.id) + 1 : 0;
+  const rank = selected ? rankIds.indexOf(selected.place.id) + 1 : 0;
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-bg text-ink">
@@ -449,7 +440,7 @@ export function MapApp() {
                   : "Google マップのキーを設定すると実際の地図になります"
               }
               items={scored}
-              topIds={topIds}
+              rankIds={rankIds}
               selId={selId}
               hoverId={hoverId}
               onSelect={onSelect}
@@ -458,7 +449,7 @@ export function MapApp() {
           ) : (
             <GoogleMapView
               items={scored}
-              topIds={topIds}
+              rankIds={rankIds}
               selId={selId}
               hoverId={hoverId}
               fitKey={fitKey}
@@ -503,16 +494,12 @@ export function MapApp() {
                 busy={busy}
                 title={title}
                 status={status}
-                total={scored.length}
-                top={top}
-                others={others}
+                ranked={ranked}
                 prefs={prefs}
                 words={words}
                 hoverId={hoverId}
                 condOpen={condOpen}
-                othersOpen={othersOpen}
                 onCondOpen={setCondOpen}
-                onOthersOpen={setOthersOpen}
                 update={update}
                 onReset={onReset}
                 onSelect={onSelect}

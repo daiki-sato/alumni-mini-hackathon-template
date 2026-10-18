@@ -33,26 +33,29 @@ const TOKYO = { lat: 35.681, lng: 139.767 };
 /** 地図の読み込みがこれ以上かかったら、Google に届いていないとみなす */
 const LOAD_TIMEOUT_MS = 12_000;
 
-/** マーカーの中身を描き直す（要素は使い回す）。3軒は番号と点数、ほかは灰色の小さな点 */
+/** 上位いくつを大きなピンにするか（一覧の写真つきカードと同じ数） */
+const BIG_PINS = 3;
+
+/** マーカーの中身を描き直す（要素は使い回す）。上位3つは番号と点数の大きなピン、4位以下は番号だけの小さなピン */
 function paint(el: HTMLElement, s: Scored, rank: number): void {
-  if (rank) {
+  if (rank && rank <= BIG_PINS) {
     el.className = "jm-marker jm-marker-top";
     el.innerHTML = `<span class="jm-marker-no">${rank}</span><span class="jm-marker-score">${s.score}</span>`;
   } else {
-    el.className = "jm-marker jm-marker-dot";
-    el.innerHTML = "";
+    el.className = "jm-marker jm-marker-small";
+    el.textContent = rank ? String(rank) : "";
   }
 }
 
 function markerTitle(s: Scored, rank: number): string {
-  return `${rank ? `今日の3軒の${rank}番 ` : ""}${placeName(s.place)}（集まる度 ${s.score}・${verdict(s.score)}）`;
+  return `${rank ? `${rank}位 ` : ""}${placeName(s.place)}（集まる度 ${s.score}・${verdict(s.score)}）`;
 }
 
 type Entry = { m: Marker; el: HTMLElement; rank: number };
 
 export function GoogleMapView({
   items,
-  topIds,
+  rankIds,
   selId,
   hoverId,
   fitKey,
@@ -63,7 +66,7 @@ export function GoogleMapView({
   boundsRef,
 }: {
   items: Scored[];
-  topIds: string[];
+  rankIds: string[];
   selId: string | null;
   hoverId: string | null;
   fitKey: number;
@@ -154,7 +157,7 @@ export function GoogleMapView({
       const loc = s.place.location;
       if (!loc) continue;
       const id = s.place.id;
-      const rank = topIds.indexOf(id) + 1;
+      const rank = rankIds.indexOf(id) + 1;
       const position = { lat: loc.latitude, lng: loc.longitude };
       seen.add(id);
       let e = markers.current.get(id);
@@ -183,7 +186,7 @@ export function GoogleMapView({
       e.m.map = null;
       markers.current.delete(id);
     }
-  }, [ready, items, topIds]);
+  }, [ready, items, rankIds]);
 
   // 地図を外すときだけ、マーカーをすべて消す
   useEffect(() => {
@@ -195,16 +198,17 @@ export function GoogleMapView({
   }, []);
 
   // 選択とホバーは見た目のクラスと重なり順だけ付け替える。選択中は最前面に出す
-  // biome-ignore lint/correctness/useExhaustiveDependencies: items・topIds で描き直したあとも付け直す
+  // biome-ignore lint/correctness/useExhaustiveDependencies: items・rankIds で描き直したあとも付け直す
   useEffect(() => {
     for (const [id, e] of markers.current) {
       const sel = id === selId;
       const hot = id === hoverId;
       e.el.classList.toggle("is-sel", sel);
       e.el.classList.toggle("is-hot", hot);
+      // 上位ほど前に出す。選択中とホバー中はさらに前
       e.m.zIndex = sel ? 1000 : hot ? 500 : e.rank ? 100 - e.rank : 1;
     }
-  }, [selId, hoverId, items, topIds]);
+  }, [selId, hoverId, items, rankIds]);
 
   // 新しい検索結果に合わせて表示範囲を動かす
   // biome-ignore lint/correctness/useExhaustiveDependencies: fitKey が変わったときだけ動かす（items の並び替えでは動かさない）

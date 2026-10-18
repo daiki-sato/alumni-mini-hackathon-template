@@ -23,7 +23,7 @@ function seeded(seed: number) {
 export function DemoMapView({
   note,
   items,
-  topIds,
+  rankIds,
   selId,
   hoverId,
   onSelect,
@@ -31,7 +31,7 @@ export function DemoMapView({
 }: {
   note: string;
   items: Scored[];
-  topIds: string[];
+  rankIds: string[];
   selId: string | null;
   hoverId: string | null;
   onSelect: (id: string) => void;
@@ -103,8 +103,11 @@ export function DemoMapView({
     return { roads, blocks };
   }, [size]);
 
-  // 今日の3軒を後に描いて前に出す。選択中の店はいちばん最後（最前面）
-  const weight = (id: string) => (id === selId ? 4 : 0) + (topIds.includes(id) ? 2 : 0);
+  // 下位から描いて、上位ほど前に出す。選択中の店はいちばん最後（最前面）
+  const weight = (id: string) => {
+    const r = rankIds.indexOf(id);
+    return (id === selId ? 1000 : 0) + (r < 0 ? 0 : 100 - r);
+  };
   const order = items.slice().sort((a, b) => weight(a.place.id) - weight(b.place.id));
   const tip = items.find((s) => s.place.id === (hoverId ?? ""));
   const tipPt = tip ? pts.get(tip.place.id) : undefined;
@@ -142,9 +145,9 @@ export function DemoMapView({
           const p = pts.get(s.place.id);
           if (!p) return null;
           const id = s.place.id;
-          const rank = topIds.indexOf(id) + 1;
+          const rank = rankIds.indexOf(id) + 1;
           const sel = id === selId;
-          const label = `${placeName(s.place)}、集まる度${s.score}（${verdict(s.score)}）${rank ? `、今日の3軒の${rank}番` : ""}`;
+          const label = `${placeName(s.place)}、集まる度${s.score}（${verdict(s.score)}）${rank ? `、${rank}位` : ""}`;
           return (
             // biome-ignore lint/a11y/useSemanticElements: SVG の中なので <button> は置けない
             <g
@@ -169,7 +172,7 @@ export function DemoMapView({
               onBlur={() => onHover(null)}
             >
               <circle r={18} fill="transparent" />
-              {rank ? (
+              {rank && rank <= 3 ? (
                 <g className="pin-body">
                   <path d="M0 0 L-6 -9 H6 Z" fill="var(--accent)" />
                   <rect
@@ -208,13 +211,24 @@ export function DemoMapView({
                 </g>
               ) : (
                 <g className="pin-body">
+                  {/* 4位以下は番号だけの小さなピン */}
                   <circle
                     className="pin-focus"
-                    r={sel ? 7 : 5}
-                    fill="var(--pin-dot)"
-                    stroke={sel ? "var(--brand)" : "#fff"}
+                    r={9}
+                    fill="var(--surface)"
+                    stroke={sel ? "var(--brand)" : "var(--pin-dot)"}
                     strokeWidth={sel ? 4 : 1.5}
                   />
+                  <text
+                    y={3.5}
+                    textAnchor="middle"
+                    fontSize={10}
+                    fontWeight={700}
+                    fill="var(--ink)"
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {rank}
+                  </text>
                 </g>
               )}
             </g>
@@ -224,7 +238,7 @@ export function DemoMapView({
       {tip && tipPt && (
         <div
           className="anim-pop-in pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-brand px-2.5 py-1.5 text-on-brand text-xs shadow-e2"
-          style={{ left: tipPt.x, top: tipPt.y - (topIds.includes(tip.place.id) ? 40 : 14) }}
+          style={{ left: tipPt.x, top: tipPt.y - (rankIds.indexOf(tip.place.id) < 3 ? 40 : 14) }}
           role="status"
         >
           {placeName(tip.place)}

@@ -40,6 +40,11 @@
   --shadow-2: 0 2px 6px rgb(31 42 38 / 0.1), 0 8px 24px rgb(31 42 38 / 0.1);
   --focus: #1a73e8;
   --pin-dot: #8b948f;
+  /* 口コミの語の印（文字は濃い段階。背景との比は 4.5 以上） */
+  --mark-good-bg: #bfe6cf;
+  --mark-good-ink: #0f4a2c;
+  --mark-ng-bg: #f7c9bc;
+  --mark-ng-ink: #7a2412;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -83,6 +88,10 @@
     --shadow-2: 0 2px 6px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
     --focus: #8ab4f8;
     --pin-dot: #7d8781;
+    --mark-good-bg: #1f5c3e;
+    --mark-good-ink: #e3f8ec;
+    --mark-ng-bg: #6e2b1e;
+    --mark-ng-ink: #ffe6de;
   }
 }
 
@@ -158,6 +167,22 @@ body {
   transform-origin: top center;
 }
 
+/* 口コミの語の印（一覧のカードと詳細の口コミで同じ見た目） */
+.jm-mark-good,
+.jm-mark-ng {
+  border-radius: 4px;
+  padding: 0 3px;
+  font-weight: 500;
+}
+.jm-mark-good {
+  background: var(--mark-good-bg);
+  color: var(--mark-good-ink);
+}
+.jm-mark-ng {
+  background: var(--mark-ng-bg);
+  color: var(--mark-ng-ink);
+}
+
 /* Google マップの AdvancedMarker の中身 */
 .jm-marker {
   cursor: pointer;
@@ -199,13 +224,20 @@ body {
   color: var(--on-brand);
   font-size: 12px;
 }
-.jm-marker-dot {
-  /* 今日の3軒以外は目立たせない（帯の色分けはしない） */
-  width: 10px;
-  height: 10px;
+.jm-marker-small {
+  /* 4位以下は番号だけの小さなピン（上位3つより目立たせない） */
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
   border-radius: 999px;
-  background: var(--pin-dot);
-  border: 1.5px solid #fff;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1.5px solid var(--pin-dot);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
 }
 .jm-marker.is-hot,

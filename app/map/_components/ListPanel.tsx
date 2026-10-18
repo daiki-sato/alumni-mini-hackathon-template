@@ -4,13 +4,9 @@ import { useState } from "react";
 import { DEMO_TOWNS } from "@/lib/jibunmap/demo";
 import { placeName } from "@/lib/jibunmap/place";
 import {
-  AXES,
-  type AxisKey,
-  axisObj,
   band,
   constraintTags,
   keyQuote,
-  MAX_AXES,
   MAX_WORD_LENGTH,
   MAX_WORDS,
   type Scored,
@@ -133,13 +129,9 @@ function WordEditor({
 
 /* ---------- 条件カード ---------- */
 
-/** 畳んだときの1行の要約（例: 判断軸: うれしい多・NG少・口コミ自然／NG 8語） */
+/** 畳んだときの1行の要約（例: うれしいワード 9語／NG 8語） */
 export function prefsSummary(prefs: Prefs): string {
-  const axes = prefs.axes.flatMap((k) => {
-    const a = axisObj(k);
-    return a ? [a.s] : [];
-  });
-  return `判断軸: ${axes.join("・") || "なし"}／NG ${prefs.ng.length}語`;
+  return `うれしいワード ${prefs.good.length}語／NG ${prefs.ng.length}語`;
 }
 
 function ConditionCard({
@@ -155,19 +147,6 @@ function ConditionCard({
   open: boolean;
   onOpen: (v: boolean) => void;
 }) {
-  const [hint, setHint] = useState("");
-  const full = prefs.axes.length >= MAX_AXES;
-
-  function toggle(k: AxisKey) {
-    const on = prefs.axes.includes(k);
-    if (!on && full) {
-      setHint("判断軸は3つまで。1つ外すと別の軸を選べます。");
-      return;
-    }
-    setHint("");
-    update((p) => ({ ...p, axes: on ? p.axes.filter((x) => x !== k) : [...p.axes, k] }));
-  }
-
   return (
     <section className="min-w-0 rounded-3xl bg-surface-2 p-4" aria-labelledby="cond-title">
       <div className="flex items-center justify-between gap-3">
@@ -190,43 +169,7 @@ function ConditionCard({
 
       {open && (
         <div id="cond-body">
-          <div className="mt-3">
-            <div className="flex items-baseline justify-between">
-              <h3 className="font-bold text-sm">判断軸</h3>
-              <span className="text-muted text-xs tabular-nums">
-                {prefs.axes.length}/{MAX_AXES} 選択中
-              </span>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {AXES.map((a) => {
-                const on = prefs.axes.includes(a.k);
-                return (
-                  <button
-                    key={a.k}
-                    type="button"
-                    aria-pressed={on}
-                    aria-disabled={!on && full}
-                    onClick={() => toggle(a.k)}
-                    className={`h-8 rounded-full border px-3 text-[13px] transition-colors ${
-                      on
-                        ? "border-brand bg-brand text-on-brand"
-                        : `border-line bg-surface text-ink ${full ? "opacity-50" : "hover:bg-surface-3"}`
-                    }`}
-                  >
-                    {on && <span aria-hidden="true">✓ </span>}
-                    {a.l}
-                  </button>
-                );
-              })}
-            </div>
-            {hint && (
-              <p className="mt-1.5 text-lo text-xs" role="status">
-                {hint}
-              </p>
-            )}
-          </div>
-
-          <div className="mt-4 grid gap-4 border-line border-t pt-4">
+          <div className="mt-4 grid gap-4">
             <WordEditor
               title="うれしいワード"
               hint="口コミに出たら1語 +4（1人 +4・合計 +24 まで）"
@@ -299,8 +242,10 @@ function TopCard({
     ...constraintTags(s.signals).map((t) => ({ t, ng: false })),
   ].slice(0, 2);
   const kq = keyQuote(s);
+  const photo = s.place.photos?.[0];
+  const credit = !!photo?.authorAttributions.length;
   return (
-    <li className="w-[86%] min-w-0 shrink-0 snap-start md:w-auto">
+    <li className="relative min-w-0">
       <button
         type="button"
         data-place-card={s.place.id}
@@ -310,11 +255,15 @@ function TopCard({
           hot ? "border-brand ring-1 ring-brand" : "border-line"
         }`}
       >
-        <span className="relative size-16 shrink-0">
-          <PlacePhotoImg place={s.place} size="thumb" className="size-16 rounded-xl" />
-          <span className="absolute -top-1.5 -left-1.5 grid size-7 place-items-center rounded-full border-2 border-surface bg-accent font-bold text-on-accent text-sm tabular-nums">
-            {rank}
+        <span className="flex w-16 shrink-0 flex-col">
+          <span className="relative size-16">
+            <PlacePhotoImg place={s.place} size="thumb" className="size-16 rounded-xl" />
+            <span className="absolute -top-1.5 -left-1.5 grid size-7 place-items-center rounded-full border-2 border-surface bg-accent font-bold text-on-accent text-sm tabular-nums">
+              {rank}
+            </span>
           </span>
+          {/* 写真の帰属表示を置く場所（リンクはボタンの中に置けないので、下で重ねる） */}
+          {credit && <span className="h-4" aria-hidden="true" />}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate font-bold group-hover:underline">
@@ -356,12 +305,24 @@ function TopCard({
           </span>
         </span>
       </button>
-      <PhotoCredit photo={s.place.photos?.[0]} className="mt-0.5 px-1" />
+      {credit && (
+        // 写真の帰属表示（規約で必要）。カードの中、写真の直下に1行で
+        <PhotoCredit photo={photo} className="absolute bottom-2 left-3 w-16" />
+      )}
     </li>
   );
 }
 
-function Row({ s, hot, onSelect, onHover }: CardProps) {
+/** 4位以下の小さめの行。写真は出さない（写真は1枚ごとに課金されるため、上位3つだけ） */
+function Row({
+  s,
+  rank,
+  words,
+  hot,
+  onSelect,
+  onHover,
+}: CardProps & { rank: number; words: WordLists }) {
+  const kq = keyQuote(s);
   return (
     <li className="min-w-0">
       <button
@@ -369,19 +330,31 @@ function Row({ s, hot, onSelect, onHover }: CardProps) {
         data-place-card={s.place.id}
         onClick={() => onSelect(s.place.id)}
         {...hoverProps({ s, onHover })}
-        className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-surface-2 ${
+        className={`flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left hover:bg-surface-2 ${
           hot ? "bg-surface-2 ring-1 ring-brand" : ""
         }`}
       >
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-2 font-bold text-muted text-sm tabular-nums">
+          {rank}
+        </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm">{placeName(s.place)}</span>
+          <span className="block truncate text-[15px] md:text-sm">{placeName(s.place)}</span>
           <span className="block truncate text-muted text-xs">
-            {verdict(s.score)}・{s.place.primaryTypeDisplayName?.text ?? "飲食店"}
+            {s.place.primaryTypeDisplayName?.text ?? "飲食店"}
             {s.place.googleRank ? `・Google の検索結果では${s.place.googleRank}番目` : ""}
-            {s.signals.ng.length ? "・NGワードあり" : ""}
+          </span>
+          {kq?.quote && (
+            <span className="mt-0.5 block truncate text-xs">
+              「<Highlighted text={kq.quote} words={words} />」
+            </span>
+          )}
+        </span>
+        <span className="flex shrink-0 flex-col items-end gap-0.5">
+          <ScoreBadge v={s.score} />
+          <span className={`whitespace-nowrap font-bold text-[11px] ${BAND_TEXT[band(s.score)]}`}>
+            {verdict(s.score)}
           </span>
         </span>
-        <ScoreBadge v={s.score} />
       </button>
     </li>
   );
@@ -399,21 +372,20 @@ function Skeleton() {
 
 /* ---------- 一覧パネル ---------- */
 
+/** 上位いくつを、写真つきの大きめのカードにするか */
+export const BIG_CARDS = 3;
+
 export function ListPanel({
   demo,
   busy,
   title,
   status,
-  total,
-  top,
-  others,
+  ranked,
   prefs,
   words,
   hoverId,
   condOpen,
-  othersOpen,
   onCondOpen,
-  onOthersOpen,
   update,
   onReset,
   onSelect,
@@ -425,22 +397,20 @@ export function ListPanel({
   busy: string | null;
   title: string | null;
   status: { kind: "idle" | "loading" | "ok" } | { kind: "error"; message: string };
-  total: number;
-  top: Scored[];
-  others: Scored[];
+  /** 点数の高い順に並べた全件 */
+  ranked: Scored[];
   prefs: Prefs;
   words: WordLists;
   hoverId: string | null;
   condOpen: boolean;
-  othersOpen: boolean;
   onCondOpen: (v: boolean) => void;
-  onOthersOpen: (v: boolean) => void;
   update: (fn: (p: Prefs) => Prefs) => void;
   onReset: () => void;
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
   onPickExample: (q: string) => void;
 }) {
+  const total = ranked.length;
   // 読み上げ: 件数と検索の状態だけを、静かに伝える
   const live =
     status.kind === "loading"
@@ -448,10 +418,10 @@ export function ListPanel({
       : status.kind === "error"
         ? status.message
         : title
-          ? `${title}の店 ${total}軒。今日の3軒を出しました`
+          ? `${title}の店 ${total}軒を、点数の高い順に出しました`
           : "";
   return (
-    <div className="anim-panel-in grid min-w-0 grid-cols-1 gap-5 px-4 pt-3 pb-8 md:pt-4">
+    <div className="anim-panel-in grid min-w-0 grid-cols-1 gap-5 px-4 pt-3 pb-[calc(2rem+env(safe-area-inset-bottom))] md:pt-4">
       <header className="min-w-0">
         <p className="sr-only" aria-live="polite">
           {live}
@@ -466,7 +436,7 @@ export function ListPanel({
         ) : (
           <>
             <h1 className="font-bold text-xl">行きたい街を検索</h1>
-            <p className="mt-0.5 text-muted text-sm">
+            <p className="mt-0.5 text-[15px] text-muted md:text-sm">
               上の検索欄に「街 + 食べたいもの」を入れて検索。
             </p>
           </>
@@ -481,7 +451,8 @@ export function ListPanel({
         <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-accent-soft px-3 py-2 text-xs">
           <InfoIcon className="mt-px size-4 shrink-0 text-mid" />
           <span>
-            Google の順位（口コミの多さ・広告）ではなく、<b>あなたの条件</b>で並べています。
+            Google の順位（口コミの多さ・広告）ではなく、<b>あなたの条件</b>
+            で付けた点数の高い順に並べています。
           </span>
         </p>
       </header>
@@ -495,7 +466,7 @@ export function ListPanel({
                 type="button"
                 aria-pressed={title === t.name}
                 onClick={() => onPickExample(t.name)}
-                className={`h-8 shrink-0 rounded-full border px-3 text-[13px] ${
+                className={`h-10 shrink-0 rounded-full border px-3 text-[13px] md:h-8 ${
                   title === t.name
                     ? "border-accent bg-accent-soft font-bold"
                     : "border-line hover:bg-surface-2"
@@ -509,49 +480,69 @@ export function ListPanel({
         </nav>
       )}
 
+      <ConditionCard
+        prefs={prefs}
+        update={update}
+        onReset={onReset}
+        open={condOpen}
+        onOpen={onCondOpen}
+      />
+
       <section
         className="min-w-0"
-        aria-labelledby="top-title"
+        aria-labelledby="list-title"
         aria-busy={status.kind === "loading"}
       >
-        <h2 id="top-title" className="flex items-baseline gap-2 font-bold">
-          今日の3軒
-          <span className="font-normal text-muted text-xs">判断軸の合計が高い順</span>
+        <h2 id="list-title" className="font-bold">
+          点数の高い順
         </h2>
         <div className="mt-2">
           {status.kind === "loading" ? (
             <Skeleton />
           ) : status.kind === "error" ? (
             <p className="rounded-2xl bg-lo-soft p-4 text-lo text-sm">{status.message}</p>
-          ) : top.length ? (
-            // モバイルでは横にスクロールするカード、広い画面では縦に並べる
-            <ol className="scrollbar-none -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-1 md:overflow-visible md:px-0 md:pb-0">
-              {top.map((s, i) => (
-                <TopCard
-                  key={s.place.id}
-                  s={s}
-                  rank={i + 1}
-                  words={words}
-                  hot={hoverId === s.place.id}
-                  onSelect={onSelect}
-                  onHover={onHover}
-                />
-              ))}
+          ) : total ? (
+            <ol className="grid min-w-0 grid-cols-1 gap-2">
+              {ranked.map((s, i) =>
+                i < BIG_CARDS ? (
+                  <TopCard
+                    key={s.place.id}
+                    s={s}
+                    rank={i + 1}
+                    words={words}
+                    hot={hoverId === s.place.id}
+                    onSelect={onSelect}
+                    onHover={onHover}
+                  />
+                ) : (
+                  <Row
+                    key={s.place.id}
+                    s={s}
+                    rank={i + 1}
+                    words={words}
+                    hot={hoverId === s.place.id}
+                    onSelect={onSelect}
+                    onHover={onHover}
+                  />
+                ),
+              )}
             </ol>
           ) : (
             <div className="rounded-2xl bg-surface-2 p-4 text-sm">
               {title ? (
-                <p className="text-muted">この条件に合う店がありません。別の街で探してください。</p>
+                <p className="text-muted">店が見つかりませんでした。別の街で探してください。</p>
               ) : (
                 <>
-                  <p className="text-muted">検索すると、ここに3軒だけ出ます。例から試せます。</p>
+                  <p className="text-[15px] text-muted md:text-sm">
+                    検索すると、点数の高い順にここに並びます。例から試せます。
+                  </p>
                   <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="検索の例">
                     {LIVE_EXAMPLES.map((q) => (
                       <li key={q}>
                         <button
                           type="button"
                           onClick={() => onPickExample(q)}
-                          className="h-9 rounded-full border border-line bg-surface px-3.5 text-[13px] hover:bg-surface-3"
+                          className="h-10 rounded-full border border-line bg-surface px-3.5 text-[13px] hover:bg-surface-3"
                         >
                           {q}
                         </button>
@@ -565,49 +556,10 @@ export function ListPanel({
         </div>
       </section>
 
-      <ConditionCard
-        prefs={prefs}
-        update={update}
-        onReset={onReset}
-        open={condOpen}
-        onOpen={onCondOpen}
-      />
-
-      {others.length > 0 && status.kind === "ok" && (
-        <section className="min-w-0" aria-labelledby="others-title">
-          <h2 id="others-title" className="flex items-baseline gap-2 font-bold">
-            ほかの候補
-            <span className="font-normal text-muted text-xs">判断軸の合計が高い順</span>
-          </h2>
-          {othersOpen && (
-            <ul id="others-list" className="-mx-2 mt-1">
-              {others.map((s) => (
-                <Row
-                  key={s.place.id}
-                  s={s}
-                  hot={hoverId === s.place.id}
-                  onSelect={onSelect}
-                  onHover={onHover}
-                />
-              ))}
-            </ul>
-          )}
-          <button
-            type="button"
-            aria-expanded={othersOpen}
-            aria-controls="others-list"
-            onClick={() => onOthersOpen(!othersOpen)}
-            className="mt-2 h-9 rounded-full border border-line px-4 font-medium text-[13px] hover:bg-surface-2"
-          >
-            {othersOpen ? "たたむ" : `あと${others.length}軒を見る`}
-          </button>
-        </section>
-      )}
-
       <p className="text-[11px] text-muted leading-relaxed">
         {demo
           ? "サンプルのデータです。街・店名・口コミ・数値はすべて架空です。"
-          : "店舗情報と口コミ: Google マップ。並び順と集まる度はジブンマップが計算したものです。"}
+          : "店舗情報と口コミ・写真: Google マップ。並び順と点数はジブンマップが計算したものです。"}
       </p>
     </div>
   );
