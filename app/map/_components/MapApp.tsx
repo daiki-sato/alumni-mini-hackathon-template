@@ -1180,7 +1180,7 @@ export function MapApp() {
             ref={scrollRef}
             className={`md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain ${
               selected
-                ? "max-md:fixed max-md:inset-0 max-md:z-50 max-md:overflow-y-auto max-md:overscroll-contain max-md:bg-surface"
+                ? "max-md:fixed max-md:inset-0 max-md:z-50 max-md:w-full max-md:max-w-full max-md:overflow-x-clip max-md:overflow-y-auto max-md:overscroll-contain max-md:bg-surface"
                 : ""
             }`}
           >

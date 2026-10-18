@@ -42,7 +42,7 @@ function Chips({
   onToggle: (w: string) => void;
 }) {
   return (
-    <ul className="mt-3 flex flex-wrap gap-2">
+    <ul className="mt-3 flex min-w-0 flex-wrap gap-2">
       {all.map((w) => {
         const on = picked.includes(w);
         return (
@@ -163,7 +163,7 @@ export function Onboarding({
       aria-labelledby="onboard-title"
       className="fixed inset-0 z-[80] grid bg-black/40 md:place-items-center"
     >
-      <div className="flex h-full flex-col bg-surface text-ink md:h-auto md:max-h-[85dvh] md:w-[480px] md:rounded-3xl md:shadow-e2">
+      <div className="box-border flex h-full w-full min-w-0 max-w-full flex-col overflow-x-clip bg-surface text-ink md:h-auto md:max-h-[85dvh] md:w-[480px] md:rounded-3xl md:shadow-e2">
         <div className="flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-1">
           <span className="text-muted text-xs" aria-hidden="true">
             はじめの設定 {step + 1} / 3
@@ -189,7 +189,7 @@ export function Onboarding({
           <p className="mt-1 text-[15px] text-muted">{cur.body}</p>
           {cur.chips}
         </div>
-        <div className="flex items-center justify-between gap-2 border-line border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="flex items-center justify-between gap-2 border-line border-t bg-surface px-4 pt-3 pb-[max(16px,env(safe-area-inset-bottom))]">
           {step < 2 ? (
             <button
               type="button"

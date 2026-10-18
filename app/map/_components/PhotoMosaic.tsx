@@ -173,7 +173,7 @@ function PhotoGrid({ place, onClose }: { place: Place; onClose: () => void }) {
       role="dialog"
       aria-modal="true"
       aria-label={`${place.displayName?.text ?? "店"}のすべての写真`}
-      className="fixed inset-0 z-[90] flex flex-col bg-surface text-ink"
+      className="fixed inset-0 z-[90] box-border flex w-full max-w-full flex-col overflow-x-clip bg-surface text-ink"
     >
       <div className="flex items-center gap-1 border-line border-b px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
         <button

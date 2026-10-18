@@ -75,7 +75,7 @@ export function PhotoGallery({
       role="dialog"
       aria-modal="true"
       aria-label={`${place.displayName?.text ?? "店"}の写真`}
-      className="fixed inset-0 z-[100] flex flex-col bg-black text-white"
+      className="fixed inset-0 z-[100] box-border flex w-full max-w-full flex-col overflow-x-clip bg-black text-white"
       onTouchStart={(e) => {
         touchX.current = e.touches[0]?.clientX ?? null;
       }}
