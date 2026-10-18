@@ -378,16 +378,13 @@ export function ListPanel({
   onHover: (id: string | null) => void;
   onPickTown: (name: string) => void;
 }) {
-  const shown = top.length + others.length;
   return (
     <div className="anim-panel-in grid min-w-0 grid-cols-1 gap-5 px-4 pt-3 pb-8 md:pt-4">
       <header>
         {title ? (
           <>
             <h1 className="font-bold text-xl">{title}</h1>
-            <p className="mt-0.5 text-muted text-sm tabular-nums">
-              {shown === total ? `${total}軒` : `${total}軒中 ${shown}軒（ジャンルで絞り込み）`}
-            </p>
+            <p className="mt-0.5 text-muted text-sm tabular-nums">{total}軒</p>
           </>
         ) : (
           <>
@@ -458,7 +455,7 @@ export function ListPanel({
           ) : (
             <p className="rounded-2xl bg-surface-2 p-4 text-muted text-sm">
               {title
-                ? "この条件に合う店がありません。ジャンルを「すべて」に戻すか、別の街で探してください。"
+                ? "この条件に合う店がありません。別の街で探してください。"
                 : "検索すると、ここに3軒だけ出ます。"}
             </p>
           )}

@@ -38,16 +38,6 @@ function Preview() {
         <div className="h-7 flex-1 rounded-full bg-surface-2 px-3 text-[11px] text-muted leading-7">
           学生街 ラーメン
         </div>
-        <div className="hidden gap-1 sm:flex">
-          {["すべて", "ラーメン", "喫茶"].map((g, i) => (
-            <span
-              key={g}
-              className={`rounded-full border px-2 py-0.5 text-[10px] ${i === 1 ? "border-brand bg-brand text-on-brand" : "border-line"}`}
-            >
-              {g}
-            </span>
-          ))}
-        </div>
       </div>
       <div className="grid grid-cols-[1fr] sm:grid-cols-[46%_1fr]">
         <div className="grid content-start gap-2 p-3">

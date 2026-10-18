@@ -13,14 +13,7 @@ import {
 import { BROWSER_KEY, SearchLimitError, searchesLeft, searchPlaces } from "@/lib/jibunmap/google";
 import type { Bounds, Place } from "@/lib/jibunmap/place";
 import { placeName } from "@/lib/jibunmap/place";
-import {
-  computeTop,
-  GENRES,
-  type Genre,
-  matchesGenre,
-  type Scored,
-  scorePlace,
-} from "@/lib/jibunmap/score";
+import { computeTop, type Scored, scorePlace } from "@/lib/jibunmap/score";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
 import { GoogleMapView } from "./GoogleMapView";
@@ -42,7 +35,6 @@ export function MapApp() {
   const [places, setPlaces] = useState<Place[]>(() => (DEMO ? demoSearch(FIRST_DEMO_TOWN) : []));
   const [now, setNow] = useState(DEMO_NOW);
   const [status, setStatus] = useState<Status>({ kind: DEMO ? "ok" : "idle" });
-  const [genre, setGenre] = useState<Genre>("すべて");
   const [selId, setSelId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [fitKey, setFitKey] = useState(0);
@@ -54,11 +46,7 @@ export function MapApp() {
 
   const words = useMemo(() => ({ good: prefs.good, ng: prefs.ng }), [prefs.good, prefs.ng]);
   const scored = useMemo(() => places.map((p) => scorePlace(p, now, words)), [places, now, words]);
-  const candidates = useMemo(
-    () => scored.filter((s) => matchesGenre(s.place, genre)),
-    [scored, genre],
-  );
-  const ranked = useMemo(() => computeTop(candidates, prefs.axes), [candidates, prefs.axes]);
+  const ranked = useMemo(() => computeTop(scored, prefs.axes), [scored, prefs.axes]);
   const top = useMemo(() => ranked.slice(0, 3), [ranked]);
   const topIds = useMemo(() => top.map((s) => s.place.id), [top]);
   const others = useMemo(
@@ -129,7 +117,6 @@ export function MapApp() {
   const onSearch = useCallback(
     (q: string) => {
       if (!q.trim()) return;
-      setGenre("すべて");
       run(q, { fit: true });
     },
     [run],
@@ -141,7 +128,6 @@ export function MapApp() {
       const p = DEMO_PLACES.find((x) => x.id === id);
       const town = p ? DEMO_TOWNS.find((t) => id.startsWith(`demo-${t.id}-`)) : undefined;
       setQuery(town?.name ?? name);
-      setGenre("すべて");
       run(town?.name ?? name, { fit: true, select: id });
     },
     [run],
@@ -161,7 +147,7 @@ export function MapApp() {
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-bg text-ink">
-      <header className="relative z-30 flex flex-wrap items-center gap-x-3 gap-y-2 border-line border-b bg-surface px-3 py-2 md:flex-nowrap md:px-4">
+      <header className="relative z-30 flex items-center gap-3 border-line border-b bg-surface px-3 py-2 md:px-4">
         <Logo compact />
         <SearchBox
           demo={DEMO}
@@ -171,29 +157,9 @@ export function MapApp() {
           onPickPlace={onPickPlace}
           recent={recent}
         />
-        <nav
-          aria-label="ジャンル"
-          className="scrollbar-none order-last -mx-3 flex w-[calc(100%+1.5rem)] gap-1.5 overflow-x-auto px-3 md:order-none md:mx-0 md:w-auto md:px-0"
-        >
-          {GENRES.map((g) => (
-            <button
-              key={g}
-              type="button"
-              aria-pressed={genre === g}
-              onClick={() => setGenre(g)}
-              className={`h-8 shrink-0 rounded-full border px-3 text-[13px] transition-colors ${
-                genre === g
-                  ? "border-brand bg-brand text-on-brand"
-                  : "border-line bg-surface hover:bg-surface-2"
-              }`}
-            >
-              {g}
-            </button>
-          ))}
-        </nav>
         <Link
           href="/#how"
-          className="ml-auto shrink-0 rounded-full px-3 py-2 font-medium text-sm hover:bg-surface-2 md:ml-0"
+          className="shrink-0 rounded-full px-3 py-2 font-medium text-sm hover:bg-surface-2"
         >
           しくみ
         </Link>
@@ -220,7 +186,7 @@ export function MapApp() {
         >
           {DEMO ? (
             <DemoMapView
-              items={candidates}
+              items={scored}
               topIds={topIds}
               selId={selId}
               hoverId={hoverId}
@@ -229,7 +195,7 @@ export function MapApp() {
             />
           ) : (
             <GoogleMapView
-              items={candidates}
+              items={scored}
               topIds={topIds}
               selId={selId}
               hoverId={hoverId}

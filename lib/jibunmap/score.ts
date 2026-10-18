@@ -562,37 +562,6 @@ export function computeTop(cands: Scored[], axes: AxisKey[]): Scored[] {
     );
 }
 
-/* ---------- ジャンル ---------- */
-
-export const GENRES = ["すべて", "ラーメン", "喫茶", "定食", "餃子", "パン", "カレー"] as const;
-export type Genre = (typeof GENRES)[number];
-
-const GENRE_RULES: Record<Exclude<Genre, "すべて">, { types: string[]; words: string[] }> = {
-  ラーメン: {
-    types: ["ramen_restaurant"],
-    words: ["ラーメン", "らーめん", "中華そば", "麺", "つけ麺"],
-  },
-  喫茶: {
-    types: ["cafe", "coffee_shop", "tea_house"],
-    words: ["喫茶", "カフェ", "珈琲", "コーヒー"],
-  },
-  定食: { types: ["japanese_restaurant"], words: ["定食", "食堂", "ごはん", "とんかつ"] },
-  餃子: {
-    types: ["chinese_restaurant", "dumpling_restaurant"],
-    words: ["餃子", "ぎょうざ", "ギョーザ"],
-  },
-  パン: { types: ["bakery"], words: ["パン", "ベーカリー"] },
-  カレー: { types: ["indian_restaurant"], words: ["カレー", "スパイス"] },
-};
-
-export function matchesGenre(p: Place, g: Genre): boolean {
-  if (g === "すべて") return true;
-  const rule = GENRE_RULES[g];
-  if (p.primaryType && rule.types.includes(p.primaryType)) return true;
-  const text = `${p.displayName?.text ?? ""} ${p.primaryTypeDisplayName?.text ?? ""}`;
-  return rule.words.some((w) => text.includes(w));
-}
-
 /**
  * 決め手の口コミ一文。うれしいワードがいちばん多く出た一文を選ぶ（なければ null）
  */
