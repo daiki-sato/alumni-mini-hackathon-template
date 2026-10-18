@@ -39,7 +39,8 @@ import { DetailPanel } from "./DetailPanel";
 import { GoogleMapView } from "./GoogleMapView";
 import { InfoIcon, ListIcon, MapIcon, MyLocationIcon, SearchIcon, TuneIcon } from "./Icons";
 import { ListPanel, PeekCard } from "./ListPanel";
-import { PrefsSheet } from "./PrefsSheet";
+import { Onboarding, onboardingDone } from "./Onboarding";
+import { MinScoreSlider, PrefsSheet } from "./PrefsSheet";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_PREFS, usePrefs } from "./usePrefs";
 
@@ -123,6 +124,13 @@ export function MapApp() {
   const [fitKey, setFitKey] = useState(0);
   const [moved, setMoved] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
+  /** 上の帯の「◯点以上」から開く、最低点のスライダー */
+  const [minOpen, setMinOpen] = useState(false);
+  /** 初めて使う人だけに出す、3ステップの設定 */
+  const [onboardOpen, setOnboardOpen] = useState(false);
+  useEffect(() => {
+    if (!onboardingDone()) setOnboardOpen(true);
+  }, []);
   /** 「並びが変わりました」などの短い知らせ */
   const [toast, setToast] = useState<string | null>(null);
   /** 現在地。state にだけ持つ（localStorage・URL・ログには残さない） */
@@ -756,9 +764,10 @@ export function MapApp() {
             しくみ
           </Link>
         </header>
-        <div className="flex flex-wrap items-center gap-2 border-line border-b bg-surface py-1.5 md:flex-nowrap pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(0.75rem,env(safe-area-inset-left))] md:px-4">
+        {/* 「誰と」「最低点」「ジャンル」を1行の横スクロールにまとめる（スマホで高さを取らない） */}
+        <div className="scrollbar-none flex items-center gap-2 overflow-x-auto border-line border-b bg-surface py-1.5 pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(0.75rem,env(safe-area-inset-left))] md:px-4">
           {/* ひとりで／友だちと。押すとすぐ並び直す（再検索しない） */}
-          <fieldset className="flex rounded-full bg-surface-2 p-0.5">
+          <fieldset className="flex shrink-0 rounded-full bg-surface-2 p-0.5">
             <legend className="sr-only">誰と行くか</legend>
             {(
               [
@@ -771,7 +780,7 @@ export function MapApp() {
                 type="button"
                 aria-pressed={scene === v}
                 onClick={() => changeScene(v)}
-                className={`h-10 rounded-full px-4 font-medium text-sm transition-colors md:h-8 ${
+                className={`h-10 whitespace-nowrap rounded-full px-3.5 font-medium text-sm transition-colors md:h-8 ${
                   scene === v ? "bg-brand text-on-brand shadow-e1" : "text-muted hover:text-ink"
                 }`}
               >
@@ -779,41 +788,65 @@ export function MapApp() {
               </button>
             ))}
           </fieldset>
+          <button
+            type="button"
+            aria-expanded={minOpen}
+            aria-controls="min-score-bar"
+            onClick={() => setMinOpen((v) => !v)}
+            className={`h-10 shrink-0 whitespace-nowrap rounded-full border px-3.5 font-medium text-[13px] tabular-nums md:h-8 ${
+              prefs.minScore
+                ? "border-brand bg-brand text-on-brand"
+                : "border-line hover:bg-surface-2"
+            }`}
+          >
+            {prefs.minScore ? `${prefs.minScore}点以上` : "点数: すべて"}
+          </button>
           {(places.length > 0 || title) && (
-            <nav
-              aria-label="ジャンルで絞り込む"
-              className="scrollbar-none -mx-3 flex min-w-0 gap-1.5 overflow-x-auto px-3 max-md:w-[calc(100%+1.5rem)] md:mx-0 md:flex-1 md:px-0"
-            >
-              {[{ key: "", label: "すべて", have: true }, ...genreButtons].map((c) => {
-                const on = (genre ?? "") === c.key;
-                return (
-                  <button
-                    key={c.key || "all"}
-                    type="button"
-                    aria-pressed={on}
-                    title={c.have ? undefined : "今の結果にないので、このジャンルで検索し直します"}
-                    onClick={() => {
-                      if (!c.key || on) changeGenre(null);
-                      else if (c.have) changeGenre(c.key);
-                      // 結果にないジャンルは、今の街＋ジャンルで検索し直す（1リクエスト）
-                      else searchGenre(c.key);
-                    }}
-                    className={`h-10 shrink-0 rounded-full border px-3.5 text-[13px] transition-colors md:h-8 ${
-                      on
-                        ? "border-brand bg-brand font-bold text-on-brand"
-                        : "border-line bg-surface hover:bg-surface-2"
-                    }`}
-                  >
-                    {c.label}
-                    {!c.have && (
-                      <SearchIcon className="ml-1 inline size-3.5 align-[-2px] opacity-60" />
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
+            <>
+              <span className="h-6 w-px shrink-0 bg-line" aria-hidden="true" />
+              <nav aria-label="ジャンルで絞り込む" className="flex shrink-0 gap-1.5">
+                {[{ key: "", label: "すべて", have: true }, ...genreButtons].map((c) => {
+                  const on = (genre ?? "") === c.key;
+                  return (
+                    <button
+                      key={c.key || "all"}
+                      type="button"
+                      aria-pressed={on}
+                      title={
+                        c.have ? undefined : "今の結果にないので、このジャンルで検索し直します"
+                      }
+                      onClick={() => {
+                        if (!c.key || on) changeGenre(null);
+                        else if (c.have) changeGenre(c.key);
+                        // 結果にないジャンルは、今の街＋ジャンルで検索し直す（1リクエスト）
+                        else searchGenre(c.key);
+                      }}
+                      className={`h-10 shrink-0 whitespace-nowrap rounded-full border px-3.5 text-[13px] transition-colors md:h-8 ${
+                        on
+                          ? "border-brand bg-brand font-bold text-on-brand"
+                          : "border-line bg-surface hover:bg-surface-2"
+                      }`}
+                    >
+                      {c.label}
+                      {!c.have && (
+                        <SearchIcon className="ml-1 inline size-3.5 align-[-2px] opacity-60" />
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </>
           )}
         </div>
+        {minOpen && (
+          <div id="min-score-bar" className="border-line border-b bg-surface px-4 pb-3">
+            <MinScoreSlider
+              id="min-score-inline"
+              value={prefs.minScore}
+              onChange={(minScore) => update((p) => ({ ...p, minScore }))}
+            />
+          </div>
+        )}
       </div>
 
       {fellBack ? (
@@ -990,6 +1023,8 @@ export function MapApp() {
                 ]
                   .filter(Boolean)
                   .join("・")}
+                onClearGenre={genre ? () => changeGenre(null) : null}
+                onSolo={scene === "friends" ? () => changeScene("solo") : null}
                 onShowAll={() => {
                   setShowAll(true);
                   changeGenre(null);
@@ -1021,6 +1056,16 @@ export function MapApp() {
         update={update}
         onReset={onReset}
         onClose={closePrefs}
+        onRestart={() => {
+          closePrefs();
+          setOnboardOpen(true);
+        }}
+      />
+      <Onboarding
+        open={onboardOpen}
+        prefs={prefs}
+        update={update}
+        onClose={() => setOnboardOpen(false)}
       />
       <div
         aria-live="polite"

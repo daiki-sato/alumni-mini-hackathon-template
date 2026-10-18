@@ -173,7 +173,10 @@ export function PrefsSheet({
   update,
   onReset,
   onClose,
+  onRestart,
 }: {
+  /** はじめの設定をやり直す */
+  onRestart: () => void;
   open: boolean;
   prefs: Prefs;
   update: (fn: (p: Prefs) => Prefs) => void;
@@ -248,13 +251,22 @@ export function PrefsSheet({
             />
           </div>
           <div className="mt-5 flex justify-between gap-2">
-            <button
-              type="button"
-              onClick={onReset}
-              className="h-10 rounded-full px-4 text-muted text-sm hover:bg-surface-2"
-            >
-              初期値に戻す
-            </button>
+            <div className="flex flex-wrap gap-1">
+              <button
+                type="button"
+                onClick={onReset}
+                className="h-10 rounded-full px-4 text-muted text-sm hover:bg-surface-2"
+              >
+                初期値に戻す
+              </button>
+              <button
+                type="button"
+                onClick={onRestart}
+                className="h-10 rounded-full px-4 text-muted text-sm hover:bg-surface-2"
+              >
+                はじめの設定をやり直す
+              </button>
+            </div>
             <button
               type="button"
               onClick={onClose}

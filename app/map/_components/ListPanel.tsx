@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { DEMO_TOWNS } from "@/lib/jibunmap/demo";
 import { OPEN_LABEL, openStatus } from "@/lib/jibunmap/hours";
 import { type Place, placeName } from "@/lib/jibunmap/place";
@@ -16,7 +15,6 @@ import { LIVE_EXAMPLES } from "@/lib/jibunmap/suggest";
 import { Highlighted } from "./Highlighted";
 import { CloseIcon, InfoIcon, MyLocationIcon, SearchIcon } from "./Icons";
 import { PhotoCredit, PlacePhotoImg } from "./PlacePhotoImg";
-import { MinScoreSlider } from "./PrefsSheet";
 
 export const BAND_TEXT = { hi: "text-hi", mid: "text-mid", lo: "text-lo" } as const;
 export const BAND_BG = { hi: "bg-hi-soft", mid: "bg-mid-soft", lo: "bg-lo-soft" } as const;
@@ -307,6 +305,8 @@ export function ListPanel({
   onNear,
   minScore,
   onMinScore,
+  onClearGenre,
+  onSolo,
   hidden,
   hiddenWhy,
   onShowAll,
@@ -335,6 +335,10 @@ export function ListPanel({
   /** 表示する最低点（0 なら全部） */
   minScore: number;
   onMinScore: (v: number) => void;
+  /** ジャンルの絞り込みを外す */
+  onClearGenre: (() => void) | null;
+  /** 「ひとりで」に戻す（友だちとのときだけ。それ以外は null） */
+  onSolo: (() => void) | null;
   /** 最低点で隠している件数（一時的に全部出しているときは 0） */
   hidden: number;
   /** 隠している理由（例: ほかのジャンル・60点未満） */
@@ -350,7 +354,6 @@ export function ListPanel({
   /** 地図のいまの範囲で探し直す（範囲がまだないときは null） */
   onSearchArea: (() => void) | null;
 }) {
-  const [sliderOpen, setSliderOpen] = useState(false);
   const total = ranked.length;
   // 読み上げ: 件数と検索の状態だけを、静かに伝える
   const live =
@@ -441,21 +444,7 @@ export function ListPanel({
               <span className="ml-1.5 font-normal text-muted text-sm">・{genreLabel}</span>
             )}
           </h2>
-          <button
-            type="button"
-            aria-expanded={sliderOpen}
-            aria-controls="min-score-inline-box"
-            onClick={() => setSliderOpen((v) => !v)}
-            className="inline-flex h-10 items-center rounded-full border border-line px-3.5 font-medium text-[13px] tabular-nums hover:bg-surface-2 md:h-8"
-          >
-            {minScore ? `${minScore}点以上` : "すべての点数"}
-          </button>
         </div>
-        {sliderOpen && (
-          <div id="min-score-inline-box" className="rounded-2xl bg-surface-2 px-3 pb-3">
-            <MinScoreSlider id="min-score-inline" value={minScore} onChange={onMinScore} />
-          </div>
-        )}
         {hidden > 0 && status.kind === "ok" && (
           <button
             type="button"
@@ -509,12 +498,42 @@ export function ListPanel({
                     このジャンルで検索し直す
                   </button>
                 </>
+              ) : title && hidden > 0 ? (
+                // 最低点・ジャンル・友だちとの組み合わせで全部隠れたとき: 当てはまる戻し方だけを出す
+                <>
+                  <p className="text-muted">いまの絞り込みでは、出せる店がありません。</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {minScore > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => onMinScore(0)}
+                        className="h-10 rounded-full bg-brand px-4 font-bold text-on-brand text-sm hover:opacity-90"
+                      >
+                        最低点を下げる
+                      </button>
+                    )}
+                    {genreLabel && onClearGenre && (
+                      <button
+                        type="button"
+                        onClick={onClearGenre}
+                        className="h-10 rounded-full border border-line bg-surface px-4 font-medium text-sm hover:bg-surface-3"
+                      >
+                        ジャンルを外す
+                      </button>
+                    )}
+                    {onSolo && (
+                      <button
+                        type="button"
+                        onClick={onSolo}
+                        className="h-10 rounded-full border border-line bg-surface px-4 font-medium text-sm hover:bg-surface-3"
+                      >
+                        ひとりでに戻す
+                      </button>
+                    )}
+                  </div>
+                </>
               ) : title ? (
-                <p className="text-muted">
-                  {hidden > 0
-                    ? `${minScore}点以上の店はありません。最低点を下げるか、上のボタンで全部表示できます。`
-                    : "店が見つかりませんでした。別の街で探してください。"}
-                </p>
+                <p className="text-muted">店が見つかりませんでした。別の街で探してください。</p>
               ) : (
                 <>
                   <p className="text-[15px] text-muted md:text-sm">
