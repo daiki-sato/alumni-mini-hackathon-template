@@ -36,6 +36,7 @@ import {
   wordsForScene,
 } from "@/lib/jibunmap/score";
 import { foodQuery, nearbyQueries } from "@/lib/jibunmap/suggest";
+import { popAction } from "@/lib/jibunmap/url-state";
 import { visibleTimeout } from "@/lib/jibunmap/visible-timer";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
@@ -205,12 +206,19 @@ export function MapApp() {
   const boundsRef = useRef<Bounds | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searching = useRef(false);
+  /** 戻る/進むで結果を戻している途中 */
+  const popRestoring = useRef(false);
   type RunOpts = {
     bounds?: Bounds;
     fit: boolean;
     select?: string;
     /** 現在地のまわりで探す（位置は state にだけ持ち、URL や保存には残さない） */
     near?: LatLngLiteral;
+    /**
+     * 履歴の積み方。ふつうの検索は push（戻るで前の検索に戻れる）。起動時・戻る/進む・再試行・
+     * エリアの再検索は replace（履歴を増やさない。戻る/進むで履歴が増え続けないように）
+     */
+    history?: "push" | "replace";
   };
   /** 検索中に来た、いちばん新しい検索（古い保留は上書きして捨てる） */
   const pending = useRef<{ q: string; opts: RunOpts } | null>(null);
@@ -388,13 +396,20 @@ export function MapApp() {
       placePushed.current = false;
       // 現在地のまわりの検索は URL に語を載せない（再読み込みで、位置なしの検索にならないように）
       if (!opts.bounds) urlQ.current = opts.near ? "" : q;
+      // 戻る/進むで結果を戻している途中か（1回の検索で使い切る）
+      const restoring = popRestoring.current;
+      popRestoring.current = false;
       const found0 = (found: Place[]) => {
         const sel = opts.select && found.some((p) => p.id === opts.select) ? opts.select : null;
         // 検索したらリストを出す（エリアの再検索は地図のまま）。起動時の URL に view があればそれ
         if (!opts.bounds) setView(bootView.current ?? "list");
         bootView.current = null;
         setPeekId(null);
-        window.history.replaceState(null, "", urlFor(urlQ.current, sel, urlExtra.current));
+        const url = urlFor(urlQ.current, sel, urlExtra.current);
+        if (opts.history === "replace" || opts.bounds) window.history.replaceState(null, "", url);
+        else window.history.pushState(null, "", url);
+        // 戻る/進むで詳細つきの URL に戻ったときは、閉じるときも戻るで戻れるようにする
+        placePushed.current = restoring && !!sel;
         if (sel) setSelId(sel);
       };
       if (demoRef.current) {
@@ -482,7 +497,7 @@ export function MapApp() {
       const dq = sp.get("q")?.trim() || FIRST_DEMO_TOWN;
       const q0 = demoSearch(dq).length ? dq : FIRST_DEMO_TOWN;
       setQuery(q0);
-      run(q0, { fit: true });
+      run(q0, { fit: true, history: "replace" });
       return;
     }
     const v = sp.get("view");
@@ -508,7 +523,7 @@ export function MapApp() {
       return;
     }
     setQuery(q);
-    run(q, { fit: true, select: sp.get("place") ?? undefined });
+    run(q, { fit: true, select: sp.get("place") ?? undefined, history: "replace" });
   }, [run, setScene, setGenre, setDemo]);
 
   /** デモから Google に戻してもう一度探す */
@@ -522,7 +537,7 @@ export function MapApp() {
     const last = lastLive.current;
     if (last?.q.trim()) {
       setQuery(last.near ? "" : last.q);
-      run(last.q, { fit: true, select: last.select, near: last.near });
+      run(last.q, { fit: true, select: last.select, near: last.near, history: "replace" });
     } else {
       setQuery("");
     }
@@ -685,7 +700,22 @@ export function MapApp() {
   // ブラウザの戻る・進む: URL の place に合わせて詳細を開け閉めする（ここでは履歴を積まない）
   useEffect(() => {
     const onPop = () => {
-      const place = new URLSearchParams(window.location.search).get("place");
+      const act = popAction(window.location.search, urlQ.current);
+      const st = act.state;
+      setScene(st.scene);
+      if (st.view) setView(st.view);
+      if (act.kind === "search") {
+        // URL の検索語が今の結果と違う: その語で結果を戻す。キャッシュ（10分）にあれば費用なし、
+        // なければ検索し直す（1日の上限に数える）。履歴は増やさない
+        setGenre(st.genre);
+        keepGenreOnce.current = true;
+        popRestoring.current = true;
+        setQuery(st.q);
+        runRef.current(st.q, { fit: true, select: st.place ?? undefined, history: "replace" });
+        return;
+      }
+      setGenre(st.genre);
+      const place = st.place;
       if (place && placesRef.current.some((p) => p.id === place)) {
         placePushed.current = true;
         setSelId(place);
@@ -696,7 +726,7 @@ export function MapApp() {
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, []);
+  }, [setScene, setView, setGenre]);
 
   // Escape で一覧に戻る（検索欄などで打っているときは除く）
   useEffect(() => {
