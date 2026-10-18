@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { photoAllowed } from "@/lib/jibunmap/google";
 import type { Place, PlacePhoto } from "@/lib/jibunmap/place";
 
@@ -41,7 +41,8 @@ export function PhotoCredit({ photo, className = "" }: { photo?: PlacePhoto; cla
 }
 
 /**
- * 店の写真1枚。画像を1枚読むごとに課金されるので、上位3つのサムネイルと詳細（最大4枚）だけで使う。
+ * 店の写真1枚。画像を1枚読むごとに課金されるので、上位3つのサムネイルと詳細・拡大でだけ使う。
+ * 画面に入ってから初めて上限を確かめて読む（見ない写真は数えず、読みもしない）。
  * セッションの上限を超えたら、写真の代わりにジャンルのアイコンを出す
  */
 export function PlacePhotoImg({
@@ -53,17 +54,34 @@ export function PlacePhotoImg({
 }: {
   place: Place;
   index?: number;
-  size: "thumb" | "large";
+  size: "thumb" | "large" | "full";
   className?: string;
   /** 写真の下に帰属表示を出すか（サムネイルでは呼ぶ側がまとめて出す） */
   credit?: boolean;
 }) {
   const photo = place.photos?.[index];
-  const url = photo ? (size === "thumb" ? photo.thumb : photo.large) : null;
-  // 上限の確認は URL ごとに1回（描画のたびに数え直さない）
-  const ok = useMemo(() => (url ? photoAllowed(url) : false), [url]);
-  const [state, setState] = useState<"loading" | "done" | "failed">("loading");
-  if (!url || !ok || state === "failed") {
+  const url = photo ? photo[size] : null;
+  const ref = useRef<HTMLElement>(null);
+  // "wait": 画面の外 → "loading": 読み込み中 → "done" / "failed"（上限超えも failed）
+  const [state, setState] = useState<"wait" | "loading" | "done" | "failed">("wait");
+
+  // 画面に入ったら、上限を確かめてから読む
+  useEffect(() => {
+    const el = ref.current;
+    if (!url || !el) return;
+    const io = new IntersectionObserver(
+      (es) => {
+        if (!es.some((e) => e.isIntersecting)) return;
+        io.disconnect();
+        setState(photoAllowed(url) ? "loading" : "failed");
+      },
+      { rootMargin: "120px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [url]);
+
+  if (!url || state === "failed") {
     return (
       <span
         className={`grid place-items-center bg-surface-2 ${size === "thumb" ? "text-2xl" : "text-5xl"} ${className}`}
@@ -75,18 +93,21 @@ export function PlacePhotoImg({
   }
   return (
     <figure
-      className={`relative m-0 overflow-hidden bg-surface-2 ${state === "loading" ? "jm-shimmer" : ""} ${className}`}
+      ref={ref}
+      className={`relative m-0 overflow-hidden bg-surface-2 ${state !== "done" ? "jm-shimmer" : ""} ${className}`}
     >
-      {/* biome-ignore lint/performance/noImgElement: Places の写真 URL は外部のもので、next/image の remotePatterns（next.config）を変えないため */}
-      <img
-        src={url}
-        alt={`${place.displayName?.text ?? "店"}の写真`}
-        loading="lazy"
-        decoding="async"
-        onLoad={() => setState("done")}
-        onError={() => setState("failed")}
-        className={`size-full object-cover transition-opacity ${state === "done" ? "opacity-100" : "opacity-0"}`}
-      />
+      {state !== "wait" && (
+        // biome-ignore lint/performance/noImgElement: Places の写真 URL は外部のもので、next/image の remotePatterns（next.config）を変えないため
+        <img
+          src={url}
+          alt={`${place.displayName?.text ?? "店"}の写真`}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setState("done")}
+          onError={() => setState("failed")}
+          className={`size-full transition-opacity ${size === "full" ? "object-contain" : "object-cover"} ${state === "done" ? "opacity-100" : "opacity-0"}`}
+        />
+      )}
       {credit && (
         <figcaption className="absolute inset-x-0 bottom-0 bg-black/45 px-2 py-0.5 [&_*]:text-white">
           <PhotoCredit photo={photo} />
