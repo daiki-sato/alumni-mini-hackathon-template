@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ウケイレノカケザン</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+body{font-size:15px;line-height:1.65}
+.wrap{max-width:560px;margin:0 auto;padding-top:12px;padding-bottom:48px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a{color:var(--ink)}
+.back{display:inline-block;font-size:13px;margin-bottom:8px;padding:4px 0}
+h1{font-family:var(--font-display);font-size:24px;margin:4px 0 6px;line-height:1.3}
+h2{font-family:var(--font-display);font-size:17px;margin:26px 0 8px}
+.lead{color:var(--muted);font-size:13px;margin:0 0 12px}
+.hyp{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.55;margin-bottom:12px}
+.hyp dl{margin:0;display:grid;grid-template-columns:5.2em 1fr;gap:2px 8px}
+.hyp dt{color:var(--muted)}
+.hyp dd{margin:0}
+.hyp .ok{color:var(--ok);font-weight:700}
+.hyp .ng{color:var(--ng);font-weight:700}
+.samplebar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:12px;color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:6px 10px;margin-bottom:12px}
+.samplebar #sampleLabel{margin-right:auto}
+.confirm{border:2px solid var(--signal);background:var(--surface);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+.confirm p{margin:0 0 8px}
+.confirm[hidden]{display:none}
+.btn{font:inherit;font-size:14px;min-height:44px;padding:6px 14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;cursor:pointer}
+.btn.small{min-height:36px;font-size:12px;padding:4px 10px}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+.btn:disabled{opacity:.45;cursor:default}
+.btn[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.btn:focus-visible,input:focus-visible,summary:focus-visible,[tabindex]:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:12px 14px;margin:12px 0}
+.board .cap{font-size:12px;opacity:.85;margin:0 0 2px}
+.board .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:34px;line-height:1.2}
+.board .num small{font-size:14px;margin-left:4px}
+.board .row{display:flex;flex-wrap:wrap;gap:4px 18px;align-items:flex-end}
+.note{font-size:12px;color:var(--muted);margin:6px 0}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.legend5{font-size:12px;color:var(--muted);margin:0 0 8px;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:1px 10px}
+.legend5 b{font-family:var(--font-mono);color:var(--ink)}
+.hdr,.mrow{display:grid;grid-template-columns:84px repeat(5,1fr);gap:4px;align-items:center}
+.hdr{font-size:11px;color:var(--muted);text-align:center;margin-bottom:4px}
+.scene{border-top:1px solid var(--line);padding:8px 0}
+.mrow .sn{font-size:13px;line-height:1.35}
+.cell{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:15px;font-weight:600;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);cursor:pointer;padding:0}
+.cell[data-v="0"]{background:var(--ng);color:var(--surface);border-color:var(--ng)}
+.cell[data-v="1"]{background:var(--ok);color:var(--surface);border-color:var(--ok)}
+.cell[data-v="0.5"]{background:var(--surface);color:var(--ink);border:2px solid var(--signal)}
+.cell:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.res{display:grid;grid-template-columns:84px 1fr 1fr 1fr;gap:4px;margin-top:6px;align-items:center;font-size:12px}
+.res .m{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:13px}
+.res .lb{color:var(--muted);font-size:11px;display:block}
+.felt{display:flex;gap:4px}
+.felt .btn{min-height:34px;padding:2px 1px;font-size:12px;flex:1}
+.mk{font-size:11px;margin-left:4px}
+.mk.y{color:var(--ok)}.mk.n{color:var(--ng)}
+.sum2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.verdict{font-size:14px;margin:8px 0}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<h1>ウケイレノカケザン</h1>
+<p class="lead">5つの条件を0・0.5・1で置き、掛け算と足し算を見比べる。</p>
+<div class="hyp" aria-label="仮説カード"><dl>
+<dt>視点</dt><dd>自己理解（自分の境界と、制御できる／できないを知る）</dd>
+<dt>具体／抽象</dt><dd>抽象</dd>
+<dt>仮説</dt><dd>受け入れられるかどうかは条件の掛け算で決まり、1つでも0があると受け入れられない。</dd>
+<dt>確かめること</dt><dd><span class="ok">当たり</span>＝0がある場面がちょうど嫌な場面と一致する<br><span class="ng">外れ</span>＝0があっても平気な場面がある</dd>
+</dl></div>
+<div class="samplebar"><span id="sampleLabel">サンプルデータで表示中</span><button class="btn small" id="btnClear" type="button">サンプルを消して自分で使う</button><button class="btn small" id="btnReset" type="button">サンプルに戻す</button></div>
+<div class="confirm" id="confirmBox" hidden role="alertdialog" aria-labelledby="confirmText"><p id="confirmText"></p><button class="btn small primary" id="confirmYes" type="button">はい、実行する</button> <button class="btn small" id="confirmNo" type="button">やめる</button></div>
+
+<h2>条件を置く</h2>
+<p class="note">マスを押すと 0 → 0.5 → 1 の順に変わる。0は赤、1は緑。</p>
+<ul class="legend5">
+  <li><b>自分</b> 自分で決めた</li>
+  <li><b>見返り</b> 待つ見返りがある</li>
+  <li><b>終わり</b> 終わりが見える</li>
+  <li><b>やめる</b> いつでもやめられる</li>
+  <li><b>近さ</b> 近さに理由がある</li>
+</ul>
+<div class="hdr" aria-hidden="true"><span></span><span>自分</span><span>見返り</span><span>終わり</span><span>やめる</span><span>近さ</span></div>
+<div id="scenes"></div>
+
+<h2>どちらが実感に合うか</h2>
+<p class="note">各場面の「実感」を、平気か無理かで押しておく。掛け算は「0があれば無理、なければ平気」、足し算は「平均が0.5未満なら無理」と読んで、実感と合うかを数える。</p>
+<div class="board" aria-live="polite">
+  <p class="cap">実感と合った場面の数（実感を押した場面のうち）</p>
+  <div class="row">
+    <div><p class="cap">掛け算</p><div class="num" id="nMul">--</div></div>
+    <div><p class="cap">足し算</p><div class="num" id="nAdd">--</div></div>
+  </div>
+</div>
+<p class="verdict" id="verdict"></p>
+<p class="note">「0がある場面」と「無理な場面」が一致するかを見る。0があるのに平気と押した場面が出れば、仮説は外れ側。</p>
+
+<script>
+const KEY='hack3-g8-5-v1';
+const SCENES=['ラーメンの列','満員電車','予約なしの接骨院','待ち合わせ','列で詰めてくる人'];
+const SAMPLE_V=[[1,1,1,0.5,0.5],[0.5,0,1,0,0],[1,0.5,0,1,1],[0.5,0.5,1,1,1],[0,0,0.5,0.5,0]];
+const SAMPLE_F=['ok','ng','ng','ok','ng'];
+function sampleState(){return {sample:true,v:SAMPLE_V.map(r=>r.slice()),f:SAMPLE_F.slice()}}
+function emptyState(){return {sample:false,v:SCENES.map(()=>[0.5,0.5,0.5,0.5,0.5]),f:SCENES.map(()=>'')}}
+let state=(function(){try{const r=localStorage.getItem(KEY);const o=r?JSON.parse(r):null;return o&&o.v&&o.v.length===5&&o.f&&o.f.length===5?o:null}catch(e){return null}})();
+if(!state){state=sampleState()}
+const $=id=>document.getElementById(id);
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function loadState(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null}catch(e){return null}}
+function saveState(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+let pendingYes=null;
+function askConfirm(text,fn){$('confirmText').textContent=text;$('confirmBox').hidden=false;pendingYes=fn;$('confirmYes').focus()}
+function wireSample(onClear,onReset){
+  $('btnClear').addEventListener('click',()=>askConfirm('サンプルを消して、空の状態から始めます。',onClear));
+  $('btnReset').addEventListener('click',()=>askConfirm('サンプルの状態に戻します。いまの内容は消えます。',onReset));
+  $('confirmYes').addEventListener('click',()=>{$('confirmBox').hidden=true;const f=pendingYes;pendingYes=null;if(f)f()});
+  $('confirmNo').addEventListener('click',()=>{$('confirmBox').hidden=true;pendingYes=null});
+}
+function setSampleLabel(is){$('sampleLabel').textContent=is?'サンプルデータで表示中':'自分のデータ（空から開始）'}
+
+const SHORT=['自分で決めた','待つ見返り','終わりが見える','いつでもやめられる','近さに理由'];
+function nextV(v){return v===0?0.5:v===0.5?1:0}
+function prod(r){return r.reduce((a,b)=>a*b,1)}
+function sum(r){return r.reduce((a,b)=>a+b,0)}
+function mulSays(r){return prod(r)===0?'ng':'ok'}
+function addSays(r){return sum(r)/5<0.5?'ng':'ok'}
+function fmt(x){return (Math.round(x*100)/100).toString()}
+function mk(says,felt){if(!felt)return '';return says===felt?'<span class="mk y">合う</span>':'<span class="mk n">ずれ</span>'}
+function render(){
+  setSampleLabel(state.sample);
+  let h='';
+  SCENES.forEach((s,i)=>{
+    const r=state.v[i],p=prod(r),a=sum(r),f=state.f[i];
+    h+='<div class="scene"><div class="mrow"><div class="sn">'+esc(s)+'</div>';
+    r.forEach((v,j)=>{h+='<button class="cell" type="button" id="c-'+i+'-'+j+'" data-i="'+i+'" data-j="'+j+'" data-v="'+v+'" aria-label="'+esc(s)+'、'+SHORT[j]+'、いま '+v+'">'+(v===0.5?'.5':v)+'</button>'});
+    h+='</div><div class="res"><div class="sn"></div>';
+    h+='<div><span class="lb">掛け算</span><span class="m" style="color:var(--'+(p===0?'ng':'ink')+')">'+fmt(p)+'</span>'+mk(mulSays(r),f)+'</div>';
+    h+='<div><span class="lb">足し算</span><span class="m">'+fmt(a)+'<small>/5</small></span>'+mk(addSays(r),f)+'</div>';
+    h+='<div><span class="lb">実感</span><div class="felt"><button class="btn" type="button" id="f-'+i+'-ok" data-fi="'+i+'" data-f="ok" aria-pressed="'+(f==='ok')+'">平気</button><button class="btn" type="button" id="f-'+i+'-ng" data-fi="'+i+'" data-f="ng" aria-pressed="'+(f==='ng')+'">無理</button></div></div>';
+    h+='</div></div>';
+  });
+  $('scenes').innerHTML=h;
+  let n=0,m=0,a=0;
+  state.f.forEach((f,i)=>{if(!f)return;n++;if(mulSays(state.v[i])===f)m++;if(addSays(state.v[i])===f)a++});
+  $('nMul').innerHTML=n?m+'<small>/ '+n+'</small>':'--';
+  $('nAdd').innerHTML=n?a+'<small>/ '+n+'</small>':'--';
+  const v=$('verdict');
+  if(n<3){v.textContent='実感を3場面以上押すと判定が出る。いま '+n+' 場面。'}
+  else{
+    const zeroButOk=state.f.filter((f,i)=>f==='ok'&&prod(state.v[i])===0).length;
+    const noZeroButNg=state.f.filter((f,i)=>f==='ng'&&prod(state.v[i])!==0).length;
+    const hit=(zeroButOk===0&&noZeroButNg===0);
+    v.innerHTML='0があるのに平気: <b class="mono">'+zeroButOk+'</b> 場面 ／ 0がないのに無理: <b class="mono">'+noZeroButNg+'</b> 場面。 <span style="color:var(--'+(hit?'ok':'ng')+');font-weight:700">'+(hit?'0がある場面と嫌な場面が一致した（仮説は当たり側）':'一致しない場面がある（仮説は外れ側）')+'</span>';
+  }
+}
+$('scenes').addEventListener('click',e=>{
+  const c=e.target.closest('[data-j]');
+  if(c){const i=Number(c.getAttribute('data-i')),j=Number(c.getAttribute('data-j'));state.v[i][j]=nextV(state.v[i][j]);state.sample=false;saveState();render();const nb=$('c-'+i+'-'+j);if(nb)nb.focus();return}
+  const f=e.target.closest('[data-fi]');
+  if(f){const i=Number(f.getAttribute('data-fi')),k=f.getAttribute('data-f');state.f[i]=(state.f[i]===k?'':k);state.sample=false;saveState();render();const nb=$('f-'+i+'-'+k);if(nb)nb.focus()}
+});
+wireSample(function(){state=emptyState();saveState();render()},function(){state=sampleState();saveState();render()});
+render();
+</script>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ウチュウフク</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-size:15px;line-height:1.7}
+.outer{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:12px;padding-bottom:48px}
+.wrap{max-width:560px;margin:0 auto}
+a{color:var(--ink)}
+.back{display:inline-block;font-size:13px;color:var(--muted);margin-bottom:6px;padding:4px 0}
+h1{font-family:var(--font-display);font-size:26px;line-height:1.3;margin:4px 0 10px;font-weight:700}
+h2{font-family:var(--font-display);font-size:16px;margin:22px 0 8px;font-weight:700}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.hyp{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--signal);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.6;color:var(--muted)}
+.hyp p{margin:3px 0}
+.hyp b{color:var(--ink)}
+.hyp .meta{font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
+.hyp .hit b{color:var(--ok)}
+.hyp .miss b{color:var(--ng)}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:14px 12px;display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:8px;font-variant-numeric:tabular-nums}
+.board .lab{font-size:12px;font-family:var(--font-body)}
+.board .num{font-family:var(--font-mono);font-size:38px;font-weight:600;line-height:1.1}
+.board .num .unit{font-size:14px;margin-left:2px}
+.board .big{font-family:var(--font-display);font-size:30px;font-weight:700;line-height:1.2}
+.btn{font:inherit;font-size:14px;font-weight:500;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal-ink);font-weight:700}
+.btn.small{min-height:36px;font-size:12.5px;padding:4px 10px;border-color:var(--line);color:var(--muted)}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.seg .btn{flex:1 1 auto}
+.field{display:grid;grid-template-columns:64px 1fr 62px;gap:8px;align-items:center;margin:6px 0;font-size:14px}
+.field output{font-family:var(--font-mono);font-size:14px;text-align:right}
+input[type=range]{width:100%;accent-color:var(--signal-ink);min-height:32px}
+.note{font-size:12.5px;color:var(--muted);margin:6px 0}
+.st{font-size:13.5px;margin:2px 0;padding-left:10px;border-left:4px solid var(--line)}
+.st.ok{border-left-color:var(--ok)}
+.st.ng{border-left-color:var(--ng)}
+.foot{margin-top:30px;border-top:1px solid var(--line);padding-top:12px;font-size:12.5px;color:var(--muted)}
+.sample{font-family:var(--font-mono);font-size:12px;color:var(--signal-ink);background:var(--signal);display:inline-block;padding:1px 8px;border-radius:4px;margin:0 0 6px}
+.confirm{background:var(--surface);border:2px solid var(--ink);border-radius:8px;padding:10px 12px;margin:10px 0;color:var(--ink)}
+.confirm[hidden]{display:none}
+.verdict{margin-top:14px}
+.verdict .btn{font-size:13px}
+.verdict .n{font-family:var(--font-mono)}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important;scroll-behavior:auto !important}}
+
+#cv{display:block;width:100%;max-width:360px;margin:0 auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.board{--cols:2}
+.board .cell{text-align:center}
+.secs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0}
+.secs div{border-top:3px solid var(--line);padding-top:4px;font-size:13px}
+.secs b{display:block;font-family:var(--font-mono);font-size:20px;font-variant-numeric:tabular-nums}
+.chk{display:flex;align-items:center;gap:8px;min-height:44px;font-size:14px}
+.chk input{width:22px;height:22px;accent-color:var(--signal-ink)}
+
+</style>
+</head>
+<body>
+<div class="outer"><div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<h1>ウチュウフク</h1>
+<section class="hyp" aria-label="仮説カード">
+<p class="meta">視点: 身体・知覚 ／ 具体 ／ 方向: 全方向</p>
+<p><b>仮説</b> 自分の空間が目に見えると、入られても境界が保たれている感覚になる。</p>
+<p><b>この試作で確かめること</b></p>
+<p class="hit"><b>当たり</b> ＝ 円が見えていると安心する</p>
+<p class="miss"><b>外れ</b> ＝ 円が見えても、入られたら同じく嫌</p>
+</section>
+<h2>列のシミュレーション（自分が中心）</h2>
+<canvas id="cv" role="img" aria-label="自分を中心にした宇宙服の円と、周りの人の動き"></canvas>
+<div class="board" style="margin-top:10px">
+<div class="cell"><div class="lab">入られている方向</div><div class="big" id="b-dir">なし</div><div class="lab" id="b-lv">&nbsp;</div></div>
+<div class="cell"><div class="lab">いちばん近い人</div><div class="num"><span id="b-min">0</span><span class="unit">cm</span></div></div>
+</div>
+<div class="row">
+<button class="btn primary" id="play" type="button">止める</button>
+<label class="chk"><input type="checkbox" id="show">円を見せる</label>
+</div>
+<div class="field"><label for="rad">円の半径</label><input type="range" id="rad" min="20" max="100" step="1"><output id="rad-o">0cm</output></div>
+<p class="note">円の半径は、体の端から円までの距離。人の体が円に入ると、色が 緑 → 黄 → 赤 の順に変わります。「円を見せる」を切ると円が消え、時間の記録だけ続きます。</p>
+<h2>円に入られた時間（累計）</h2>
+<div class="secs" id="secs"></div>
+
+<div class="foot">
+<p id="sample-note" class="sample">サンプルの値で動いています</p>
+<div class="row">
+<button class="btn small" id="btn-clear" type="button">サンプルを消して自分で使う</button>
+<button class="btn small" id="btn-sample" type="button">サンプルに戻す</button>
+</div>
+<div id="confirm" class="confirm" role="alertdialog" aria-labelledby="confirm-msg" hidden>
+<p id="confirm-msg" style="margin:0 0 8px"></p>
+<div class="row" style="margin:0"><button class="btn primary" id="confirm-yes" type="button">実行する</button><button class="btn" id="confirm-no" type="button">やめる</button></div>
+</div>
+<div class="verdict">
+<p style="margin:0 0 4px">触ってみて、仮説は</p>
+<div class="row" style="margin:0">
+<button class="btn" id="v-hit" type="button">当たりに近い <span class="n" id="v-hit-n">0</span></button>
+<button class="btn" id="v-miss" type="button">外れに近い <span class="n" id="v-miss-n">0</span></button>
+</div>
+<p class="note">この端末の中にだけ数えます。</p>
+</div>
+</div>
+</div></div>
+<script>
+'use strict';
+const KEY='hack3-g1-3-v1';
+const $=(s,r)=>(r||document).querySelector(s);
+const $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
+let S=null,_render=null;
+function loadS(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null}catch(e){return null}}
+function saveS(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function paint(){
+  $('#sample-note').hidden=!S.sample;
+  if(_render)_render();
+  $('#v-hit-n').textContent=S.verdict.hit;
+  $('#v-miss-n').textContent=S.verdict.miss;
+}
+function commit(){saveS();paint()}
+function ask(msg,yes){
+  const b=$('#confirm');b.hidden=false;$('#confirm-msg').textContent=msg;
+  $('#confirm-yes').onclick=()=>{b.hidden=true;yes()};
+  $('#confirm-no').onclick=()=>{b.hidden=true};
+  $('#confirm-no').focus();
+}
+function boot(sample,empty,render,onReset){
+  _render=render;
+  try{S=loadS()}catch(e){S=null}
+  if(!S||typeof S!=='object')S=sample();
+  if(!S.verdict)S.verdict={hit:0,miss:0};
+  const redo=fn=>{const v=S.verdict;S=fn();S.verdict=v;if(onReset)onReset();commit()};
+  $('#btn-clear').onclick=()=>ask('サンプルの値を消して、初期状態から使います。よろしいですか。',()=>redo(empty));
+  $('#btn-sample').onclick=()=>ask('サンプルの値に戻します。よろしいですか。',()=>redo(sample));
+  $('#v-hit').onclick=()=>{S.verdict.hit++;commit()};
+  $('#v-miss').onclick=()=>{S.verdict.miss++;commit()};
+  paint();
+}
+
+const RM=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+function sampleState(){return{sample:true,rad:55,show:true,secs:{f:4,s:9,b:21},verdict:{hit:0,miss:0}}}
+function emptyState(){return{sample:false,rad:50,show:true,secs:{f:0,s:0,b:0},verdict:{hit:0,miss:0}}}
+const PEOPLE=[
+ {a:180,base:62,amp:50,sp:0.55,ph:0},
+ {a:0,base:85,amp:25,sp:0.4,ph:1.3},
+ {a:90,base:70,amp:45,sp:0.35,ph:2.2},
+ {a:225,base:95,amp:30,sp:0.3,ph:0.7},
+ {a:-35,base:110,amp:30,sp:0.25,ph:3.1}
+];
+const BR=20;
+let running=!RM,T=0,last=0,size=320,K=1,cv,ctx,info={dir:null,min:999,depth:0},saveAcc=0,raf=0;
+const DN={f:'前',s:'横',b:'後ろ'};
+function dirOf(a){const x=((a%360)+540)%360-180;const ax=Math.abs(x);return ax<45?'f':(ax>135?'b':'s')}
+function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function resize(){
+  cv=$('#cv');ctx=cv.getContext('2d');
+  const w=Number(document.querySelector('.wrap').clientWidth)||320;
+  size=Math.max(240,Math.min(360,w));
+  const dpr=window.devicePixelRatio||1;
+  cv.width=size*dpr;cv.height=size*dpr;cv.style.height=size+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);K=size/320;
+}
+function step(dt){
+  T+=dt;
+  let mn=999,deep=0,dir=null;
+  PEOPLE.forEach(p=>{
+    const g=Math.max(8,p.base+p.amp*Math.sin(T*p.sp+p.ph));
+    p.gap=g;
+    if(g<mn)mn=g;
+    if(g<S.rad){
+      const dd=(S.rad-g)/S.rad,k=dirOf(p.a);
+      S.secs[k]+=dt;
+      if(dd>deep){deep=dd;dir=k}
+    }
+  });
+  info={dir,min:Math.round(mn),depth:deep};
+  saveAcc+=dt;if(saveAcc>3){saveAcc=0;saveS()}
+}
+function draw(){
+  if(!ctx)return;
+  const c=size/2;
+  ctx.clearRect(0,0,size,size);
+  ctx.strokeStyle=cssv('--line');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(c,0);ctx.lineTo(c,size);ctx.moveTo(0,c);ctx.lineTo(size,c);ctx.stroke();
+  ctx.fillStyle=cssv('--muted');ctx.font='11px '+cssv('--font-mono');
+  ctx.fillText('前',c+6,14);ctx.fillText('後ろ',c+6,size-6);
+  if(S.show){
+    const col=info.depth<=0?cssv('--ok'):(info.depth<0.35?cssv('--signal'):cssv('--ng'));
+    const r=(BR+S.rad)*K;
+    ctx.save();
+    ctx.globalAlpha=info.depth>=0.7?0.28:(info.depth>0?0.16:0.08);
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(c,c,r,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle=col;ctx.lineWidth=info.depth>=0.7?5:3;ctx.beginPath();ctx.arc(c,c,r,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.strokeStyle=cssv('--ink');ctx.lineWidth=1.5;
+  PEOPLE.forEach(p=>{
+    const R=(2*BR+(p.gap||p.base))*K,rad=p.a*Math.PI/180;
+    const x=c+Math.sin(rad)*R,y=c-Math.cos(rad)*R;
+    ctx.fillStyle=cssv('--muted');ctx.beginPath();ctx.arc(x,y,BR*K,0,Math.PI*2);ctx.fill();ctx.stroke();
+  });
+  ctx.fillStyle=cssv('--signal');ctx.beginPath();ctx.arc(c,c,BR*K,0,Math.PI*2);ctx.fill();ctx.stroke();
+}
+function loop(now){
+  raf=0;
+  if(running){const dt=Math.min(0.1,(now-last)/1000||0);last=now;step(dt)}
+  draw();updateBoard();
+  raf=requestAnimationFrame(loop);
+}
+function updateBoard(){
+  $('#b-dir').textContent=info.dir?DN[info.dir]:'なし';
+  $('#b-lv').textContent=info.dir?(info.depth>=0.7?'ふかく入っている':(info.depth>=0.35?'入っている':'ふれている')):'入られていない';
+  $('#b-min').textContent=info.min>900?'--':info.min;
+  ['f','s','b'].forEach(k=>{const e=$('#sec-'+k);if(e)e.textContent=Math.round(S.secs[k])+'秒'});
+}
+function render(){
+  $('#rad').value=S.rad;$('#rad-o').textContent=S.rad+'cm';
+  $('#show').checked=!!S.show;
+  $('#play').textContent=running?'止める':'動かす';
+  if(!$('#sec-f')){$('#secs').innerHTML=['f','s','b'].map(k=>'<div>'+DN[k]+'<b id="sec-'+k+'">0秒</b></div>').join('')}
+  updateBoard();
+  if(!running)draw();
+}
+$('#rad').addEventListener('input',e=>{S.rad=Number(e.target.value);commit()});
+$('#show').addEventListener('change',e=>{S.show=e.target.checked;commit()});
+$('#play').addEventListener('click',()=>{running=!running;last=performance.now();commit()});
+window.addEventListener('resize',()=>{resize();draw()});
+resize();
+boot(sampleState,emptyState,render);
+step(0.01);draw();updateBoard();
+raf=requestAnimationFrame(t=>{last=t;loop(t)});
+
+</script>
+</body>
+</html>

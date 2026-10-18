@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>トクベツチズ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --raised:#FFFFFF; --sunk:#E7EAE5;
+  --shadow-1:0 1px 2px rgba(26,35,32,.08),0 1px 1px rgba(26,35,32,.04);
+  --shadow-2:0 6px 18px rgba(26,35,32,.14),0 2px 4px rgba(26,35,32,.06);
+  --radius:12px; --flap:rgba(255,255,255,.07); --board-rule:rgba(246,195,67,.28);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --raised:#232A26; --sunk:#151A18;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 8px 22px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.3);}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --raised:#232A26; --sunk:#151A18;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 8px 22px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.3);}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+.wrap{max-width:560px;margin:0 auto;padding:12px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px))}
+a{color:var(--ink)}
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.back{display:inline-block;font-size:14px;margin:4px 0 12px;color:var(--muted)}
+h1{font-family:var(--font-display);font-size:30px;letter-spacing:-.02em;margin:0 0 12px;font-weight:700;line-height:1.2}
+h2{font-family:var(--font-display);font-size:19px;letter-spacing:-.01em;margin:30px 0 10px;font-weight:700}
+h2 .step{font-family:var(--font-mono);font-size:12px;color:var(--muted);font-weight:600;margin-right:8px;letter-spacing:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* 仮説カード（折りたためる帯） */
+.hyp{border:1px solid var(--line);border-left:4px solid var(--signal);background:var(--surface);border-radius:var(--radius);font-size:13px;line-height:1.6}
+.hyp summary{cursor:pointer;padding:9px 12px;list-style:none;display:flex;gap:8px;align-items:baseline}
+.hyp summary::-webkit-details-marker{display:none}
+.hyp summary::after{content:"開く";margin-left:auto;font-size:11px;color:var(--muted);flex:none}
+.hyp[open] summary::after{content:"たたむ"}
+.hyp .pos{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.hyp .body{padding:0 12px 10px}
+.hyp p{margin:4px 0 0}
+.hyp b{font-weight:700}
+
+.sample{font-size:12px;color:var(--muted);margin:12px 0 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-size:14px;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.main{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+.btn.small{min-height:36px;font-size:12px;padding:0 10px}
+.btn.ng{color:var(--ng);border-color:var(--ng)}
+.notice{background:var(--raised);border:1px solid var(--ink);border-radius:var(--radius);padding:12px;margin-top:10px;font-size:14px;box-shadow:var(--shadow-2)}
+.notice .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+/* 場面イラスト */
+.scene{margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 10px 8px;box-shadow:var(--shadow-1)}
+.scene svg{display:block;width:100%;height:auto}
+.scene .cap{font-size:12px;color:var(--muted);margin:6px 2px 0;line-height:1.5;word-break:break-all}
+.scene .cap b{color:var(--ink);font-weight:700}
+.sc-ground{stroke:var(--line);stroke-width:2}
+.sc-bld{fill:var(--raised);stroke:var(--muted);stroke-width:1}
+.sc-roof{fill:var(--board)}
+.sc-door{fill:var(--board)}
+.sc-win{fill:var(--sunk);stroke:var(--muted);stroke-width:.8}
+.sc-win.lit{fill:var(--signal);opacity:.85}
+.sc-signbg{fill:var(--board)}
+.sc-signtx{fill:var(--board-ink);font-family:var(--font-display);font-weight:700;text-anchor:middle;dominant-baseline:central}
+.sc-p{fill:var(--muted)}
+.sc-p.mate{fill:var(--ok)}
+.sc-p.far{opacity:.5}
+.sc-link{fill:none;stroke:var(--ok);stroke-width:1.4;stroke-dasharray:2 2}
+.sc-me{fill:var(--signal)}
+.sc-melab{fill:var(--ink);font-size:8px;font-family:var(--font-body);text-anchor:middle}
+.sc-buzz{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-linecap:round}
+.sc-buzz.hot{stroke:var(--ng)}
+.sc-gap{stroke:var(--muted);stroke-width:1;stroke-dasharray:2 2}
+.sc-gaptx{fill:var(--muted);font-size:7.5px;font-family:var(--font-mono);text-anchor:middle}
+.sc-empty{fill:var(--muted);font-size:9px;font-family:var(--font-body)}
+
+/* ボード */
+.board{background:var(--board);color:var(--board-ink);border-radius:var(--radius);padding:14px 16px 12px;margin-top:12px;box-shadow:var(--shadow-1)}
+.board .cap{font-size:12px;opacity:.85;margin-bottom:8px}
+.board .row{display:flex;gap:10px;align-items:stretch}
+.board .col{flex:1;min-width:0}
+.board .sep{font-family:var(--font-mono);font-size:28px;opacity:.5;align-self:center;padding-top:14px}
+.board .lab{font-size:12px;line-height:1.4;min-height:34px}
+.board .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:42px;line-height:1.1;display:flex;gap:3px;margin-top:4px}
+.fc{display:inline-block;min-width:.66em;text-align:center;background:var(--flap);border-radius:4px;padding:0 2px;position:relative}
+.fc.dot{min-width:.3em;background:none;padding:0}
+.board .n{font-family:var(--font-mono);font-size:12px;opacity:.8;margin-top:4px}
+.board .diff{margin-top:10px;font-size:13px;border-top:1px solid var(--board-rule);padding-top:8px;opacity:.95}
+
+/* 地図 */
+.mapbox{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px;box-shadow:var(--shadow-1)}
+#map{display:block;width:100%;height:auto;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.t-ground{fill:var(--bg)}
+.t-frame{fill:none;stroke:var(--line);stroke-width:1}
+.t-alley{fill:none;stroke:var(--line);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
+.t-road{fill:var(--line)}
+.t-lane{stroke:var(--surface);stroke-width:1.2;stroke-dasharray:5 5}
+.t-bldg{fill:var(--sunk);stroke:var(--line);stroke-width:.6}
+.t-sign{fill:var(--muted);opacity:.35}
+.t-bill{fill:var(--muted);opacity:.28}
+.t-light{fill:var(--signal);opacity:.5}
+.t-dark{fill:var(--line)}
+.axis{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:.7}
+.qname{fill:var(--ink);font-size:10.5px;font-weight:700;font-family:var(--font-display)}
+.qbadge rect{fill:var(--board)}
+.qbadge text{fill:var(--board-ink);font-size:7.6px;font-family:var(--font-mono);font-weight:600;dominant-baseline:central}
+.alab{fill:var(--muted);font-size:8.5px;font-family:var(--font-body)}
+.ptg{cursor:grab;outline:none}
+.ptg:focus-visible .house{stroke:var(--signal);stroke-width:3}
+.house{stroke:var(--surface);stroke-width:1.2;vector-effect:non-scaling-stroke}
+.l0 .house,.l1 .house{fill:var(--ok)}
+.l2 .house,.l3 .house{fill:var(--signal)}
+.l4 .house,.l5 .house{fill:var(--ng)}
+.ptg.sel .house{stroke:var(--ink);stroke-width:2.4}
+.pshadow{fill:var(--ink);opacity:.18}
+.ptn{font-family:var(--font-mono);font-size:7.5px;font-weight:600;pointer-events:none;text-anchor:middle;dominant-baseline:central}
+.l0 .ptn,.l1 .ptn,.l4 .ptn,.l5 .ptn{fill:var(--surface)}
+.l2 .ptn,.l3 .ptn{fill:var(--signal-ink)}
+.ptg.dragging{cursor:grabbing}
+.pin-in{transform-box:fill-box;transform-origin:50% 100%}
+.legend{font-size:12px;color:var(--muted);margin:8px 2px 0;line-height:1.7}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:3px}
+.sw.a{background:var(--ok)}.sw.b{background:var(--signal)}.sw.c{background:var(--ng)}
+
+/* 吹き出し・初回ヒント・空の状態 */
+.balloon{position:absolute;width:210px;background:var(--raised);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-2);padding:10px 12px 10px;font-size:13px;z-index:3}
+.balloon .bn{font-family:var(--font-display);font-weight:700;font-size:15px;line-height:1.35;padding-right:30px;word-break:break-all}
+.balloon .bq{font-size:11px;color:var(--muted);margin-top:2px}
+.balloon dl{margin:8px 0 0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center}
+.balloon dt{color:var(--muted);font-size:12px}
+.balloon dd{margin:0;font-weight:700}
+.balloon .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.meter{display:inline-flex;gap:2px;vertical-align:middle;margin-left:6px}
+.meter i{display:block;width:9px;height:9px;border-radius:2px;background:var(--line)}
+.meter.lo i.on{background:var(--ok)}.meter.mid i.on{background:var(--signal)}.meter.hi i.on{background:var(--ng)}
+.xbtn{position:absolute;top:4px;right:4px;width:36px;height:36px;border:0;background:none;color:var(--muted);font:inherit;font-size:18px;cursor:pointer;border-radius:8px}
+.tip{position:absolute;left:16px;right:16px;top:14px;background:var(--board);color:var(--board-ink);border-radius:var(--radius);padding:10px 44px 10px 12px;font-size:13px;line-height:1.5;box-shadow:var(--shadow-2);z-index:4}
+.tip::after{content:"";position:absolute;left:50%;bottom:-6px;width:12px;height:12px;background:var(--board);transform:rotate(45deg)}
+.tip .xbtn{color:var(--board-ink)}
+.empty{position:absolute;inset:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px;background:var(--surface);border-radius:10px;opacity:.97}
+.empty svg{width:150px;height:auto}
+.empty p{font-size:13px;line-height:1.7;color:var(--muted);margin:8px 0 10px;max-width:290px}
+.empty p b{color:var(--ink)}
+
+/* エディタ */
+.editor{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow-1)}
+.editor .nm{font-family:var(--font-display);font-weight:700;font-size:18px;margin-bottom:6px;word-break:break-all;letter-spacing:-.01em}
+.editor .qn{font-size:12px;color:var(--muted)}
+.field{margin:14px 0 0}
+.field>label,.field>.fl{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input[type=range]{width:100%;min-height:32px;accent-color:var(--signal)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:44px;min-height:44px;font:inherit;font-size:14px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--board);color:var(--board-ink);border-color:var(--board);font-weight:700}
+.seg.mono button{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+input[type=text]{font:inherit;font-size:16px;min-height:44px;width:100%;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+
+/* 結果パネル */
+.result{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow-1)}
+.fact{font-family:var(--font-display);font-size:16px;font-weight:700;line-height:1.55;letter-spacing:-.01em;margin:0 0 12px}
+.fact .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:8px 10px;align-items:center}
+.bars .bl{font-size:13px;line-height:1.3}
+.bars .bl small{display:block;font-size:11px;color:var(--muted)}
+.track{position:relative;height:16px;background:var(--sunk);border-radius:6px;overflow:hidden}
+.track i{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.fill{height:100%;width:0;border-radius:6px;background:var(--muted)}
+.fill.l0,.fill.l1{background:var(--ok)}
+.fill.l2,.fill.l3{background:var(--signal)}
+.fill.l4,.fill.l5{background:var(--ng)}
+.bars .bv{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;text-align:right;min-width:62px}
+.bars .bv small{display:block;font-size:11px;color:var(--muted);font-weight:500}
+.ticks{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--muted);grid-column:2}
+.bars .hot .bl{font-weight:700}
+
+/* 一覧 */
+.list{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden;box-shadow:var(--shadow-1)}
+.list li{border-bottom:1px solid var(--line)}
+.list li:last-child{border-bottom:0}
+.list button{all:unset;box-sizing:border-box;width:100%;min-height:48px;padding:6px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px}
+.list button:focus-visible{outline:3px solid var(--signal);outline-offset:-3px}
+.list li.sel{background:var(--sunk)}
+.list .ic{width:16px;height:18px;flex:none}
+.list .no{font-family:var(--font-mono);font-size:12px;color:var(--muted);width:18px;flex:none}
+.list .nm2{flex:1;min-width:0;word-break:break-all}
+.list .kd{font-size:11px;color:var(--muted);flex:none}
+.list .lv{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;flex:none;width:18px;text-align:right}
+.list .emp{padding:14px;font-size:13px;color:var(--muted)}
+.note{font-size:12px;color:var(--muted);line-height:1.7;margin-top:14px}
+
+/* トースト・下部バー */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--board);color:var(--board-ink);border-radius:var(--radius);box-shadow:var(--shadow-2);padding:6px 6px 6px 16px;display:flex;align-items:center;gap:10px;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
+.toast[hidden]{display:none}
+.toast button{font:inherit;font-size:14px;font-weight:700;min-height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--board-ink);background:none;color:var(--board-ink);cursor:pointer}
+.bar{display:none}
+@media (max-width:600px){
+  .wrap{padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px))}
+  .bar{display:block;position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--raised);border-top:1px solid var(--line);box-shadow:var(--shadow-2);padding:8px max(12px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px))}
+  .bar .bt{font-size:11px;color:var(--muted);margin:0 2px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar .bt b{color:var(--ink)}
+  .bar .seg button{min-height:44px;padding:0}
+  .toast{bottom:calc(96px + env(safe-area-inset-bottom, 0px))}
+  h1{font-size:27px}
+  .board .num{font-size:36px}
+}
+
+@media (prefers-reduced-motion: no-preference){
+  .btn,.seg button,.list button,.xbtn,.toast button{transition:transform .15s ease,background-color .2s ease,color .2s ease}
+  .btn:active,.seg button:active,.list button:active,.toast button:active{transform:scale(.96)}
+  .fc.go{animation:flip .26s ease-out}
+  @keyframes flip{0%{transform:rotateX(90deg);opacity:.2}100%{transform:rotateX(0);opacity:1}}
+  .pin-in{transition:transform .18s ease}
+  .ptg.sel .pin-in{transform:scale(1.12)}
+  .ptg.dragging .pin-in{transform:scale(1.2) translateY(-3px)}
+  .drop{animation:drop .6s cubic-bezier(.3,.7,.4,1)}
+  @keyframes drop{0%{transform:translateY(-130px);opacity:0}55%{transform:translateY(0);opacity:1}72%{transform:translateY(-9px)}100%{transform:translateY(0)}}
+  .drop-sh{animation:dropsh .6s ease-out}
+  @keyframes dropsh{0%{opacity:0}55%{opacity:.18}100%{opacity:.18}}
+  .balloon,.tip,.notice{animation:pop .2s ease-out}
+  @keyframes pop{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
+  .toast:not([hidden]){animation:toastin .22s ease-out}
+  @keyframes toastin{0%{opacity:0;transform:translate(-50%,10px)}100%{opacity:1;transform:translate(-50%,0)}}
+  .fill{transition:width .5s cubic-bezier(.3,.7,.4,1)}
+  .sc-move{transition:transform .3s ease}
+  .sc-fade{transition:opacity .25s ease}
+  .hyp summary::after{transition:opacity .2s}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">← 一覧へ</a>
+  <h1>トクベツチズ</h1>
+
+  <details class="hyp" open aria-label="仮説カード">
+    <summary><span class="pos">A3 同じ少数派（枝A「仲間の証拠が見えると仲間になる」）</span></summary>
+    <div class="body">
+      <p><b>仮説</b> 自分が「特別だ」と思える少数派の場所では、そこにいる人を仲間と感じて、近さが平気になる。万人受けの場所ほど近さが気になる。</p>
+      <p><b>確かめること</b></p>
+      <p>当たり＝「特別な場所」ほど気になり度が低い傾向がはっきり出る</p>
+      <p>外れ＝場所の特別さと気になり度は関係ない</p>
+    </div>
+  </details>
+
+  <div class="sample" id="sampleBar">
+    <span id="sampleTag">サンプルデータ（表示中）</span>
+    <button class="btn small" id="btnClear" type="button">サンプルを消して自分で使う</button>
+    <button class="btn small" id="btnSample" type="button">サンプルに戻す</button>
+  </div>
+  <div id="notice" role="status" aria-live="polite"></div>
+
+  <section class="scene" aria-label="選んだ場所の列の様子">
+    <svg id="scene" viewBox="0 0 320 104" aria-hidden="true"></svg>
+    <div class="cap" id="sceneCap"></div>
+  </section>
+
+  <section class="board" aria-label="気になり度の平均">
+    <div class="cap">近さの気になり度（0〜5）の平均</div>
+    <div class="row">
+      <div class="col"><div class="lab">隠れ家<br>（特別×少数派・左上）</div><div class="num" id="bA" aria-hidden="true"></div><div class="n" id="bAn">0か所</div></div>
+      <div class="sep" aria-hidden="true">／</div>
+      <div class="col"><div class="lab">万人受けの大通り<br>（右半分）</div><div class="num" id="bB" aria-hidden="true"></div><div class="n" id="bBn">0か所</div></div>
+    </div>
+    <div class="diff" id="bDiff">場所を置くと差が出ます。</div>
+    <span class="sr" id="bLive" aria-live="polite"></span>
+  </section>
+
+  <h2><span class="step">1</span>街の地図に置く</h2>
+  <div class="mapbox" id="mapbox">
+    <svg id="map" viewBox="0 0 300 310" role="group" aria-label="万人受け度と特別さの地図。店のピンはドラッグで動かせる。ピンを選んで矢印キーでも動く。地図の空いた所をタップすると選んだピンがそこへ動く">
+      <g id="town"></g><g id="badges"></g><g id="pins"></g>
+    </svg>
+    <div id="balloon"></div>
+    <div id="tip"></div>
+    <div id="empty"></div>
+  </div>
+  <div class="legend">
+    <span class="sw a"></span>0〜1 平気　<span class="sw b"></span>2〜3　<span class="sw c"></span>4〜5 気になる　／　ピンが大きいほど気になり度が高い
+  </div>
+
+  <h2><span class="step">2</span>選んだ場所</h2>
+  <div class="editor" id="editor"></div>
+
+  <h2><span class="step">3</span>いまのデータで分かること</h2>
+  <div class="result">
+    <p class="fact" id="fact" aria-live="polite"></p>
+    <div class="bars" id="quads"></div>
+  </div>
+
+  <h2>置いた場所</h2>
+  <ul class="list" id="list"></ul>
+
+  <h2 id="addHead">場所を足す</h2>
+  <div class="field" style="margin-top:0">
+    <label for="newName">場所の呼び方（店名でなく「二郎系の店」のような言い方）</label>
+    <input type="text" id="newName" maxlength="30" autocomplete="off">
+    <div style="margin-top:10px"><button class="btn main" id="btnAdd" type="button">地図の中央に置く</button></div>
+  </div>
+
+  <p class="note">横軸は左が知る人ぞ知る、右がSNSで有名・チェーン・観光客向け。縦軸は上ほど、自分にとって守りたい独自の雰囲気がある。データはこの端末の中だけに保存されます。</p>
+</div>
+
+<div class="bar" id="bar" aria-label="選んだ場所の気になり度を1タップで記録">
+  <div class="bt" id="barName"></div>
+  <div id="barSeg"></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toastMsg">記録しました</span><button type="button" id="toastUndo">取り消す</button></div>
+
+<script>
+(function(){
+  var KEY = "hack4-nk-3-v1";
+  var KINDS = ["感じる","どちらでも","感じない"];
+  var SAMPLE = [
+    {name:"好きな個人のラーメン店", x:20, y:85, kind:0, lv:1},
+    {name:"二郎系の店", x:35, y:75, kind:0, lv:1},
+    {name:"家系チェーン", x:85, y:20, kind:2, lv:4},
+    {name:"SNSで有名な喫茶店", x:90, y:30, kind:2, lv:4},
+    {name:"地元の古い喫茶店（おじいちゃんおばあちゃんの店）", x:10, y:90, kind:0, lv:0},
+    {name:"地下にある渋い喫茶店", x:15, y:80, kind:0, lv:0},
+    {name:"海外で現地の人が行く食堂", x:12, y:88, kind:0, lv:1},
+    {name:"海外の日本人向けの店", x:80, y:25, kind:2, lv:5},
+    {name:"宇都宮の餃子の有名店", x:75, y:40, kind:1, lv:4},
+    {name:"ラップバトルの会場", x:30, y:70, kind:0, lv:1},
+    {name:"ライブ会場", x:65, y:55, kind:1, lv:2}
+  ];
+  var QUADS = [
+    {key:"tl", name:"隠れ家", sub:"特別×少数派", f:function(p){return p.x<50&&p.y>=50;}},
+    {key:"tr", name:"お気に入りの定番", sub:"特別×万人受け", f:function(p){return p.x>=50&&p.y>=50;}},
+    {key:"bl", name:"通りすがり", sub:"ふつう×少数派", f:function(p){return p.x<50&&p.y<50;}},
+    {key:"br", name:"にぎわいの場所", sub:"ふつう×万人受け", f:function(p){return p.x>=50&&p.y<50;}}
+  ];
+  var state = {places:[], sample:true, sel:null, seq:1, tip:0};
+  var persist = true;
+  var balloonId = null, dropId = null, drag = null;
+  var raf = (typeof window!=="undefined" && window.requestAnimationFrame) ? function(f){ window.requestAnimationFrame(f); } : function(f){ setTimeout(f,0); };
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+  function closestOf(t,sel){ return (t && t.closest) ? t.closest(sel) : null; }
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(raw){
+        var d = JSON.parse(raw);
+        if(d && Array.isArray(d.places)){
+          state.places = d.places.filter(function(p){return p && typeof p.name==="string";}).map(function(p){
+            return {id:+p.id||0, name:p.name, x:clamp(+p.x||0,0,100), y:clamp(+p.y||0,0,100), kind:clamp(+p.kind||0,0,2), lv:clamp(+p.lv||0,0,5)};
+          });
+          state.sample = !!d.sample;
+          state.seq = +d.seq || 1;
+          state.sel = d.sel;
+          state.tip = d.tip ? 1 : 0;
+          return true;
+        }
+      }
+    }catch(e){ persist = false; }
+    return false;
+  }
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ persist = false; }
+  }
+  function useSample(){
+    state.places = SAMPLE.map(function(p,i){ return {id:i+1,name:p.name,x:p.x,y:p.y,kind:p.kind,lv:p.lv}; });
+    state.seq = SAMPLE.length + 1;
+    state.sample = true;
+    state.sel = state.places[0].id;
+  }
+  function byId(id){ for(var i=0;i<state.places.length;i++){ if(state.places[i].id===id) return state.places[i]; } return null; }
+  function selected(){ return byId(state.sel) || null; }
+  function indexOf(id){ for(var i=0;i<state.places.length;i++){ if(state.places[i].id===id) return i; } return -1; }
+  function quadOf(p){ for(var i=0;i<QUADS.length;i++){ if(QUADS[i].f(p)) return QUADS[i]; } return QUADS[0]; }
+
+  function avg(arr){
+    if(!arr.length) return null;
+    var s=0; for(var i=0;i<arr.length;i++) s+=arr[i].lv;
+    return s/arr.length;
+  }
+  function f1(v){ return v===null ? "-" : v.toFixed(1); }
+  function lvClass(v){ return "l"+clamp(Math.round(v),0,5); }
+
+  /* ---------- 地図の座標 ---------- */
+  var VBW=300, VBH=310;
+  var PX=30, PY=10, PW=260, PH=260;
+  function sx(x){ return PX + PW*x/100; }
+  function sy(y){ return PY + PH*(100-y)/100; }
+  // 画面座標 → viewBox座標（preserveAspectRatio meet の余白も考慮）
+  function toView(ev){
+    var r = $("map").getBoundingClientRect();
+    if(!r || !r.width || !r.height) return null;
+    var k = Math.min(r.width/VBW, r.height/VBH);
+    var ox = (r.width - VBW*k)/2, oy = (r.height - VBH*k)/2;
+    return {x:(ev.clientX - r.left - ox)/k, y:(ev.clientY - r.top - oy)/k};
+  }
+  function toPlot(ev){
+    var v = toView(ev); if(!v) return null;
+    var x = (v.x-PX)/PW*100, y = 100-(v.y-PY)/PH*100;
+    return {x:x, y:y, inside:(x>=-3&&x<=103&&y>=-3&&y<=103)};
+  }
+
+  /* ---------- 街並み（背景・一度だけ描く） ---------- */
+  function drawTown(){
+    var h="", i, seed=7;
+    function rnd(){ seed=(seed*9301+49297)%233280; return seed/233280; }
+    var mx=sx(50), my=sy(50);
+    h+='<rect class="t-ground" x="'+PX+'" y="'+PY+'" width="'+PW+'" height="'+PH+'"/>';
+    // 右側: 大通り（縦・横）
+    var bx=sx(76);
+    h+='<rect class="t-road" x="'+(bx-11)+'" y="'+PY+'" width="22" height="'+PH+'"/>';
+    h+='<line class="t-lane" x1="'+bx+'" y1="'+PY+'" x2="'+bx+'" y2="'+(PY+PH)+'"/>';
+    var by=sy(30);
+    h+='<rect class="t-road" x="'+mx+'" y="'+(by-8)+'" width="'+(PX+PW-mx)+'" height="16"/>';
+    h+='<line class="t-lane" x1="'+mx+'" y1="'+by+'" x2="'+(PX+PW)+'" y2="'+by+'"/>';
+    // 右側: 大きな建物と看板
+    var big=[[58,88],[90,90],[58,62],[90,64],[58,44],[90,12],[60,12]];
+    for(i=0;i<big.length;i++){
+      var X=sx(big[i][0])-13, Y=sy(big[i][1])-9, top=big[i][1]>=50;
+      h+='<rect class="t-bldg" x="'+X+'" y="'+Y+'" width="26" height="18" rx="2"/>';
+      h+='<rect class="t-bill" x="'+(X+3)+'" y="'+(Y-6)+'" width="20" height="6" rx="1"/>';
+      h+='<rect class="'+(top?'t-light':'t-dark')+'" x="'+(X+4)+'" y="'+(Y+7)+'" width="6" height="5"/>';
+      h+='<rect class="'+(top?'t-light':'t-dark')+'" x="'+(X+15)+'" y="'+(Y+7)+'" width="6" height="5"/>';
+    }
+    // 左側: 曲がりくねった路地
+    h+='<path class="t-alley" d="M'+(PX)+' '+sy(62)+' L'+sx(10)+' '+sy(62)+' L'+sx(14)+' '+sy(70)+' L'+sx(24)+' '+sy(68)+' L'+sx(28)+' '+sy(80)+' L'+sx(40)+' '+sy(82)+' L'+sx(44)+' '+sy(96)+'"/>';
+    h+='<path class="t-alley" d="M'+sx(6)+' '+(PY+PH)+' L'+sx(8)+' '+sy(30)+' L'+sx(20)+' '+sy(28)+' L'+sx(22)+' '+sy(44)+' L'+sx(36)+' '+sy(46)+' L'+sx(38)+' '+sy(58)+' L'+mx+' '+sy(60)+'"/>';
+    h+='<path class="t-alley" d="M'+sx(26)+' '+(PY+PH)+' L'+sx(30)+' '+sy(14)+' L'+sx(44)+' '+sy(18)+' L'+sx(46)+' '+sy(36)+'"/>';
+    // 左側: 小さな建物と小さな看板
+    for(i=0;i<22;i++){
+      var gx=4+rnd()*40, gy=4+rnd()*92;
+      var X2=sx(gx), Y2=sy(gy), t2=gy>=50;
+      h+='<rect class="t-bldg" x="'+(X2-5)+'" y="'+(Y2-4)+'" width="10" height="8" rx="1.5"/>';
+      h+='<rect class="t-sign" x="'+(X2+5)+'" y="'+(Y2-3)+'" width="2.2" height="4"/>';
+      if(t2) h+='<circle class="t-light" cx="'+X2+'" cy="'+Y2+'" r="1.8"/>';
+    }
+    h+='<rect class="t-frame" x="'+PX+'" y="'+PY+'" width="'+PW+'" height="'+PH+'" rx="4"/>';
+    h+='<line class="axis" x1="'+mx+'" y1="'+PY+'" x2="'+mx+'" y2="'+(PY+PH)+'"/>';
+    h+='<line class="axis" x1="'+PX+'" y1="'+my+'" x2="'+(PX+PW)+'" y2="'+my+'"/>';
+    h+='<text class="alab" x="'+PX+'" y="'+(PY+PH+14)+'">知る人ぞ知る（路地）</text>';
+    h+='<text class="alab" x="'+(PX+PW)+'" y="'+(PY+PH+14)+'" text-anchor="end">SNSで有名・チェーン（大通り）</text>';
+    h+='<text class="alab" x="'+(PX+PW/2)+'" y="'+(PY+PH+27)+'" text-anchor="middle">万人受け度 →</text>';
+    h+='<text class="alab" transform="translate(12 '+(PY+PH/2)+') rotate(-90)" text-anchor="middle">自分にとっての特別さ（灯り）→</text>';
+    $("town").innerHTML=h;
+  }
+
+  /* ---------- 区画名とバッジ ---------- */
+  function drawBadges(){
+    var h="", i, q, arr, a, txt, w=62;
+    var pos={
+      tl:{x:PX+6, y:PY+15, end:false, by:PY+21},
+      tr:{x:PX+PW-6, y:PY+15, end:true, by:PY+21},
+      bl:{x:PX+6, y:PY+PH-7, end:false, by:PY+PH-36},
+      br:{x:PX+PW-6, y:PY+PH-7, end:true, by:PY+PH-36}
+    };
+    for(i=0;i<QUADS.length;i++){
+      q=QUADS[i]; arr=state.places.filter(q.f); a=avg(arr); var o=pos[q.key];
+      txt="平均"+f1(a)+" / "+arr.length+"か所";
+      h+='<text class="qname" x="'+o.x+'" y="'+o.y+'"'+(o.end?' text-anchor="end"':'')+'>'+q.name+'</text>';
+      var rx=o.end ? o.x-w : o.x;
+      h+='<g class="qbadge"><rect x="'+rx+'" y="'+o.by+'" width="'+w+'" height="12" rx="3"/><text x="'+(rx+4)+'" y="'+(o.by+6.3)+'">'+txt+'</text></g>';
+    }
+    $("badges").innerHTML=h;
+  }
+
+  /* ---------- 店のピン ---------- */
+  var HOUSE="M0 0 L-3 -4 H-7 V-14 L0 -21 L7 -14 V-4 H3 Z";
+  function pinScale(lv){ return 0.85 + lv*0.09; }
+  function pinHTML(p,i){
+    var s=pinScale(p.lv), cls="ptg l"+p.lv+(p.id===state.sel?" sel":"");
+    var drop = p.id===dropId;
+    var h='<g data-id="'+p.id+'" class="'+cls+'" transform="translate('+sx(p.x).toFixed(1)+' '+sy(p.y).toFixed(1)+')" tabindex="0" role="button" aria-label="'+esc((i+1)+" "+p.name+"、"+quadOf(p).name+"、仲間と"+KINDS[p.kind]+"、気になり度"+p.lv)+'">';
+    h+='<ellipse class="pshadow'+(drop?' drop-sh':'')+'" cx="0" cy="0.5" rx="'+(5*s).toFixed(1)+'" ry="'+(1.8*s).toFixed(1)+'"/>';
+    h+='<g'+(drop?' class="drop"':'')+'><g class="pin-in"><g transform="scale('+s.toFixed(2)+')">';
+    h+='<path class="house" d="'+HOUSE+'"/>';
+    h+='<text class="ptn" x="0" y="-10">'+(i+1)+'</text>';
+    h+='</g></g></g></g>';
+    return h;
+  }
+  function drawPins(){
+    var h="", i;
+    // 選択中のピンは最後に描いて手前に出す
+    var order=state.places.map(function(p,i){return i;});
+    order.sort(function(a,b){ return (state.places[a].id===state.sel?1:0)-(state.places[b].id===state.sel?1:0); });
+    for(i=0;i<order.length;i++) h+=pinHTML(state.places[order[i]], order[i]);
+    $("pins").innerHTML=h;
+    dropId=null;
+  }
+  function pinEl(id){
+    try{ return document.querySelector('#pins .ptg[data-id="'+id+'"]'); }catch(e){ return null; }
+  }
+  function moveLive(p){
+    var g=pinEl(p.id);
+    if(g && g.setAttribute) g.setAttribute("transform","translate("+sx(p.x).toFixed(1)+" "+sy(p.y).toFixed(1)+")");
+    drawBadges(); drawBoard(false);
+    var rx=$("rngX"), ry=$("rngY");
+    if(rx && p.id===state.sel){ rx.value=p.x; ry.value=p.y; }
+  }
+
+  /* ---------- 発車標の数字（1文字ずつめくれる） ---------- */
+  function flap(el, text){
+    if(!el) return;
+    var prev = el.getAttribute ? (el.getAttribute("data-v")||"") : "";
+    if(prev===text && el.innerHTML) return;
+    var h="", i, c;
+    for(i=0;i<text.length;i++){
+      c=text.charAt(i);
+      h+='<span class="fc'+(c==="."?' dot':'')+(c!==prev.charAt(i)?' go':'')+'">'+esc(c)+'</span>';
+    }
+    el.innerHTML=h;
+    if(el.setAttribute) el.setAttribute("data-v",text);
+  }
+
+  /* ---------- ボード ---------- */
+  function groups(){
+    var A=[],B=[],i,p;
+    for(i=0;i<state.places.length;i++){
+      p=state.places[i];
+      if(p.x<50 && p.y>=50) A.push(p);
+      if(p.x>=50) B.push(p);
+    }
+    return {A:A,B:B,a:avg(A),b:avg(B)};
+  }
+  function drawBoard(announce){
+    var g=groups(), a=g.a, b=g.b;
+    flap($("bA"), f1(a)); flap($("bB"), f1(b));
+    $("bAn").textContent=g.A.length+"か所"; $("bBn").textContent=g.B.length+"か所";
+    var d=$("bDiff"), txt;
+    if(a===null||b===null){ txt="両方に1か所以上置くと差が出ます。"; }
+    else{
+      var diff=b-a;
+      txt="万人受けの場所のほうが "+(diff>=0?"+":"")+diff.toFixed(1)+"（"+(Math.abs(diff)<0.5?"ほぼ差なし":(diff>0?"特別な場所のほうが低い":"特別な場所のほうが高い"))+"）";
+    }
+    d.textContent=txt;
+    if(announce!==false) $("bLive").textContent="隠れ家の気になり度 平均"+f1(a)+"、万人受けの大通り 平均"+f1(b)+"。"+txt;
+  }
+
+  /* ---------- 場面イラスト ---------- */
+  function person(cls, x, extra){
+    return '<g class="sc-move" style="transform:translate('+x+'px,0px)"'+(extra||'')+'><circle class="'+cls+'" cx="0" cy="55" r="5.5"/><rect class="'+cls+'" x="-5.5" y="62" width="11" height="22" rx="4.5"/></g>';
+  }
+  function drawScene(){
+    var p=selected(), h="", cap=$("sceneCap");
+    h+='<line class="sc-ground" x1="0" y1="85" x2="320" y2="85"/>';
+    // 店
+    var special = p ? p.y>=50 : false, popular = p ? p.x>=50 : false;
+    h+='<polygon class="sc-roof" points="206,34 256,12 306,34"/>';
+    h+='<rect class="sc-bld" x="212" y="34" width="88" height="51"/>';
+    h+='<rect class="sc-door" x="226" y="56" width="18" height="29" rx="2"/>';
+    h+='<rect class="sc-win sc-fade'+(special?' lit':'')+'" x="254" y="52" width="36" height="20" rx="2"/>';
+    if(p){
+      var qn=quadOf(p).name;
+      if(popular){
+        h+='<rect class="sc-signbg" x="200" y="0" width="112" height="20" rx="3"/>';
+        h+='<text class="sc-signtx" x="256" y="10.5" font-size="12">'+esc(qn)+'</text>';
+      }else{
+        h+='<line class="sc-gap" x1="272" y1="34" x2="272" y2="38"/>';
+        h+='<rect class="sc-signbg" x="248" y="38" width="48" height="12" rx="2"/>';
+        h+='<text class="sc-signtx" x="272" y="44.3" font-size="7.5">'+esc(qn)+'</text>';
+      }
+      // 列: 前の4人
+      var others=[204,186,168,150], i, pc="sc-p"+(p.kind===0?" mate":"")+(p.kind===2?" far":"");
+      for(i=0;i<others.length;i++) h+=person(pc, others[i]);
+      if(p.kind===0){
+        for(i=0;i<others.length-1;i++) h+='<path class="sc-link" d="M'+(others[i+1]+5)+' 47 Q'+((others[i]+others[i+1])/2)+' 38 '+(others[i]-5)+' 47"/>';
+      }
+      // 自分: 気になるほど離れて立つ
+      var gap=14+p.lv*9, meX=150-gap;
+      h+='<line class="sc-gap" x1="'+(meX+7)+'" y1="93" x2="143" y2="93"/>';
+      h+='<text class="sc-gaptx" x="'+((meX+150)/2)+'" y="101">間 '+gap+'</text>';
+      if(p.kind===0) h+='<path class="sc-link" d="M'+(meX+5)+' 47 Q'+((meX+150)/2)+' 36 145 47"/>';
+      var bz="";
+      for(i=0;i<p.lv;i++){
+        var ang=(-150+i*28)*Math.PI/180, r1=9, r2=13.5;
+        bz+='<line class="sc-buzz'+(p.lv>=4?' hot':'')+'" x1="'+(Math.cos(ang)*r1).toFixed(1)+'" y1="'+(55+Math.sin(ang)*r1).toFixed(1)+'" x2="'+(Math.cos(ang)*r2).toFixed(1)+'" y2="'+(55+Math.sin(ang)*r2).toFixed(1)+'"/>';
+      }
+      h+='<g class="sc-move" style="transform:translate('+meX+'px,0px)"><circle class="sc-me" cx="0" cy="55" r="5.5"/><rect class="sc-me" x="-5.5" y="62" width="11" height="22" rx="4.5"/>'+bz+'<text class="sc-melab" x="0" y="80">自分</text></g>';
+      cap.innerHTML='<b>'+esc(p.name)+'</b> ／ 仲間と'+KINDS[p.kind]+' ／ 気になり度 <b>'+p.lv+'</b>（灯り＝特別さ、看板の大きさ＝万人受け度、自分との間＝気になり度）';
+    }else{
+      h+='<g class="sc-move" style="transform:translate(120px,0px)"><circle class="sc-me" cx="0" cy="55" r="5.5"/><rect class="sc-me" x="-5.5" y="62" width="11" height="22" rx="4.5"/><text class="sc-melab" x="0" y="80">自分</text></g>';
+      h+='<text class="sc-empty" x="8" y="20">場所を選ぶと、その店の列の様子がここに出ます</text>';
+      cap.textContent="場所がまだありません。";
+    }
+    $("scene").innerHTML=h;
+  }
+
+  /* ---------- 結果パネル ---------- */
+  var barsBuilt=false;
+  function drawQuads(){
+    var box=$("quads"), i;
+    if(!barsBuilt){
+      var h="";
+      for(i=0;i<QUADS.length;i++){
+        h+='<div class="bl" id="ql'+i+'">'+QUADS[i].name+'<small>'+QUADS[i].sub+'</small></div>';
+        h+='<div class="track"><i style="left:20%"></i><i style="left:40%"></i><i style="left:60%"></i><i style="left:80%"></i><div class="fill" id="qf'+i+'"></div></div>';
+        h+='<div class="bv" id="qv'+i+'"></div>';
+      }
+      h+='<div class="ticks" aria-hidden="true"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>';
+      box.innerHTML=h; barsBuilt=true;
+    }
+    var vals=[];
+    for(i=0;i<QUADS.length;i++){
+      var arr=state.places.filter(QUADS[i].f), a=avg(arr);
+      vals.push(a);
+      $("qv"+i).innerHTML=f1(a)+'<small>'+arr.length+'か所</small>';
+      $("qf"+i).className="fill"+(a===null?"":" "+lvClass(a));
+    }
+    raf(function(){
+      for(var j=0;j<vals.length;j++){ $("qf"+j).style.width=(vals[j]===null?0:vals[j]/5*100)+"%"; }
+    });
+    // 事実1行
+    var g=groups(), f=$("fact");
+    if(g.a===null||g.b===null){
+      f.textContent="隠れ家と万人受けの大通りの両方に場所が入ると、気になり度の差がここに出ます。";
+    }else{
+      var diff=g.b-g.a, ad=Math.abs(diff).toFixed(1);
+      if(Math.abs(diff)<0.05) f.innerHTML='特別×少数派の場所（隠れ家）と万人受けの場所の気になり度は、ほぼ同じ（<span class="mono">'+f1(g.a)+'</span> と <span class="mono">'+f1(g.b)+'</span>）。';
+      else f.innerHTML='特別×少数派の場所（隠れ家）は、万人受けの場所より気になり度が <span class="mono">'+ad+'</span> '+(diff>0?'低い':'高い')+'（<span class="mono">'+g.A.length+'</span>か所 対 <span class="mono">'+g.B.length+'</span>か所）。';
+    }
+  }
+
+  /* ---------- 一覧 ---------- */
+  function drawList(){
+    var h="",i,p;
+    if(!state.places.length){ $("list").innerHTML='<li class="emp">まだ置いた場所がありません。下の「場所を足す」から置けます。</li>'; return; }
+    for(i=0;i<state.places.length;i++){
+      p=state.places[i];
+      h+='<li class="'+(p.id===state.sel?'sel':'')+'"><button type="button" data-id="'+p.id+'"><svg class="ic l'+p.lv+'" viewBox="-8 -22 16 23" aria-hidden="true"><path class="house" d="'+HOUSE+'"/></svg><span class="no">'+(i+1)+'</span><span class="nm2">'+esc(p.name)+'</span><span class="kd">'+KINDS[p.kind]+'</span><span class="lv">'+p.lv+'</span></button></li>';
+    }
+    $("list").innerHTML=h;
+  }
+
+  function seg(group,labels,cur,mono){
+    var h='<div class="seg'+(mono?' mono':'')+'" role="group" aria-label="'+group+'">';
+    for(var i=0;i<labels.length;i++){
+      h+='<button type="button" data-g="'+group+'" data-v="'+i+'" aria-pressed="'+(cur===i)+'">'+labels[i]+'</button>';
+    }
+    return h+'</div>';
+  }
+
+  var editorSig = "";
+  function drawEditor(){
+    var p=selected(), box=$("editor");
+    if(!p){ box.innerHTML='<div style="font-size:13px;color:var(--muted)">地図のピンか下の一覧から場所を選びます。</div>'; editorSig=""; return; }
+    var sig = p.id+"|"+p.kind+"|"+p.lv+"|"+quadOf(p).key;
+    if(sig===editorSig){
+      $("rngX").value=p.x; $("rngY").value=p.y;
+      return;
+    }
+    editorSig=sig;
+    var h='<div class="nm">'+esc(p.name)+'</div><div class="qn">いまの区画: '+quadOf(p).name+'（'+quadOf(p).sub+'）</div>';
+    h+='<div class="field"><label for="rngX">万人受け度（'+'左＝知る人ぞ知る／右＝SNSで有名・チェーン・観光客向け）</label>';
+    h+='<input type="range" id="rngX" min="0" max="100" step="1" value="'+p.x+'"></div>';
+    h+='<div class="field"><label for="rngY">自分にとっての特別さ（上ほど守りたい独自の雰囲気がある）</label>';
+    h+='<input type="range" id="rngY" min="0" max="100" step="1" value="'+p.y+'"></div>';
+    h+='<div class="field"><span class="fl">そこにいる人を仲間と感じるか</span>'+seg("kind",KINDS,p.kind,false)+'</div>';
+    h+='<div class="field"><span class="fl">近さの気になり度（0＝平気／5＝とても気になる）</span>'+seg("lv",["0","1","2","3","4","5"],p.lv,true)+'</div>';
+    h+='<div class="field"><button class="btn small ng" id="btnDel" type="button">この場所を消す</button></div>';
+    box.innerHTML=h;
+  }
+
+  /* ---------- 吹き出し・ヒント・空の状態・下部バー ---------- */
+  function drawBalloon(){
+    var box=$("balloon"), p=byId(balloonId);
+    if(!p || drag){ box.innerHTML=""; return; }
+    var svgR=$("map").getBoundingClientRect(), boxR=$("mapbox").getBoundingClientRect();
+    if(!svgR || !svgR.width){ box.innerHTML=""; return; }
+    var k=Math.min(svgR.width/VBW, svgR.height/VBH);
+    var ox=(svgR.width-VBW*k)/2, oy=(svgR.height-VBH*k)/2;
+    var px=svgR.left-boxR.left+ox+sx(p.x)*k, py=svgR.top-boxR.top+oy+sy(p.y)*k;
+    var W=210, bw=boxR.width||300;
+    var left=clamp(px-W/2, 6, Math.max(6, bw-W-6));
+    var pinTop=py-24*pinScale(p.lv)*k;
+    var above = pinTop > 150;
+    var style = above ? 'left:'+left.toFixed(0)+'px;top:'+(pinTop-8).toFixed(0)+'px;transform:translateY(-100%)' : 'left:'+left.toFixed(0)+'px;top:'+(py+10).toFixed(0)+'px';
+    var cls = p.lv<=1?"lo":(p.lv<=3?"mid":"hi"), m="";
+    for(var i=1;i<=5;i++) m+='<i class="'+(i<=p.lv?'on':'')+'"></i>';
+    box.innerHTML='<div class="balloon" style="'+style+'" role="dialog" aria-label="'+esc(p.name)+'"><button type="button" class="xbtn" id="balClose" aria-label="吹き出しを閉じる">×</button>'+
+      '<div class="bn">'+esc(p.name)+'</div><div class="bq">'+quadOf(p).name+'（'+quadOf(p).sub+'）</div>'+
+      '<dl><dt>仲間感</dt><dd>'+KINDS[p.kind]+'</dd><dt>気になり度</dt><dd><span class="mono">'+p.lv+'</span> / 5<span class="meter '+cls+'" aria-hidden="true">'+m+'</span></dd></dl></div>';
+  }
+  function drawTip(){
+    var t=$("tip");
+    if(state.tip || !state.places.length){ t.innerHTML=""; return; }
+    t.innerHTML='<div class="tip" role="note">店のピンは指でつまんで動かせます。タップすると中身が出ます。<button type="button" class="xbtn" id="tipClose" aria-label="ヒントを閉じる">×</button></div>';
+  }
+  function drawEmpty(){
+    var e=$("empty");
+    if(state.places.length){ e.innerHTML=""; return; }
+    e.innerHTML='<div class="empty"><svg viewBox="0 0 150 80" aria-hidden="true">'+
+      '<line class="sc-ground" x1="4" y1="70" x2="146" y2="70"/>'+
+      '<rect class="t-road" x="96" y="10" width="22" height="60"/><line class="t-lane" x1="107" y1="10" x2="107" y2="70"/>'+
+      '<path class="t-alley" d="M10 66 L18 48 L34 46 L38 30 L56 28"/>'+
+      '<g transform="translate(75 60) scale(1.6)"><path d="'+HOUSE+'" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 2" vector-effect="non-scaling-stroke"/></g>'+
+      '</svg><p>まだ場所がありません。<b>場所を足す</b>と、地図の中央に店のピンが落ちてきます。路地側（知る人ぞ知る）か大通り側（万人受け）へ動かすと、<b>隠れ家</b>と<b>大通り</b>の気になり度が上のボードに並びます。</p>'+
+      '<button type="button" class="btn main" id="goAdd">場所を足す欄へ</button></div>';
+  }
+  function drawBar(){
+    var p=selected();
+    $("barName").innerHTML = p ? '気になり度を記録: <b>'+esc(p.name)+'</b>' : '場所を選ぶと、ここで気になり度を1タップで記録できます';
+    $("barSeg").innerHTML = seg("barlv",["0","1","2","3","4","5"], p?p.lv:-1, true);
+  }
+
+  function renderAll(){
+    $("sampleTag").textContent = state.sample ? "サンプルデータ（表示中）" : "自分のデータ";
+    $("btnSample").style.display = state.sample ? "none" : "";
+    drawBoard(); drawBadges(); drawPins(); drawScene(); drawEditor(); drawQuads(); drawList();
+    drawBalloon(); drawTip(); drawEmpty(); drawBar();
+  }
+  function commit(){ save(); renderAll(); }
+
+  /* ---------- トースト（取り消し付き） ---------- */
+  var toastTimer=null, toastSnap=null;
+  function toast(msg, snap){
+    toastSnap=snap;
+    $("toastMsg").textContent=msg;
+    $("toast").hidden=false;
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer=setTimeout(hideToast, 6000);
+  }
+  function hideToast(){ $("toast").hidden=true; toastSnap=null; toastTimer=null; }
+  function undo(){
+    if(!toastSnap) return;
+    try{
+      var d=JSON.parse(toastSnap);
+      state.places=d.places; state.sample=d.sample; state.sel=d.sel; state.seq=d.seq; state.tip=d.tip?1:0;
+    }catch(e){}
+    if(toastTimer) clearTimeout(toastTimer);
+    hideToast(); balloonId=null; editorSig=""; commit();
+  }
+  function record(mutator){
+    var snap=JSON.stringify(state);
+    mutator();
+    commit();
+    toast("記録しました", snap);
+  }
+
+  function showNotice(msg, yesLabel, onYes){
+    var n=$("notice");
+    n.innerHTML='<div class="notice"><div>'+esc(msg)+'</div><div class="acts"><button class="btn main" id="nYes" type="button">'+esc(yesLabel)+'</button><button class="btn" id="nNo" type="button">やめる</button></div></div>';
+    $("nYes").onclick=function(){ n.innerHTML=""; onYes(); };
+    $("nNo").onclick=function(){ n.innerHTML=""; };
+    $("nNo").focus();
+  }
+
+  /* ---------- ポインター操作（ドラッグ・タップ） ---------- */
+  function onDown(ev){
+    if(ev.pointerType==="mouse" && ev.button!==0) return;
+    var g=closestOf(ev.target,".ptg"), pt=toPlot(ev);
+    if(!pt) return;
+    var snap=JSON.stringify(state);
+    if(g){
+      var id=+g.getAttribute("data-id"), p=byId(id); if(!p) return;
+      drag={id:id, snap:snap, x0:ev.clientX, y0:ev.clientY, moved:false, ox:p.x-pt.x, oy:p.y-pt.y};
+      if(g.classList) g.classList.add("dragging");
+    }else{
+      var s=selected();
+      if(balloonId!==null){ balloonId=null; drawBalloon(); return; }
+      if(!s || !pt.inside) return;
+      drag={id:s.id, snap:snap, x0:ev.clientX, y0:ev.clientY, moved:true, ox:0, oy:0};
+      s.x=Math.round(clamp(pt.x,0,100)); s.y=Math.round(clamp(pt.y,0,100));
+      balloonId=null; drawBalloon(); moveLive(s);
+    }
+    try{ $("map").setPointerCapture(ev.pointerId); }catch(e){}
+    if(ev.preventDefault) ev.preventDefault();
+  }
+  function onMove(ev){
+    if(!drag) return;
+    var p=byId(drag.id), pt=toPlot(ev); if(!p||!pt) return;
+    if(!drag.moved && Math.abs(ev.clientX-drag.x0)+Math.abs(ev.clientY-drag.y0) < 6) return;
+    if(!drag.moved){ drag.moved=true; balloonId=null; drawBalloon(); }
+    p.x=Math.round(clamp(pt.x+drag.ox,0,100)); p.y=Math.round(clamp(pt.y+drag.oy,0,100));
+    moveLive(p);
+  }
+  function onUp(){
+    if(!drag) return;
+    var d=drag; drag=null;
+    try{ if(d.moved){
+      var before=JSON.parse(d.snap), bp=null;
+      for(var i=0;i<before.places.length;i++) if(before.places[i].id===d.id) bp=before.places[i];
+      var p=byId(d.id);
+      state.sel=d.id; editorSig="";
+      commit();
+      if(!bp || !p || bp.x!==p.x || bp.y!==p.y) toast("記録しました", d.snap);
+      return;
+    } }catch(e){}
+    state.sel=d.id; balloonId=d.id; editorSig=""; commit();
+  }
+  function selectAndFocus(id){
+    var g=pinEl(id); if(g && g.focus){ try{ g.focus(); }catch(e){} }
+  }
+
+  function init(){
+    if(!load()){ useSample(); }
+    if(!state.places.length && state.sample){ useSample(); }
+    if(!selected()) state.sel = state.places.length ? state.places[0].id : null;
+
+    drawTown();
+    var map=$("map");
+    map.addEventListener("pointerdown", onDown);
+    map.addEventListener("pointermove", onMove);
+    map.addEventListener("pointerup", onUp);
+    map.addEventListener("pointercancel", onUp);
+    map.addEventListener("keydown", function(ev){
+      var g=closestOf(ev.target,".ptg"); if(!g) return;
+      var id=+g.getAttribute("data-id"), p=byId(id); if(!p) return;
+      if(ev.key==="Enter"||ev.key===" "){
+        ev.preventDefault(); state.sel=id; balloonId=id; editorSig=""; commit(); selectAndFocus(id); return;
+      }
+      var dx=0, dy=0;
+      if(ev.key==="ArrowLeft") dx=-2; else if(ev.key==="ArrowRight") dx=2;
+      else if(ev.key==="ArrowUp") dy=2; else if(ev.key==="ArrowDown") dy=-2;
+      if(dx||dy){
+        ev.preventDefault();
+        p.x=clamp(p.x+dx,0,100); p.y=clamp(p.y+dy,0,100); state.sel=id; balloonId=null; commit(); selectAndFocus(id);
+      }
+    });
+    $("balloon").addEventListener("click", function(ev){
+      if(closestOf(ev.target,"#balClose")){ balloonId=null; drawBalloon(); }
+    });
+    $("tip").addEventListener("click", function(ev){
+      if(closestOf(ev.target,"#tipClose")){ state.tip=1; save(); drawTip(); }
+    });
+    $("empty").addEventListener("click", function(ev){
+      if(closestOf(ev.target,"#goAdd")){ var el=$("newName"); if(el.scrollIntoView){ try{ el.scrollIntoView({block:"center"}); }catch(e){} } el.focus(); }
+    });
+    $("list").addEventListener("click", function(ev){
+      var b=closestOf(ev.target,"button");
+      if(!b) return;
+      state.sel=+b.getAttribute("data-id"); editorSig=""; commit();
+    });
+    $("editor").addEventListener("click", function(ev){
+      var b=closestOf(ev.target,"button");
+      if(!b) return;
+      var p=selected(); if(!p) return;
+      if(b.id==="btnDel"){
+        showNotice("「"+p.name+"」を消します。元に戻せません。","消す",function(){
+          state.places=state.places.filter(function(q){return q.id!==p.id;});
+          state.sel=state.places.length?state.places[0].id:null; balloonId=null; editorSig=""; commit();
+        });
+        return;
+      }
+      var g=b.getAttribute("data-g"), v=+b.getAttribute("data-v");
+      if(g==="kind" && p.kind!==v){ record(function(){ p.kind=v; }); }
+      else if(g==="lv" && p.lv!==v){ record(function(){ p.lv=v; }); }
+    });
+    var rangeSnap=null;
+    $("editor").addEventListener("input", function(ev){
+      var p=selected(); if(!p) return;
+      if(ev.target.id!=="rngX" && ev.target.id!=="rngY") return;
+      if(!rangeSnap) rangeSnap=JSON.stringify(state);
+      if(ev.target.id==="rngX") p.x=+ev.target.value; else p.y=+ev.target.value;
+      save(); drawBoard(false); drawBadges(); drawPins(); drawQuads(); drawList(); drawScene();
+      balloonId=null; drawBalloon();
+    });
+    $("editor").addEventListener("change", function(ev){
+      if(ev.target.id!=="rngX" && ev.target.id!=="rngY") return;
+      var snap=rangeSnap; rangeSnap=null;
+      editorSig=""; commit();
+      if(snap) toast("記録しました", snap);
+    });
+    $("barSeg").addEventListener("click", function(ev){
+      var b=closestOf(ev.target,"button"); if(!b) return;
+      var p=selected(); if(!p) return;
+      var v=+b.getAttribute("data-v");
+      if(p.lv!==v) record(function(){ p.lv=v; });
+    });
+    $("toastUndo").addEventListener("click", undo);
+    $("btnAdd").addEventListener("click", function(){
+      var el=$("newName"), name=(el.value||"").replace(/^\s+|\s+$/g,"");
+      if(!name){ showNotice("場所の呼び方を入れてください。","閉じる",function(){ el.focus(); }); return; }
+      if(state.sample){
+        showNotice("いまはサンプルが入っています。サンプルを残したまま足しますか。","残して足す",function(){ addPlace(name); });
+        return;
+      }
+      addPlace(name);
+    });
+    function addPlace(name){
+      var snap=JSON.stringify(state);
+      var p={id:state.seq++,name:name,x:50,y:50,kind:1,lv:2};
+      state.places.push(p); state.sel=p.id; editorSig=""; balloonId=null; dropId=p.id;
+      $("newName").value=""; commit();
+      var mb=$("mapbox");
+      if(mb.scrollIntoView){ try{ mb.scrollIntoView({block:"center", behavior:"smooth"}); }catch(e){} }
+      toast("地図の中央に置きました", snap);
+    }
+    $("btnClear").addEventListener("click", function(){
+      showNotice("サンプルを全部消して、空の地図から始めます。","サンプルを消す",function(){
+        state.places=[]; state.sample=false; state.sel=null; balloonId=null; editorSig=""; commit();
+      });
+    });
+    $("btnSample").addEventListener("click", function(){
+      showNotice("いまの内容を消して、サンプルに戻します。","サンプルに戻す",function(){
+        useSample(); balloonId=null; editorSig=""; commit();
+      });
+    });
+    if(typeof window!=="undefined" && window.addEventListener){
+      window.addEventListener("resize", function(){ if(balloonId!==null) drawBalloon(); });
+    }
+    renderAll();
+  }
+  init();
+})();
+</script>
+</body>
+</html>

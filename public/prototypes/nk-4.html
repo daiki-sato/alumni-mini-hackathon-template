@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ネツリョウメーター</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --raised:#FFFFFF; --sunken:#E7EBE6;
+  --shadow-1:0 1px 2px rgba(26,35,32,.08),0 1px 1px rgba(26,35,32,.04);
+  --shadow-2:0 6px 20px rgba(26,35,32,.12),0 2px 4px rgba(26,35,32,.06);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --raised:#222A26; --sunken:#151B18;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 8px 24px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.3);}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --raised:#222A26; --sunken:#151B18;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 8px 24px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.3);}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0;line-height:1.6;font-size:15px}
+.wrap{max-width:560px;margin:0 auto;padding:16px max(16px, env(safe-area-inset-right, 0px)) 64px max(16px, env(safe-area-inset-left, 0px))}
+a{color:var(--ink)}
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+h1,h2,h3{font-family:var(--font-display);margin:0;letter-spacing:-.01em}
+h1{font-size:30px;margin:12px 0 4px;letter-spacing:-.03em;line-height:1.2}
+h2{font-size:19px;margin:0 0 10px;letter-spacing:-.02em;display:flex;align-items:baseline;gap:8px}
+h2 .step{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--signal-ink);background:var(--signal);border-radius:10px;padding:1px 8px;letter-spacing:.04em;transform:translateY(-2px)}
+.back{font-size:13px;color:var(--muted)}
+.sub{font-size:13px;color:var(--muted);margin:0 0 6px}
+
+/* 仮説カード（折りたたみ帯） */
+.hyp{border:1px solid var(--line);border-left:4px solid var(--signal);background:var(--surface);border-radius:12px;margin:14px 0;font-size:13px;box-shadow:var(--shadow-1)}
+.hyp summary{cursor:pointer;padding:10px 12px;list-style:none;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.hyp summary::-webkit-details-marker{display:none}
+.hyp summary .pos{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.hyp summary .tg{font-size:12px;color:var(--muted);white-space:nowrap}
+.hyp[open] summary .tg::after{content:"閉じる"}
+.hyp:not([open]) summary .tg::after{content:"開く"}
+.hyp .body{padding:0 12px 10px}
+.hyp p{margin:3px 0}
+.hyp b{font-family:var(--font-display)}
+.hyp .chk{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin-top:4px}
+.hyp .chk span:nth-child(odd){font-family:var(--font-display);font-weight:700}
+
+.sample{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin:8px 0}
+.sample .tag{font-family:var(--font-mono);border:1px solid var(--line);border-radius:10px;padding:1px 8px;background:var(--surface)}
+button{font-family:var(--font-body);font-size:14px;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--raised);color:var(--ink);cursor:pointer;box-shadow:var(--shadow-1)}
+button.small{min-height:36px;font-size:12px;padding:4px 10px;box-shadow:none}
+button.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+section{margin:30px 0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow-1)}
+
+/* ボード（発車標） */
+.board{background:var(--board);color:var(--board-ink);border-radius:14px;padding:14px 14px 12px;box-shadow:var(--shadow-2)}
+.board .lbl{font-size:12px;opacity:.85;display:flex;justify-content:space-between;gap:8px}
+.board .lbl .mono{font-family:var(--font-mono)}
+.flap{display:inline-flex;gap:3px}
+.flap .fl{display:inline-block;min-width:.62em;text-align:center;border-radius:4px;background:color-mix(in srgb,var(--board-ink) 9%,var(--board));position:relative}
+.flap .fl::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--board)}
+.bignum{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:56px;line-height:1.1;text-align:center;margin-top:-4px}
+.bignum small{font-size:24px;margin-left:4px}
+.meterwrap{position:relative}
+#meter{width:100%;height:auto;display:block;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+#meter.dragging{cursor:grabbing}
+.seg{fill:none;stroke-width:20;stroke:color-mix(in srgb,var(--board-ink) 14%,var(--board))}
+.seg.on.s0{stroke:var(--muted)}
+.seg.on.s1{stroke:color-mix(in srgb,var(--signal) 30%,var(--muted))}
+.seg.on.s2{stroke:color-mix(in srgb,var(--signal) 55%,var(--muted))}
+.seg.on.s3{stroke:color-mix(in srgb,var(--signal) 80%,var(--muted))}
+.seg.on.s4{stroke:var(--signal)}
+.needle{transform-box:view-box;transform-origin:180px 160px}
+.mlabel{fill:var(--board-ink);font-size:11px;font-family:var(--font-body)}
+.mlabel.pct{font-family:var(--font-mono);font-size:11px;font-weight:600}
+.micon{fill:none;stroke:var(--board-ink);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.mtick{stroke:var(--board-ink);stroke-width:2;opacity:.7}
+.meterband{text-align:center;font-size:12px;opacity:.85;font-family:var(--font-mono)}
+
+input[type=range]{width:100%;height:44px;accent-color:var(--signal);margin:10px 0 0}
+.rangeends{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:-6px}
+
+/* 初回の吹き出し */
+.tip{position:relative;background:var(--ink);color:var(--bg);border-radius:10px;padding:8px 40px 8px 12px;font-size:13px;margin:12px 0 0;box-shadow:var(--shadow-2)}
+.tip::before{content:"";position:absolute;top:-6px;left:50%;width:12px;height:12px;background:var(--ink);transform:translateX(-50%) rotate(45deg)}
+.tip button{position:absolute;right:4px;top:50%;transform:translateY(-50%);min-height:36px;min-width:36px;padding:0;background:transparent;border:0;color:var(--bg);box-shadow:none;font-size:18px}
+
+/* 列のイラスト */
+.queue{margin-top:14px}
+.queue svg{width:100%;height:auto;display:block}
+.qcap{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;color:var(--muted);margin-top:4px}
+.qcap b{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--ink);font-size:15px}
+.p-other .body,.p-other .head{fill:var(--muted);opacity:.45}
+.p-mate .body,.p-mate .head{fill:var(--muted);opacity:.9}
+.p-self .body,.p-self .head{fill:var(--signal)}
+.mark{fill:var(--signal);opacity:0;transform-box:fill-box;transform-origin:center;transform:scale(.3)}
+.p-mate .mark,.p-self .mark{opacity:1;transform:scale(1)}
+.p-self .mark.badge{fill:var(--signal-ink)}
+.store-wall{fill:var(--sunken);stroke:var(--line)}
+.store-sign{fill:var(--board)}
+.store-signtx{fill:var(--board-ink);font-family:var(--font-display);font-size:12px;font-weight:700}
+.store-door{fill:var(--line)}
+.ground{stroke:var(--line);stroke-width:2}
+.qlbl{fill:var(--ink);font-size:10px;font-family:var(--font-body)}
+
+label.f,.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
+input[type=text]{width:100%;min-height:44px;font-size:15px;font-family:var(--font-body);border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface);color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.row button{flex:1 1 auto}
+.big3 button{min-height:56px;font-size:15px;font-weight:500}
+.n6 button{min-width:44px;flex:1 1 0;font-family:var(--font-mono);min-height:52px;font-size:17px}
+.scale-ends{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px}
+#tapBar .f{margin-top:10px}
+#tapBar .f:first-child{margin-top:0}
+.savebtn{width:100%;margin-top:12px;min-height:52px;font-size:15px}
+.mobilehint{display:none;font-size:13px;color:var(--muted)}
+
+/* 結果 */
+.result{background:var(--raised);border:1px solid var(--line);border-left:4px solid var(--signal);border-radius:12px;padding:12px 14px;margin-bottom:12px;box-shadow:var(--shadow-1)}
+.result .k{font-size:12px;color:var(--muted)}
+.result .v{font-family:var(--font-display);font-size:16px;font-weight:700;margin-top:2px;line-height:1.5}
+.result .v b{font-family:var(--font-mono);font-size:22px;font-variant-numeric:tabular-nums}
+.bands{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.band{border-top:1px solid color-mix(in srgb,var(--board-ink) 40%,transparent);padding-top:6px}
+.band .r{font-family:var(--font-mono);font-size:11px;opacity:.85}
+.band .v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:28px;line-height:1.2}
+.band .n{font-size:11px;opacity:.85}
+.boardnote{font-size:12px;margin-top:8px;opacity:.9}
+.fact{font-size:13px;color:var(--muted);margin:8px 0 0}
+.fact b{font-family:var(--font-mono);color:var(--ink)}
+#plot{width:100%;height:auto;display:block}
+.bandbg0{fill:color-mix(in srgb,var(--muted) 8%,transparent)}
+.bandbg1{fill:color-mix(in srgb,var(--signal) 9%,transparent)}
+.bandbg2{fill:color-mix(in srgb,var(--signal) 18%,transparent)}
+.mline{stroke:var(--ink);stroke-width:3.5;stroke-linecap:round;transform-box:fill-box;transform-origin:left center}
+.mtx{fill:var(--ink);font-family:var(--font-mono);font-size:10px;font-weight:600}
+.ring{fill:none;stroke:var(--signal);stroke-width:2.5;transform-box:fill-box;transform-origin:center}
+.bubble rect{fill:var(--raised);stroke:var(--signal);stroke-width:1.5}
+.bubble polygon{fill:var(--raised);stroke:var(--signal);stroke-width:1.5}
+.bubble text{fill:var(--ink);font-size:10px;font-family:var(--font-body)}
+.bubble text.t1{font-weight:700}
+.pt{transform-box:fill-box;transform-origin:center}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{font-style:normal;font-family:var(--font-mono)}
+.lg-ok{color:var(--ok)} .lg-ng{color:var(--ng)}
+.empty{text-align:center;padding:10px 6px}
+.empty svg{width:160px;height:auto;margin:0 auto 6px;display:block}
+.empty p{margin:4px 0;font-size:13px;color:var(--muted)}
+.empty .e-axis{stroke:var(--line);stroke-width:2;fill:none}
+.empty .e-dot{fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:2 2}
+.empty .e-line{stroke:var(--signal);stroke-width:3;stroke-linecap:round}
+
+ul.list{list-style:none;margin:0;padding:0}
+ul.list li{display:grid;grid-template-columns:1fr auto;gap:2px 8px;border-top:1px solid var(--line);padding:10px 0;font-size:13px}
+ul.list li:first-child{border-top:0}
+.nm{font-weight:700}
+.meta{font-family:var(--font-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.exc{display:inline-block;font-size:11px;border:1px solid var(--signal);color:var(--ink);border-radius:8px;padding:0 6px;margin-left:6px}
+.memo{grid-column:1 / -1;font-size:12px;color:var(--muted)}
+.memorow{grid-column:1 / -1;display:flex;gap:6px}
+.memorow input{flex:1;min-height:36px;font-size:13px}
+.confirm{border:1px solid var(--ng);border-radius:12px;padding:10px 12px;margin:8px 0;background:var(--surface);font-size:13px;box-shadow:var(--shadow-1)}
+.confirm .row{margin-top:8px}
+
+/* トースト */
+.toastbox{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:10px;background:var(--ink);color:var(--bg);border-radius:12px;padding:6px 6px 6px 14px;box-shadow:var(--shadow-2);max-width:calc(100% - 32px);font-size:13px}
+.toastbox.off{opacity:0;pointer-events:none;transform:translate(-50%,8px)}
+.toastbox button{min-height:36px;background:transparent;color:var(--signal);border:1px solid color-mix(in srgb,var(--bg) 30%,transparent);box-shadow:none;font-size:13px;padding:4px 12px}
+.toastbox .msg{padding:6px 0}
+.hidden{display:none!important}
+
+@media (max-width:600px){
+  .wrap{padding-bottom:300px}
+  .mobilehint{display:block}
+  #tapBar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--raised);border-top:1px solid var(--line);box-shadow:var(--shadow-2);border-radius:14px 14px 0 0;
+    padding:10px max(12px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+  #tapBar .f{font-size:12px;margin:6px 0 3px}
+  #tapBar .big3 button{min-height:44px;font-size:14px;padding:6px 8px}
+  #tapBar .n6 button{min-height:44px;font-size:15px;padding:4px}
+  #tapBar .scale-ends{display:none}
+  #tapBar .savebtn{min-height:46px;margin-top:8px}
+  .toastbox{bottom:calc(230px + env(safe-area-inset-bottom, 0px))}
+  h1{font-size:26px}
+  .bignum{font-size:48px}
+}
+
+@media (prefers-reduced-motion: no-preference){
+  button{transition:transform .15s ease,background-color .2s ease,color .2s ease,border-color .2s ease}
+  button:active{transform:scale(.96)}
+  .flap .fl.go{animation:flip .26s ease-out}
+  @keyframes flip{0%{transform:rotateX(90deg);opacity:.2}60%{transform:rotateX(-12deg);opacity:1}100%{transform:rotateX(0)}}
+  .seg{transition:stroke .2s ease}
+  .needle{transition:transform .2s ease}
+  #meter.dragging .needle{transition:none}
+  .mark{transition:opacity .3s ease,transform .3s ease}
+  .p-other .body,.p-other .head,.p-mate .body,.p-mate .head{transition:opacity .3s ease}
+  .pt.anim{animation:pop .3s ease-out both}
+  @keyframes pop{0%{opacity:0;transform:scale(.2)}70%{transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
+  .mline.anim{animation:grow .3s ease-out both}
+  @keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  .ring{animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.18);opacity:.55}}
+  .bubble.anim{animation:fade .3s ease-out both}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .toastbox{transition:opacity .2s ease,transform .2s ease}
+  .tip{animation:fade .3s ease-out both}
+  .confirm{animation:fade .2s ease-out both}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="./">← 一覧へ</a>
+
+<h1>ネツリョウメーター</h1>
+<p class="sub">行く前の熱量と、行った後の近さの感じ方を並べて見る道具。</p>
+
+<details class="hyp" id="hyp" open>
+  <summary><span class="pos">仮説の木 B1 熱量の差（枝B「自分の熱量が高いと、周りが仲間に見える」）</span><span class="tg"></span></summary>
+  <div class="body">
+    <p><b>仮説</b>　目的への自分の熱量が高い場所ほど、自分がその集団に属している自覚が生まれ、周りが仲間に見えて近さが平気になる。熱量が低いと周りは他人のまま。</p>
+    <div class="chk"><span>当たり</span><span>熱量が高いほど気になり度が下がる関係がはっきり出る</span><span>外れ</span><span>熱量と関係なく近いと嫌</span></div>
+  </div>
+</details>
+
+<div class="sample" id="sampleBar">
+  <span class="tag" id="sampleTag">サンプル表示中</span>
+  <button class="small" id="btnClear" type="button">サンプルを消して自分で使う</button>
+  <button class="small" id="btnRestore" type="button">サンプルに戻す</button>
+</div>
+<div id="confirmBox"></div>
+
+<section aria-labelledby="h-meter">
+  <h2 id="h-meter"><span class="step">見る</span>1. 行く前に：目的への熱量</h2>
+  <div class="board" role="group" aria-label="熱量ボード">
+    <div class="lbl"><span>この目的への熱量</span><span class="mono" id="meterBand">帯 50〜100%</span></div>
+    <div class="meterwrap">
+      <svg id="meter" viewBox="0 0 360 205" aria-hidden="true"></svg>
+    </div>
+    <div class="bignum"><span class="flap" id="heatNum" aria-live="polite">60</span><small>%</small></div>
+  </div>
+  <input type="range" id="heat" min="0" max="150" step="5" value="60" aria-label="熱量（0から150パーセント）">
+  <div class="rangeends" aria-hidden="true"><span>0%</span><span>宇都宮で餃子 60〜70%</span><span>150%</span></div>
+  <div class="tip hidden" id="tip" role="note">針を指で左右に動かせます。下のつまみと矢印キーでも動きます。<button type="button" id="tipClose" aria-label="案内を閉じる">×</button></div>
+
+  <div class="panel queue">
+    <svg id="queue" viewBox="0 0 360 128" role="img" aria-label="列のイラスト。熱量が高いほど、周りの人が自分と同じ印をつけて見える"></svg>
+    <div class="qcap"><span>同じ距離のまま、自分と同じ印が見える人</span><span><b id="mateNum" aria-live="polite">3</b> / 7 人</span></div>
+  </div>
+
+  <label class="f" for="place">場所のメモ（任意・店名は書かない）</label>
+  <input type="text" id="place" maxlength="30" placeholder="例：二郎系の店">
+</section>
+
+<section aria-labelledby="h-after">
+  <h2 id="h-after"><span class="step">タップ</span>2. 行った後：1タップずつ</h2>
+  <p class="mobilehint">選ぶボタンは画面の下のバーにあります。</p>
+  <div id="excWrap" class="hidden">
+    <label class="f" for="excNote">熱量が低いのに平気だった。熱量以外の理由があれば一言（任意）</label>
+    <input type="text" id="excNote" maxlength="60" placeholder="例：共通の敵（遅延）">
+  </div>
+  <div id="tapBar">
+    <div class="f" id="lblComp">周りを仲間と感じたか</div>
+    <div class="row big3" role="group" aria-labelledby="lblComp">
+      <button type="button" id="comp-yes" data-comp="yes" aria-pressed="false">感じた</button>
+      <button type="button" id="comp-mid" data-comp="mid" aria-pressed="false">どちらでも</button>
+      <button type="button" id="comp-no" data-comp="no" aria-pressed="false">感じなかった</button>
+    </div>
+    <div class="f" id="lblAnn">近さの気になり度（0 気にならない 〜 5 とても気になる）</div>
+    <div class="row n6" role="group" aria-labelledby="lblAnn" id="annRow"></div>
+    <div class="scale-ends" aria-hidden="true"><span>気にならない</span><span>とても気になる</span></div>
+    <button class="primary savebtn" type="button" id="btnSave">この1件を記録する</button>
+  </div>
+</section>
+
+<section aria-labelledby="h-board">
+  <h2 id="h-board"><span class="step">分かる</span>3. 熱量の帯ごとの気になり度</h2>
+  <div class="result" id="resultBox">
+    <div class="k">いまのデータで分かること</div>
+    <div class="v" id="resultFact" aria-live="polite"></div>
+  </div>
+  <div class="board">
+    <div class="lbl"><span>記録 <span class="flap mono" id="cnt" aria-live="polite">0</span> 件</span><span>気になり度の平均（0〜5）</span></div>
+    <div class="bands" id="bands"></div>
+    <div class="boardnote" id="boardNote"></div>
+  </div>
+</section>
+
+<section aria-labelledby="h-plot">
+  <h2 id="h-plot">散布図：熱量と気になり度</h2>
+  <div class="panel">
+    <div id="plotEmpty" class="empty hidden">
+      <svg viewBox="0 0 160 90" aria-hidden="true">
+        <path class="e-axis" d="M14 8 V78 H150"/>
+        <circle class="e-dot" cx="36" cy="22" r="5"/><circle class="e-dot" cx="70" cy="40" r="5"/><circle class="e-dot" cx="118" cy="62" r="5"/>
+        <line class="e-line" x1="96" x2="146" y1="66" y2="66"/>
+      </svg>
+      <p>まだ点がありません。</p>
+      <p>行く前の熱量と、行った後の気になり度を1件ずつ記録すると、ここに点が並び、熱量の帯ごとの平均が横線で出ます。</p>
+    </div>
+    <svg id="plot" viewBox="0 0 360 260" role="img" aria-label="横軸が熱量、縦軸が気になり度の散布図"></svg>
+    <div class="legend" aria-hidden="true">
+      <span><i class="lg-ok">●</i> 仲間と感じた</span><span><i>◆</i> どちらでも</span><span><i class="lg-ng">■</i> 感じなかった</span><span>輪と吹き出し：熱量が低いのに平気だった点</span><span>太い横線：帯の平均</span>
+    </div>
+    <p class="fact" id="corr"></p>
+  </div>
+</section>
+
+<section aria-labelledby="h-list">
+  <h2 id="h-list">記録の一覧</h2>
+  <div class="panel"><ul class="list" id="list"></ul></div>
+</section>
+</div>
+
+<div class="toastbox off" id="toastBox">
+  <span class="msg" id="toast" role="status" aria-live="polite"></span>
+  <button type="button" id="toastUndo" class="hidden">取り消す</button>
+</div>
+
+<script>
+(function(){
+  var KEY = "hack4-nk-4.html-v1";
+  var TIPKEY = KEY + "-tip";
+  var LOW = 50; // 熱量がこの値より低い
+  var SAMPLE = [
+    {p:"ラーメンの好きな店",h:150,c:"yes",a:0},
+    {p:"二郎系の店",h:130,c:"yes",a:1},
+    {p:"宇都宮の餃子",h:65,c:"no",a:4},
+    {p:"家系チェーン",h:50,c:"no",a:3},
+    {p:"通勤電車",h:0,c:"no",a:4},
+    {p:"遅延した飛行機",h:0,c:"yes",a:1,n:"3〜4時間の遅延。共通の敵がいた"},
+    {p:"地元の古い喫茶店",h:120,c:"yes",a:0},
+    {p:"ライブ会場",h:40,c:"no",a:4},
+    {p:"個人店のカレー",h:100,c:"yes",a:1},
+    {p:"人気のパンケーキ店",h:30,c:"no",a:5},
+    {p:"駅前のチェーン牛丼",h:20,c:"mid",a:3},
+    {p:"海外の地元の食堂",h:90,c:"mid",a:2}
+  ];
+  var BANDS = [["0〜50",0,50],["50〜100",50,100],["100〜150",100,151]];
+  var state = {items:[], sample:true, seq:0};
+  var draft = {c:null, a:null};
+  var toastTimer = null, undoFn = null;
+  var SVGNS = "http://www.w3.org/2000/svg";
+
+  function $(id){ return document.getElementById(id); }
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function load(){
+    try{
+      var raw = window.localStorage.getItem(KEY);
+      if(raw){ var o = JSON.parse(raw); if(o && Array.isArray(o.items)){ state = o; return; } }
+    }catch(e){}
+    seed();
+  }
+  function seed(){
+    state = {items:[], sample:true, seq:0};
+    SAMPLE.forEach(function(s){ var it = clone(s); it.id = ++state.seq; state.items.push(it); });
+  }
+  function save(){
+    try{ window.localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  }
+  function isExc(it){ return it.h < LOW && it.c === "yes" && it.a <= 2; }
+  function mean(arr){ if(!arr.length) return null; var s=0; arr.forEach(function(x){s+=x;}); return s/arr.length; }
+  function corr(items){
+    var n = items.length; if(n < 3) return null;
+    var mx = mean(items.map(function(i){return i.h;})), my = mean(items.map(function(i){return i.a;}));
+    var sxy=0,sxx=0,syy=0;
+    items.forEach(function(i){ var dx=i.h-mx, dy=i.a-my; sxy+=dx*dy; sxx+=dx*dx; syy+=dy*dy; });
+    if(sxx===0 || syy===0) return null;
+    return sxy/Math.sqrt(sxx*syy);
+  }
+  function bandMeans(){
+    return BANDS.map(function(d){
+      var g = state.items.filter(function(i){ return i.h >= d[1] && i.h < d[2]; });
+      return {m: mean(g.map(function(i){return i.a;})), n: g.length};
+    });
+  }
+  function el(tag, cls, txt){ var e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; }
+  function ns(tag, attrs){ var e=document.createElementNS(SVGNS, tag); for(var k in attrs){ e.setAttribute(k, attrs[k]); } return e; }
+  var COMP = {yes:"仲間と感じた", mid:"どちらでも", no:"感じなかった"};
+
+  /* 発車標の数字：変わった桁だけめくる */
+  function flap(node, str){
+    str = String(str);
+    var old = node.getAttribute("data-v");
+    if(old === str) return;
+    old = old == null ? "" : old;
+    node.setAttribute("data-v", str);
+    node.textContent = "";
+    var pad = old.length - str.length;
+    for(var i=0;i<str.length;i++){
+      var ch = str.charAt(i);
+      var s = el("span", "fl" + (old.charAt(i+pad) !== ch ? " go" : ""), ch);
+      node.appendChild(s);
+    }
+  }
+
+  /* ---------- メーター ---------- */
+  var CX=180, CY=160, MR=105;
+  var segs = [], needle = null;
+  function th(v){ return Math.PI * (1 - v/150); }
+  function pt(v, r){ var t = th(v); return [CX + r*Math.cos(t), CY - r*Math.sin(t)]; }
+  function f1(n){ return Math.round(n*10)/10; }
+  var ICONS = {
+    plane: "M-8 1 L8 -2 M2 -1.5 L-3 -7 M1 -1 L-2 6 M-7 1 L-9 -3",
+    gyoza: "M-8 3 Q0 -9 8 3 Z M-4 -1 L-3 2 M0 -3 L0 1 M4 -1 L3 2",
+    walk: "M0 -8 A2 2 0 1 1 0.1 -8 M0 -5 L-1 2 L-5 8 M-1 2 L3 8 M-4 -2 L0 -4 L4 -1",
+    ramen: "M-9 0 H9 Q8 8 0 8 Q-8 8 -9 0 Z M-4 -2 L2 -9 M0 -2 L6 -9"
+  };
+  var MARKS = [
+    {v:0, icon:"plane", label:"飛行機"},
+    {v:60, icon:"gyoza", label:"宇都宮で餃子"},
+    {v:100, icon:"walk", label:"わざわざ行く"},
+    {v:150, icon:"ramen", label:"ラーメン"}
+  ];
+  function buildMeter(){
+    var s = $("meter"); s.textContent = "";
+    for(var k=0;k<30;k++){
+      var a = pt(k*5+0.4, MR), b = pt(k*5+4.6, MR);
+      var p = ns("path",{d:"M"+f1(a[0])+" "+f1(a[1])+" A"+MR+" "+MR+" 0 0 1 "+f1(b[0])+" "+f1(b[1]), "class":"seg s"+Math.min(4,Math.floor(k/6))});
+      s.appendChild(p); segs.push(p);
+    }
+    MARKS.forEach(function(m){
+      var i1 = pt(m.v, MR-16), i2 = pt(m.v, MR-24);
+      s.appendChild(ns("line",{x1:f1(i1[0]),y1:f1(i1[1]),x2:f1(i2[0]),y2:f1(i2[1]),"class":"mtick"}));
+      var g = ns("g",{}), ix, iy, tx, ty, anchor = "middle";
+      if(m.v === 0 || m.v === 150){
+        ix = m.v === 0 ? CX-MR : CX+MR; iy = CY+18; tx = ix; ty = CY+40;
+      } else {
+        var c = pt(m.v, MR+30); ix = c[0]; iy = c[1]+4; tx = c[0]; ty = c[1]-10;
+      }
+      g.appendChild(ns("path",{d:ICONS[m.icon],"class":"micon",transform:"translate("+f1(ix)+" "+f1(iy)+")"}));
+      var t = ns("text",{x:f1(tx),y:f1(ty),"text-anchor":anchor,"class":"mlabel"}); t.textContent = m.label + " " ;
+      var tp = ns("tspan",{"class":"mlabel pct"}); tp.textContent = m.v+"%"; t.appendChild(tp);
+      g.appendChild(t);
+      s.appendChild(g);
+    });
+    needle = ns("g",{"class":"needle"});
+    needle.appendChild(ns("line",{x1:CX,y1:CY,x2:CX-MR+20,y2:CY,stroke:"var(--board-ink)","stroke-width":3,"stroke-linecap":"round"}));
+    needle.appendChild(ns("circle",{cx:CX-MR+20,cy:CY,r:9,fill:"var(--signal)",stroke:"var(--board)","stroke-width":2}));
+    needle.appendChild(ns("circle",{cx:CX-MR+20,cy:CY,r:24,fill:"transparent"}));
+    s.appendChild(needle);
+    s.appendChild(ns("circle",{cx:CX,cy:CY,r:8,fill:"var(--board-ink)"}));
+    attachDrag(s);
+  }
+  function renderMeter(v){
+    for(var k=0;k<segs.length;k++){
+      var base = "seg s"+Math.min(4,Math.floor(k/6));
+      segs[k].setAttribute("class", base + (k*5 < v ? " on" : ""));
+    }
+    if(needle) needle.style.transform = "rotate("+(v/150*180)+"deg)";
+    var band = v < 50 ? "0〜50" : (v < 100 ? "50〜100" : "100〜150");
+    $("meterBand").textContent = "帯 "+band+"%";
+  }
+  function attachDrag(s){
+    var dragging = false;
+    function valFrom(e){
+      var r = s.getBoundingClientRect(); if(!r.width) return null;
+      var sx = (e.clientX - r.left) * 360 / r.width, sy = (e.clientY - r.top) * 205 / r.height;
+      var dx = sx - CX, dy = CY - sy, ang;
+      if(dy < 0) ang = dx < 0 ? Math.PI : 0; else ang = Math.atan2(dy, dx);
+      var v = Math.round((Math.PI - ang) / Math.PI * 150 / 5) * 5;
+      return Math.max(0, Math.min(150, v));
+    }
+    s.addEventListener("pointerdown", function(e){
+      dragging = true; s.classList.add("dragging");
+      try{ s.setPointerCapture(e.pointerId); }catch(err){}
+      var v = valFrom(e); if(v != null) setHeat(v);
+      e.preventDefault();
+    });
+    s.addEventListener("pointermove", function(e){ if(!dragging) return; var v = valFrom(e); if(v != null) setHeat(v); });
+    function end(){ dragging = false; s.classList.remove("dragging"); }
+    s.addEventListener("pointerup", end);
+    s.addEventListener("pointercancel", end);
+  }
+  function setHeat(v){
+    var h = $("heat");
+    if(String(v) === h.value) return;
+    h.value = v; onHeat();
+  }
+  function heatVal(){ return parseInt($("heat").value,10); }
+
+  /* ---------- 列のイラスト ---------- */
+  var people = [];
+  var MATE_ORDER = [2,4,1,5,0,6,7]; // 自分(3)に近い人から順に印が見える
+  function buildQueue(){
+    var s = $("queue"); s.textContent = "";
+    s.appendChild(ns("line",{x1:4,x2:356,y1:104,y2:104,"class":"ground"}));
+    // 店の入口
+    s.appendChild(ns("rect",{x:296,y:18,width:58,height:86,rx:4,"class":"store-wall"}));
+    s.appendChild(ns("rect",{x:296,y:18,width:58,height:20,rx:4,"class":"store-sign"}));
+    var st = ns("text",{x:325,y:32,"text-anchor":"middle","class":"store-signtx"}); st.textContent = "店"; s.appendChild(st);
+    s.appendChild(ns("rect",{x:312,y:56,width:26,height:48,rx:3,"class":"store-door"}));
+    people = [];
+    for(var i=0;i<8;i++){
+      var x = 270 - i*34;
+      var g = ns("g",{"class": i===3 ? "p-self" : "p-other"});
+      g.appendChild(ns("circle",{cx:x,cy:56,r:9,"class":"head"}));
+      g.appendChild(ns("rect",{x:x-10,y:68,width:20,height:34,rx:8,"class":"body"}));
+      g.appendChild(ns("rect",{x:x-9,y:47,width:18,height:4,rx:2,"class":"mark"}));
+      g.appendChild(ns("circle",{cx:x,cy:80,r:4,"class":"mark badge"}));
+      s.appendChild(g); people.push(g);
+      if(i===3){ var t = ns("text",{x:x,y:120,"text-anchor":"middle","class":"qlbl"}); t.textContent = "自分"; s.appendChild(t); }
+    }
+  }
+  function renderQueue(v){
+    var mates = Math.round(v/150*7);
+    var on = {};
+    for(var k=0;k<mates;k++){ on[MATE_ORDER[k]] = true; }
+    for(var i=0;i<people.length;i++){
+      if(i===3) continue;
+      people[i].setAttribute("class", on[i] ? "p-mate" : "p-other");
+    }
+    $("mateNum").textContent = mates;
+  }
+
+  function onHeat(){
+    var v = heatVal();
+    flap($("heatNum"), v);
+    renderMeter(v); renderQueue(v); updateDraft();
+  }
+
+  /* ---------- 帯ボードと結果 ---------- */
+  function buildBands(){
+    var box = $("bands"); box.textContent = "";
+    BANDS.forEach(function(d, i){
+      var b = el("div","band");
+      b.appendChild(el("div","r","熱量 "+d[0]+"%"));
+      var v = el("div","v"); v.id = "bandv-"+i; var f = el("span","flap"); f.id = "bandf-"+i; v.appendChild(f); b.appendChild(v);
+      var n = el("div","n"); n.id = "bandn-"+i; b.appendChild(n);
+      box.appendChild(b);
+    });
+  }
+  function renderBands(){
+    var bm = bandMeans();
+    bm.forEach(function(x, i){
+      flap($("bandf-"+i), x.m==null ? "—" : x.m.toFixed(1));
+      $("bandn-"+i).textContent = x.n+" 件";
+    });
+    flap($("cnt"), state.items.length);
+    var note = "";
+    if(bm[0].m!=null && bm[2].m!=null){
+      note = "低い帯 "+bm[0].m.toFixed(1)+" → 高い帯 "+bm[2].m.toFixed(1)+"（差 "+(bm[0].m-bm[2].m).toFixed(1)+"）";
+    } else { note = "低い帯と高い帯の両方に記録があると、差が出ます。"; }
+    $("boardNote").textContent = note;
+    renderResult();
+  }
+  function renderResult(){
+    var hi = state.items.filter(function(i){ return i.h >= 100; });
+    var lo = state.items.filter(function(i){ return i.h < LOW; });
+    var mh = mean(hi.map(function(i){return i.a;})), ml = mean(lo.map(function(i){return i.a;}));
+    var box = $("resultFact"); box.textContent = "";
+    if(mh==null || ml==null){
+      box.textContent = "熱量100%以上と50%未満の両方に記録があると、ここに2つの平均が並びます。";
+      return;
+    }
+    box.appendChild(document.createTextNode("熱量100%以上の帯の気になり度は平均 "));
+    box.appendChild(el("b",null,mh.toFixed(1)));
+    box.appendChild(document.createTextNode("、50%未満は平均 "));
+    box.appendChild(el("b",null,ml.toFixed(1)));
+    box.appendChild(document.createTextNode("（"+hi.length+"件 / "+lo.length+"件）"));
+  }
+
+  /* ---------- 散布図 ---------- */
+  function splitText(t, n){
+    var out = [];
+    while(t.length && out.length < 2){ out.push(t.slice(0,n)); t = t.slice(n); }
+    if(t.length) out[1] = out[1].slice(0, n-1) + "…";
+    return out;
+  }
+  function renderPlot(mode){
+    // mode: "all"=全点を順に出す / 数値=その記録だけ出す / "none"=動かさない
+    var s = $("plot"); s.textContent = "";
+    var empty = !state.items.length;
+    $("plotEmpty").className = empty ? "empty" : "empty hidden";
+    s.setAttribute("class", empty ? "hidden" : "");
+    var L=36,R=346,T=26,B=222, W=R-L, H=B-T;
+    function X(h){ return L + h/150*W; }
+    function Y(a){ return B - a/5*H; }
+    // 熱量の帯（背景）
+    BANDS.forEach(function(d, i){
+      var hi = Math.min(150, d[2]);
+      s.appendChild(ns("rect",{x:X(d[1]),y:T,width:X(hi)-X(d[1]),height:H,"class":"bandbg"+i}));
+      var t = ns("text",{x:(X(d[1])+X(hi))/2,y:T-8,"text-anchor":"middle","font-size":10,fill:"var(--muted)","font-family":"IBM Plex Mono, monospace"});
+      t.textContent = d[0]+"%"; s.appendChild(t);
+    });
+    for(var a=0;a<=5;a++){
+      s.appendChild(ns("line",{x1:L,x2:R,y1:Y(a),y2:Y(a),stroke:"var(--line)","stroke-width":1}));
+      var t = ns("text",{x:L-8,y:Y(a)+4,"text-anchor":"end","font-size":11,fill:"var(--muted)","font-family":"IBM Plex Mono, monospace"}); t.textContent=a; s.appendChild(t);
+    }
+    [0,50,100,150].forEach(function(h){
+      var t = ns("text",{x:X(h),y:B+15,"text-anchor":"middle","font-size":11,fill:"var(--muted)","font-family":"IBM Plex Mono, monospace"}); t.textContent=h+"%"; s.appendChild(t);
+    });
+    var xl = ns("text",{x:(L+R)/2,y:B+32,"text-anchor":"middle","font-size":11,fill:"var(--muted)"}); xl.textContent="熱量 →"; s.appendChild(xl);
+    var yl = ns("text",{x:10,y:(T+B)/2,"text-anchor":"middle","font-size":11,fill:"var(--muted)",transform:"rotate(-90 10 "+((T+B)/2)+")"}); yl.textContent="気になり度 →"; s.appendChild(yl);
+    if(empty){ renderCorr(); return; }
+    var n = state.items.length, delayStep = Math.min(70, 900/n);
+    // 帯の平均（太い横線）
+    var bm = bandMeans();
+    BANDS.forEach(function(d, i){
+      if(bm[i].m == null) return;
+      var hi = Math.min(150, d[2]), y = Y(bm[i].m);
+      var ln = ns("line",{x1:X(d[1])+6,x2:X(hi)-6,y1:y,y2:y,"class":"mline"+(mode==="all"?" anim":"")});
+      if(mode==="all") ln.style.animationDelay = (n*delayStep + 80*i)+"ms";
+      s.appendChild(ln);
+      var tx = ns("text",{x:X(d[1])+8,y:y-6,"class":"mtx"}); tx.textContent = "平均 "+bm[i].m.toFixed(1); s.appendChild(tx);
+    });
+    var bubbles = [];
+    state.items.forEach(function(it, idx){
+      var x=X(it.h), y=Y(it.a), r=6, col = it.c==="yes" ? "var(--ok)" : (it.c==="no" ? "var(--ng)" : "var(--muted)");
+      var title = ns("title",{}); title.textContent = (it.p||"記録")+"　熱量 "+it.h+"%　気になり度 "+it.a+"　"+COMP[it.c];
+      var shape;
+      if(it.c==="yes"){ shape = ns("circle",{cx:x,cy:y,r:r,fill:col,"fill-opacity":.9,stroke:"var(--surface)","stroke-width":1.5}); }
+      else if(it.c==="no"){ shape = ns("rect",{x:x-r+1,y:y-r+1,width:(r-1)*2,height:(r-1)*2,fill:col,"fill-opacity":.9,stroke:"var(--surface)","stroke-width":1.5}); }
+      else { shape = ns("polygon",{points:x+","+(y-r-1)+" "+(x+r+1)+","+y+" "+x+","+(y+r+1)+" "+(x-r-1)+","+y,fill:col,"fill-opacity":.9,stroke:"var(--surface)","stroke-width":1.5}); }
+      var anim = mode==="all" || mode===it.id;
+      var g = ns("g",{"class":"pt"+(anim?" anim":"")});
+      if(mode==="all") g.style.animationDelay = (idx*delayStep)+"ms";
+      shape.appendChild(title);
+      g.appendChild(shape);
+      s.appendChild(g);
+      if(isExc(it)){
+        s.appendChild(ns("circle",{cx:x,cy:y,r:r+6,"class":"ring"}));
+        bubbles.push({it:it,x:x,y:y,delay: mode==="all" ? (n*delayStep+200) : 0, anim:anim});
+      }
+    });
+    // 例外のメモを吹き出しで
+    bubbles.forEach(function(b){
+      var lines = [b.it.p || "例外"].concat(b.it.n ? splitText(b.it.n, 12) : ["熱量以外の理由は一覧でメモできます"].map(function(t){return t.slice(0,16);}));
+      var maxLen = 0; lines.forEach(function(l){ maxLen = Math.max(maxLen, l.length); });
+      var w = Math.min(200, maxLen*10 + 16), h = lines.length*14 + 10;
+      var bx = b.x + 16, by = b.y - h - 10;
+      if(bx + w > R) bx = b.x - 16 - w;
+      if(by < T) by = b.y + 14;
+      if(by + h > B) by = B - h;
+      var g = ns("g",{"class":"bubble"+(b.anim?" anim":"")});
+      if(b.anim && b.delay) g.style.animationDelay = b.delay+"ms";
+      var ax = bx > b.x ? bx + 8 : bx + w - 8, ay = by > b.y ? by : by + h;
+      g.appendChild(ns("polygon",{points:f1(b.x + (bx > b.x ? 7 : -7))+","+f1(b.y + (by > b.y ? 7 : -7))+" "+f1(ax-5)+","+f1(ay)+" "+f1(ax+5)+","+f1(ay)}));
+      g.appendChild(ns("rect",{x:f1(bx),y:f1(by),width:w,height:h,rx:8}));
+      g.appendChild(ns("line",{x1:f1(ax-4),x2:f1(ax+4),y1:f1(ay),y2:f1(ay),stroke:"var(--raised)","stroke-width":2}));
+      lines.forEach(function(l, i){
+        var t = ns("text",{x:f1(bx+8),y:f1(by+17+i*14),"class": i===0 ? "t1" : ""}); t.textContent = l; g.appendChild(t);
+      });
+      s.appendChild(g);
+    });
+    renderCorr();
+  }
+  function renderCorr(){
+    var c = corr(state.items), cf = $("corr");
+    cf.textContent = "";
+    if(c==null){ cf.textContent = "3件以上あると、熱量と気になり度の関係の強さ（相関係数）を出します。"; }
+    else {
+      cf.appendChild(document.createTextNode("熱量と気になり度の相関係数 "));
+      cf.appendChild(el("b",null,c.toFixed(2)));
+      var exc = state.items.filter(isExc).length;
+      cf.appendChild(document.createTextNode("（−1 に近いほど、熱量が高いほど気になり度が低い）。例外の点は "+exc+" 件。"));
+    }
+  }
+
+  /* ---------- 一覧 ---------- */
+  function renderList(){
+    var ul = $("list"); ul.textContent = "";
+    if(!state.items.length){ var li = el("li",null,"まだ記録がありません。上のメーターで熱量を合わせ、行った後に2つ選ぶと1件になります。"); ul.appendChild(li); return; }
+    state.items.slice().reverse().forEach(function(it){
+      var li = el("li");
+      var left = el("div");
+      var nm = el("span","nm",it.p || "（メモなし）");
+      left.appendChild(nm);
+      if(isExc(it)) left.appendChild(el("span","exc","例外"));
+      var meta = el("div","meta","熱量 "+it.h+"%　気になり度 "+it.a+"　"+COMP[it.c]);
+      left.appendChild(meta);
+      li.appendChild(left);
+      var del = el("button","small","削除");
+      del.type = "button"; del.id = "del-"+it.id;
+      del.setAttribute("aria-label", (it.p||"この記録")+"を削除");
+      del.addEventListener("click", function(){
+        var idx = -1;
+        for(var k=0;k<state.items.length;k++){ if(state.items[k].id===it.id){ idx = k; break; } }
+        state.items = state.items.filter(function(x){return x.id!==it.id;}); save(); renderAll("none");
+        toast("削除しました", function(){
+          state.items.splice(Math.max(0, Math.min(idx, state.items.length)), 0, it); save(); renderAll(it.id);
+        });
+      });
+      li.appendChild(del);
+      if(isExc(it)){
+        if(it.n){ li.appendChild(el("div","memo","理由メモ："+it.n)); }
+        else {
+          var mr = el("div","memorow");
+          var inp = el("input"); inp.type="text"; inp.id="note-"+it.id; inp.maxLength=60; inp.placeholder="熱量以外の理由（共通の敵など）";
+          inp.setAttribute("aria-label","理由メモ");
+          var bt = el("button","small","メモを残す"); bt.type="button"; bt.id="notebtn-"+it.id;
+          bt.addEventListener("click", function(){ if(inp.value.trim()){ it.n = inp.value.trim(); save(); renderAll("none"); } });
+          mr.appendChild(inp); mr.appendChild(bt); li.appendChild(mr);
+        }
+      }
+      ul.appendChild(li);
+    });
+  }
+
+  function renderSampleBar(){
+    $("sampleTag").textContent = state.sample ? "サンプル表示中" : "自分の記録";
+  }
+  function renderAll(mode){ renderSampleBar(); renderBands(); renderPlot(mode == null ? "all" : mode); renderList(); }
+
+  function updateDraft(){
+    ["yes","mid","no"].forEach(function(k){ $("comp-"+k).setAttribute("aria-pressed", draft.c===k ? "true":"false"); });
+    var btns = $("annRow").children;
+    for(var i=0;i<btns.length;i++){ btns[i].setAttribute("aria-pressed", draft.a===i ? "true":"false"); }
+    var h = heatVal();
+    var show = h < LOW && draft.c==="yes" && draft.a!=null && draft.a<=2;
+    $("excWrap").className = show ? "" : "hidden";
+  }
+
+  function showConfirm(text, okLabel, onOk){
+    var box = $("confirmBox"); box.textContent = "";
+    var c = el("div","confirm"); c.setAttribute("role","alertdialog");
+    c.appendChild(el("div",null,text));
+    var r = el("div","row");
+    var ok = el("button","primary",okLabel); ok.type="button"; ok.id="confirmOk";
+    var no = el("button",null,"やめる"); no.type="button"; no.id="confirmNo";
+    ok.addEventListener("click", function(){ box.textContent=""; onOk(); });
+    no.addEventListener("click", function(){ box.textContent=""; });
+    r.appendChild(ok); r.appendChild(no); c.appendChild(r); box.appendChild(c);
+    ok.focus();
+  }
+
+  function toast(t, onUndo){
+    $("toast").textContent = t;
+    undoFn = onUndo || null;
+    $("toastUndo").className = undoFn ? "" : "hidden";
+    $("toastBox").className = "toastbox";
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, undoFn ? 6000 : 3500);
+  }
+  function hideToast(){ $("toastBox").className = "toastbox off"; undoFn = null; }
+
+  function initTip(){
+    var seen = false;
+    try{ seen = window.localStorage.getItem(TIPKEY) === "1"; }catch(e){}
+    if(!seen) $("tip").className = "tip";
+    $("tipClose").addEventListener("click", function(){
+      $("tip").className = "tip hidden";
+      try{ window.localStorage.setItem(TIPKEY, "1"); }catch(e){}
+    });
+  }
+
+  function init(){
+    load();
+    buildMeter(); buildQueue(); buildBands();
+    var annRow = $("annRow");
+    for(var i=0;i<=5;i++){
+      (function(i){
+        var b = el("button",null,String(i)); b.type="button"; b.id="ann-"+i;
+        b.setAttribute("aria-pressed","false"); b.setAttribute("aria-label","気になり度 "+i);
+        b.addEventListener("click", function(){ draft.a = i; updateDraft(); });
+        annRow.appendChild(b);
+      })(i);
+    }
+    ["yes","mid","no"].forEach(function(k){
+      $("comp-"+k).addEventListener("click", function(){ draft.c = k; updateDraft(); });
+    });
+    $("heat").addEventListener("input", onHeat);
+    $("btnSave").addEventListener("click", function(){
+      if(draft.c==null || draft.a==null){ toast("「仲間と感じたか」と「気になり度」を1つずつ選ぶと記録できます。"); return; }
+      var h = heatVal();
+      var it = {id:++state.seq, p:$("place").value.trim(), h:h, c:draft.c, a:draft.a};
+      var n = $("excNote").value.trim();
+      if(n && h < LOW && draft.c==="yes" && draft.a<=2) it.n = n;
+      state.items.push(it); save();
+      var prevDraft = {c:draft.c, a:draft.a, p:it.p, n:n};
+      draft = {c:null,a:null}; $("place").value=""; $("excNote").value="";
+      updateDraft(); renderAll(it.id);
+      toast("記録しました", function(){
+        state.items = state.items.filter(function(x){ return x.id!==it.id; }); save();
+        draft = {c:prevDraft.c, a:prevDraft.a}; $("place").value = prevDraft.p; $("excNote").value = prevDraft.n;
+        updateDraft(); renderAll("none");
+      });
+    });
+    $("toastUndo").addEventListener("click", function(){ var f = undoFn; hideToast(); if(f) f(); });
+    $("btnClear").addEventListener("click", function(){
+      showConfirm("サンプル12件を消して、空の状態から自分の記録を始めます。", "サンプルを消す", function(){
+        state = {items:[], sample:false, seq:0}; save(); renderAll();
+      });
+    });
+    $("btnRestore").addEventListener("click", function(){
+      showConfirm("いまの記録を消して、サンプルに戻します。", "サンプルに戻す", function(){
+        seed(); save(); renderAll();
+      });
+    });
+    initTip();
+    onHeat(); renderAll("all");
+  }
+  init();
+})();
+</script>
+</body>
+</html>

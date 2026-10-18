@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>スキマトク</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0;line-height:1.6;font-size:15px}
+.wrap{max-width:560px;margin:0 auto;padding:12px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px))}
+.back{display:inline-block;color:var(--muted);font-size:13px;padding:6px 0;text-decoration:none}
+.back:hover{color:var(--ink);text-decoration:underline}
+h1{font-family:var(--font-display);font-size:24px;margin:4px 0 10px;letter-spacing:.02em}
+h2{font-family:var(--font-display);font-size:16px;margin:0 0 8px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.hyp{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:8px 12px;font-size:12px;color:var(--muted);margin-bottom:14px}
+.hyp dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 10px}
+.hyp dt{font-weight:700;color:var(--ink);white-space:nowrap}
+.hyp dd{margin:0}
+.hyp .ok{color:var(--ok);font-weight:700}
+.hyp .ng{color:var(--ng);font-weight:700}
+.tabs{display:flex;gap:6px;margin:0 0 12px}
+.tabs button{flex:1;padding:10px 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;font:inherit;font-weight:700;cursor:pointer;min-height:44px}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.panel[hidden]{display:none}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:12px 14px;margin-bottom:12px}
+.board .lab{font-size:12px;opacity:.85}
+.board .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:44px;line-height:1.15}
+.board .num small{font-size:16px;margin-left:4px}
+.board .sub{font-size:13px;opacity:.9}
+.board.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.btn{font:inherit;font-weight:700;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal)}
+.btn.ghost{border-color:var(--line);font-weight:500}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.block{display:block;width:100%}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.row{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.bar{height:10px;background:var(--line);border-radius:4px;overflow:hidden;flex:1}
+.bar>i{display:block;height:100%;background:var(--ink)}
+.bar.sig>i{background:var(--signal)}
+.bar.ngc>i{background:var(--ng)}
+.note{font-size:12px;color:var(--muted);margin:6px 0 0}
+.verdict{border-top:1px dashed var(--line);margin-top:18px;padding-top:12px}
+.verdict h2{font-size:14px}
+.verdict .btns button{flex:1;min-width:140px;text-align:left;font-weight:500;font-size:13px}
+.verdict .btns button[aria-pressed="true"]{border-width:3px}
+.verdict .btns .vok[aria-pressed="true"]{border-color:var(--ok)}
+.verdict .btns .vng[aria-pressed="true"]{border-color:var(--ng)}
+.foot{margin-top:18px;font-size:12px;color:var(--muted)}
+.foot .btns{margin-top:8px}
+.foot .btn{min-height:40px;font-size:13px;font-weight:500}
+.confirm{margin-top:10px;border:1px solid var(--ink);border-radius:8px;padding:10px;background:var(--surface);color:var(--ink)}
+.confirm[hidden]{display:none}
+.pill{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 6px;color:var(--muted)}
+.demo{border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-size:12px;color:var(--muted)}
+.demo .btns{margin-top:6px}
+.demo .btn{min-height:36px;font-size:12px;font-weight:500}
+@media (prefers-reduced-motion: no-preference){.bar>i{transition:width .3s}}
+.brow{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:6px 8px;margin:0 0 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.brow[aria-pressed="true"]{border:3px solid var(--signal);padding:4px 6px}
+.brow .tm{font-family:var(--font-mono);font-weight:600;width:48px;flex:none}
+.brow .ct{font-family:var(--font-mono);width:34px;text-align:right;flex:none}
+.brow .bf{font-family:var(--font-mono);width:30px;text-align:right;color:var(--muted);font-size:12px;flex:none}
+.brow .pk{font-size:12px;width:96px;flex:none;color:var(--muted)}
+.brow .pk.on{color:var(--ink);font-weight:700}
+.srow2{display:grid;grid-template-columns:48px 1fr 92px;gap:8px;align-items:center;margin:0 0 6px;font-size:13px}
+.srow2 .tm{font-family:var(--font-mono)}
+.srow2 .v{font-size:12px;text-align:right}
+.srow2 input{width:100%;min-height:28px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<h1>スキマトク</h1>
+<div class="hyp"><dl><dt>視点</dt><dd>仕組み・テック</dd><dt>具体/抽象</dt><dd>具体</dd><dt>仮説</dt><dd>空いている時間に来た人に特典があれば、時間をずらす人が増えて列がゆったりする。</dd><dt>確かめること</dt><dd><span class="ok">当たり</span>＝特典があるなら時間をずらす<br><span class="ng">外れ</span>＝特典があってもピークに行く</dd></dl></div>
+<div class="tabs" role="tablist"><button id="tab-cust" type="button" role="tab" data-tab="cust" aria-selected="true">客の画面</button><button id="tab-shop" type="button" role="tab" data-tab="shop" aria-selected="false">店の画面</button></div>
+<div id="view-cust" class="panel">
+  <p class="small muted">ラーメン店・営業 11:00〜15:00。時間帯ごとの混み具合と特典です。</p>
+  <div class="board" aria-live="polite">
+    <div class="lab">いちばん混む時間の列（目安）</div>
+    <div class="num"><span id="b-num">--</span><small>組</small></div>
+    <div class="sub" id="b-sub"></div>
+  </div>
+  <div class="sec"><h2>時間帯と特典</h2><div id="rows"></div>
+    <p class="note">行をタップすると、その時間に行く場合の目安が出ます。灰色の数字は、特典がなかった場合の組数（仮定）。</p></div>
+  <div class="sec" id="pick-box" hidden><h2>あなたが選んだ時間</h2><div id="pick"></div></div>
+</div>
+<div id="view-shop" class="panel" hidden>
+  <p class="small muted">店の人が見る画面です。時間帯ごとに特典を決めると、列の人数がどう動くかを計算します。</p>
+  <div class="board two">
+    <div><div class="lab">ピークの列 特典前</div><div class="num"><span id="s-before">0</span><small>組</small></div></div>
+    <div><div class="lab">ピークの列 特典後</div><div class="num"><span id="s-after">0</span><small>組</small></div></div>
+  </div>
+  <div class="sec"><h2>時間帯ごとの特典（円相当）</h2><div id="sliders"></div>
+    <div class="row" style="margin-top:6px"><span class="small">特典にかかる額の目安</span><b id="s-cost" class="mono"></b></div></div>
+  <div class="sec"><h2>この計算の前提</h2>
+    <label for="flex" class="small">時間をずらせる人の割合（仮定）: <b id="flex-v" class="mono"></b></label>
+    <input id="flex" type="range" min="0" max="100" step="5" style="width:100%">
+    <ul class="note" style="padding-left:18px;margin:8px 0 0">
+      <li>30分ずらすごとに、30円相当の手間がかかると感じる。</li>
+      <li>特典から手間を引いた得が150円相当以上なら、ずらせる人は全員ずらす。それ未満は得に比例して一部がずらす。</li>
+      <li>ずらす先は前後90分以内で、得が大きい時間帯ほど多い。</li>
+      <li>特典は、その時間帯に来る全員が受け取る。</li>
+    </ul></div>
+</div>
+
+<div class="verdict"><h2>触ってみて、どちらに近い？</h2><div class="btns"><button id="vote-ok" class="btn vok" type="button" aria-pressed="false">当たり: 特典があるなら、時間をずらす</button><button id="vote-ng" class="btn vng" type="button" aria-pressed="false">外れ: 特典があっても、ピークに行く</button></div><p id="vote-res" class="note"></p></div>
+<div class="foot"><span id="sample-note"></span> この端末の中だけで動く、通信しないシミュレーションです。<div class="btns"><button id="btn-empty" class="btn ghost" type="button">サンプルを消して自分で使う</button><button id="btn-sample" class="btn ghost" type="button">サンプルに戻す</button></div><div id="confirm" class="confirm" hidden><p id="conf-msg" style="margin:0 0 8px"></p><div class="btns"><button id="conf-yes" class="btn primary" type="button">はい、実行する</button><button id="conf-no" class="btn ghost" type="button">やめる</button></div></div></div>
+</div>
+<script>
+var KEY="hack3-g6-3-v1";
+var NB=8, START=660, COST=30, FULL=150;
+var DEMAND=[10,26,34,24,14,9,7,5];
+var PERKS={0:'なし',50:'ネギ増し無料',100:'味玉無料',150:'大盛り無料',200:'味玉＋大盛り無料',250:'味玉＋大盛り＋飲み物'};
+function sample(){return {sample:true,perk:[150,100,0,0,150,200,250,200],flex:40,pick:null}}
+function empty(){return {sample:false,perk:[0,0,0,0,0,0,0,0],flex:40,pick:null}}
+function simulate(perk,flex){
+  var out=[],b,j,i;for(b=0;b<NB;b++)out.push(0);
+  for(b=0;b<NB;b++){
+    var d=DEMAND[b],s=d*flex/100,gains=[],tot=0,mx=0;
+    for(j=Math.max(0,b-3);j<=Math.min(NB-1,b+3);j++){
+      if(j===b)continue;
+      var g=perk[j]-COST*Math.abs(j-b)-perk[b];
+      if(g>0){gains.push([j,g]);tot+=g;if(g>mx)mx=g}
+    }
+    var move=gains.length?s*Math.min(1,mx/FULL):0;
+    out[b]+=d-move;
+    for(i=0;i<gains.length;i++)out[gains[i][0]]+=move*gains[i][1]/tot;
+  }
+  return out;
+}
+function pname(v){return PERKS[v]||('+'+v+'円相当')}
+function init(){
+  var h='',i;
+  for(i=0;i<NB;i++){
+    h+='<div class="srow2"><label class="tm" for="perk-'+i+'">'+hm(START+30*i)+'</label><input id="perk-'+i+'" type="range" min="0" max="250" step="50" data-i="'+i+'"><span class="v" id="pv-'+i+'"></span></div>';
+  }
+  $('sliders').innerHTML=h;
+  for(i=0;i<NB;i++){$('perk-'+i).addEventListener('input',function(e){S.perk[parseInt(e.target.getAttribute('data-i'),10)]=parseInt(e.target.value,10);upd()})}
+  $('flex').addEventListener('input',function(e){S.flex=parseInt(e.target.value,10);upd()});
+  $('rows').addEventListener('click',function(e){
+    var b=e.target.closest?e.target.closest('button[data-b]'):null;if(!b)return;
+    var k=parseInt(b.getAttribute('data-b'),10);S.pick=(S.pick===k)?null:k;upd();
+  });
+}
+function render(){
+  var after=simulate(S.perk,S.flex),i,h='',mxB=Math.max.apply(null,DEMAND),mxA=0,pk=0;
+  for(i=0;i<NB;i++){if(after[i]>mxA){mxA=after[i];pk=i}}
+  for(i=0;i<NB;i++){
+    var a=Math.round(after[i]),p=S.perk[i];
+    h+='<button type="button" class="brow" id="band-'+i+'" data-b="'+i+'" aria-pressed="'+(S.pick===i?'true':'false')+'">'
+     +'<span class="tm">'+hm(START+30*i)+'</span><span class="bar'+(after[i]>mxB*0.7?' ngc':' sig')+'"><i style="width:'+Math.min(100,after[i]/mxB*100)+'%"></i></span>'
+     +'<span class="ct">'+a+'</span><span class="bf">'+DEMAND[i]+'</span><span class="pk'+(p>0?' on':'')+'">'+pname(p)+'</span></button>';
+  }
+  $('rows').innerHTML=h;
+  $('b-num').textContent=Math.round(mxA);
+  $('b-sub').textContent=hm(START+30*pk)+' 台が最大。特典がなければ '+mxB+'組（仮定）。';
+  $('pick-box').hidden=S.pick===null;
+  if(S.pick!==null){
+    var k=S.pick,lv=after[k]>mxB*0.7?'混んでいます':after[k]>mxB*0.35?'ふつうです':'空いています';
+    $('pick').innerHTML='<div class="cmpr" style="display:flex;justify-content:space-between"><span>'+hm(START+30*k)+' 台</span><b class="mono">列 約'+Math.round(after[k])+'組</b></div><p class="note" style="margin:4px 0 0">'+lv+'。特典: '+pname(S.perk[k])+'。</p>';
+  }
+  var cost=0;
+  for(i=0;i<NB;i++){
+    var inp=$('perk-'+i);if(String(inp.value)!==String(S.perk[i]))inp.value=S.perk[i];
+    $('pv-'+i).textContent=S.perk[i]>0?pname(S.perk[i]):'なし';
+    cost+=after[i]*S.perk[i];
+  }
+  var fi=$('flex');if(String(fi.value)!==String(S.flex))fi.value=S.flex;
+  $('flex-v').textContent=S.flex+'%';
+  $('s-before').textContent=mxB;$('s-after').textContent=Math.round(mxA);
+  $('s-cost').textContent='約'+Math.round(cost).toLocaleString('ja-JP')+'円';
+}
+
+/* common helpers */
+var S=null, tab='cust', pending=null;
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function pad(n){return (n<10?'0':'')+n}
+function hm(min){min=Math.round(min);var h=Math.floor(min/60)%24,m=((min%60)+60)%60;return pad(h)+':'+pad(m)}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function upd(){save();render();commonRender()}
+function commonRender(){
+  $('sample-note').textContent=S.sample?'表示中はサンプルデータです。':'あなたのデータで動いています。';
+  var v=S.vote||null;
+  var o=$('vote-ok'),n=$('vote-ng');
+  o.setAttribute('aria-pressed',v==='ok'?'true':'false');
+  n.setAttribute('aria-pressed',v==='ng'?'true':'false');
+  $('vote-res').textContent=v==='ok'?'この端末の回答: 当たり':v==='ng'?'この端末の回答: 外れ':'まだ回答していません。';
+  var ps=document.querySelectorAll('.panel');
+  for(var i=0;i<ps.length;i++){ps[i].hidden=(ps[i].id!=='view-'+tab)}
+  var ts=document.querySelectorAll('.tabs button');
+  for(var j=0;j<ts.length;j++){ts[j].setAttribute('aria-selected',ts[j].getAttribute('data-tab')===tab?'true':'false')}
+}
+function bindCommon(){
+  var ts=document.querySelectorAll('.tabs button');
+  for(var i=0;i<ts.length;i++){(function(b){b.addEventListener('click',function(){tab=b.getAttribute('data-tab');commonRender()})})(ts[i])}
+  $('vote-ok').addEventListener('click',function(){S.vote=S.vote==='ok'?null:'ok';upd()});
+  $('vote-ng').addEventListener('click',function(){S.vote=S.vote==='ng'?null:'ng';upd()});
+  function ask(kind,msg){pending=kind;$('conf-msg').textContent=msg;$('confirm').hidden=false;$('conf-yes').focus()}
+  $('btn-empty').addEventListener('click',function(){ask('empty','サンプルを消して、空の状態から使います。よろしいですか。')});
+  $('btn-sample').addEventListener('click',function(){ask('sample','今の内容を捨てて、サンプルに戻します。よろしいですか。')});
+  $('conf-no').addEventListener('click',function(){pending=null;$('confirm').hidden=true});
+  $('conf-yes').addEventListener('click',function(){
+    var v=S.vote||null;
+    S=(pending==='empty')?empty():sample();S.v=1;S.vote=v;
+    pending=null;$('confirm').hidden=true;upd();
+  });
+}
+function boot(){
+  var s=null;
+  try{var r=localStorage.getItem(KEY);if(r)s=JSON.parse(r)}catch(e){s=null}
+  S=(s&&s.v===1)?s:sample();S.v=1;
+  bindCommon();init();render();commonRender();
+}
+
+boot();
+</script>
+</body>
+</html>

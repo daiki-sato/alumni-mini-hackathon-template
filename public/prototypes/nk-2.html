@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ナカマノシルシ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --surface-2:#F8F9F6; --ground:#E5E9E3; --board-line:#34423C;
+  --shadow-1:0 1px 2px rgba(26,35,32,.06),0 1px 6px rgba(26,35,32,.05);
+  --shadow-2:0 2px 4px rgba(26,35,32,.08),0 8px 24px rgba(26,35,32,.10);
+  --radius:12px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --surface-2:#212824; --ground:#1E2521; --board-line:#26302B;
+  --shadow-1:0 1px 2px rgba(0,0,0,.35),0 1px 6px rgba(0,0,0,.25);
+  --shadow-2:0 2px 4px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.45);}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --surface-2:#212824; --ground:#1E2521; --board-line:#26302B;
+  --shadow-1:0 1px 2px rgba(0,0,0,.35),0 1px 6px rgba(0,0,0,.25);
+  --shadow-2:0 2px 4px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.45);}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+
+*{box-sizing:border-box}
+body{line-height:1.7;font-size:15px}
+.wrap{max-width:560px;margin:0 auto;padding:12px max(16px, env(safe-area-inset-right, 0px)) 56px max(16px, env(safe-area-inset-left, 0px))}
+a{color:var(--ink)}
+a.back{display:inline-block;font-size:14px;color:var(--muted);padding:8px 0;text-decoration:none;border-bottom:1px solid var(--line)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+h1{font-family:var(--font-display);font-size:30px;line-height:1.2;margin:18px 0 6px;letter-spacing:-.01em}
+h2{font-family:var(--font-display);font-size:20px;line-height:1.3;margin:0 0 10px;letter-spacing:-.01em}
+.lead{color:var(--muted);margin:0 0 16px;font-size:14px}
+section{padding:26px 0 8px}
+.step{display:inline-block;font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:.08em;margin-bottom:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* 仮説カード（折りたためる帯） */
+.hyp{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--signal);border-radius:var(--radius);margin:10px 0 4px;box-shadow:var(--shadow-1)}
+.hyp summary{cursor:pointer;list-style:none;padding:10px 14px;font-size:13px;display:flex;gap:8px;align-items:baseline}
+.hyp summary::-webkit-details-marker{display:none}
+.hyp summary .pos{font-family:var(--font-mono);font-weight:600}
+.hyp summary .chev{margin-left:auto;color:var(--muted);font-size:12px}
+.hyp[open] summary .chev::after{content:"たたむ"}
+.hyp:not([open]) summary .chev::after{content:"ひらく"}
+.hyp dl{margin:0;padding:0 14px 12px;font-size:14px}
+.hyp dt{font-size:12px;color:var(--muted);margin-top:6px}
+.hyp dd{margin:0}
+
+.samplebar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin:12px 0 0}
+.samplebar .tag{font-family:var(--font-mono);border:1px solid var(--line);border-radius:8px;padding:1px 8px}
+button{font:inherit;color:inherit}
+.btn{min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:14px}
+.btn.small{min-height:36px;font-size:12px;padding:4px 10px}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+.confirm{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-top:10px;font-size:14px;box-shadow:var(--shadow-2)}
+.confirm .row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+
+/* 場面イラスト */
+.scene{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-1);padding:6px 4px 2px;overflow:hidden}
+.scene svg{display:block;width:100%;height:auto}
+.scene .floor{fill:var(--ground)}
+.scene .guide{fill:none;stroke:var(--line);stroke-width:2;stroke-dasharray:5 6}
+.scene .shop-wall{fill:var(--surface-2);stroke:var(--muted);stroke-width:1.5}
+.scene .shop-roof{fill:var(--board)}
+.scene .shop-door{fill:var(--ground);stroke:var(--muted);stroke-width:1.2}
+.scene .shop-noren{fill:var(--board)}
+.scene .shop-text{fill:var(--muted);font-family:var(--font-display);font-size:10px}
+.scene .link{stroke:var(--ok);stroke-width:16;stroke-linecap:round;opacity:0}
+.scene .link.on{opacity:.2}
+.shadow{fill:var(--line)}
+.person[data-v="1"] .shadow{fill:var(--ok);opacity:.35}
+.person[data-v="2"] .shadow{fill:none;stroke:var(--ng);stroke-width:1.5;stroke-dasharray:3 3}
+.person[data-v="3"] .shadow{fill:var(--line)}
+.fig .b,.fig .h,.fig .lg{fill:var(--surface);stroke:var(--muted);stroke-width:1.5}
+.fig .acc{fill:var(--line);stroke:var(--muted);stroke-width:1.2}
+.fig .strap{fill:none;stroke:var(--muted);stroke-width:1.2}
+.person[data-v="1"] .fig .b,.person[data-v="1"] .fig .h,.person[data-v="1"] .fig .lg{fill:var(--ok);stroke:var(--ok)}
+.person[data-v="2"] .fig .b,.person[data-v="2"] .fig .h,.person[data-v="2"] .fig .lg{stroke:var(--ng);stroke-dasharray:3 2}
+.person[data-v="2"] .fig{transform:translateY(-6px)}
+.person{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.person:focus{outline:none}
+.person .hit{fill:transparent;pointer-events:all;stroke:none}
+.person:focus-visible .hit{stroke:var(--ink);stroke-width:2.5}
+.me .b,.me .h,.me .lg{fill:var(--signal);stroke:var(--signal-ink);stroke-width:1.5}
+.me .shadow{fill:var(--signal);opacity:.3}
+.me-label{fill:var(--signal-ink);font-family:var(--font-display);font-weight:700;font-size:11px}
+.me-tag{fill:var(--signal)}
+.pos-label{fill:var(--muted);font-family:var(--font-mono);font-size:9px}
+.mk-noren{fill:var(--ok)}
+.mk-wave{fill:none;stroke:var(--ng);stroke-width:2.5;stroke-dasharray:3 2;stroke-linecap:round}
+.mk-q circle{fill:var(--surface);stroke:var(--muted);stroke-width:1.5}
+.mk-q text{fill:var(--muted);font-family:var(--font-mono);font-weight:600;font-size:12px}
+.ripple{fill:none;stroke:var(--ink);stroke-width:1.5;opacity:0}
+
+.tip{position:relative;display:flex;gap:8px;align-items:flex-start;background:var(--board);color:var(--board-ink);border-radius:10px;padding:8px 8px 8px 12px;font-size:13px;margin:0 0 10px;box-shadow:var(--shadow-2)}
+.tip[hidden]{display:none}
+.tip::after{content:"";position:absolute;left:40px;bottom:-7px;border:7px solid transparent;border-bottom:0;border-top-color:var(--board)}
+.tip p{margin:0;flex:1;padding-top:3px}
+.tip button{min-width:36px;min-height:36px;border:0;border-radius:8px;background:transparent;color:var(--board-ink);cursor:pointer;font-size:18px;line-height:1}
+
+/* 見る手がかり（凡例を兼ねるチップ） */
+.clues{margin-top:14px;display:grid;gap:10px}
+.clue-group{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px}
+.clue-head{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-weight:700;font-size:14px;margin-bottom:6px}
+.clue-head svg{flex:none}
+.clue-group.mate .clue-head{color:var(--ok)}
+.clue-group.out .clue-head{color:var(--ng)}
+.clue-group.unk .clue-head{color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:3px 10px 3px 7px;color:var(--ink)}
+.chip svg{flex:none;color:var(--muted)}
+.clue-note{font-size:12px;color:var(--muted);margin:0}
+
+/* ボード */
+.board{background:var(--board);color:var(--board-ink);border-radius:var(--radius);padding:16px 18px;margin-top:18px;box-shadow:var(--shadow-2)}
+.board .cap{font-size:12px;opacity:.85;letter-spacing:.06em}
+.board .big{font-family:var(--font-mono);font-weight:600;font-size:46px;line-height:1.1;font-variant-numeric:tabular-nums;margin:6px 0 4px;display:flex;align-items:baseline;gap:4px}
+.board .big small{font-size:20px;opacity:.8}
+.board .sub{font-family:var(--font-mono);font-size:15px;font-variant-numeric:tabular-nums;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.flaps{display:inline-flex;gap:3px;perspective:300px}
+.flap{display:inline-block;min-width:.68em;text-align:center;background:var(--board-line);border-radius:5px;padding:0 3px;position:relative}
+.flap::after{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid var(--board)}
+.sub .flap{border-radius:3px;padding:0 2px}
+.bar{display:flex;height:16px;border-radius:8px;overflow:hidden;margin-top:12px;background:var(--surface);border:1px solid var(--line)}
+.bar i{display:block;height:100%;width:0}
+.bar .b1{background:var(--ok)}
+.bar .b3{background:var(--muted)}
+.bar .b2{background:var(--ng)}
+.bar .b0{background:var(--line)}
+.barnote{font-size:12px;color:var(--ink);margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 12px;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.barnote span::before{content:"";display:inline-block;width:10px;height:10px;margin-right:4px;border-radius:2px;vertical-align:-1px}
+.barnote .n1::before{background:var(--ok)}
+.barnote .n3::before{background:var(--muted)}
+.barnote .n2::before{background:var(--ng)}
+.barnote .n0::before{background:var(--line)}
+
+label.fl{display:block;font-size:13px;color:var(--muted);margin:18px 0 6px}
+select{font:inherit;min-height:44px;width:100%;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:6px 10px}
+.scale{display:flex;gap:6px}
+.scale button{flex:1;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-family:var(--font-mono);font-weight:600;font-size:16px}
+.scale button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.scalelab{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px}
+.savebar{margin-top:14px}
+.savebar .btn{width:100%}
+.status{min-height:1.6em;font-size:13px;color:var(--muted);margin:8px 0 0}
+
+/* 結果パネルとカード */
+.result{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--ok);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow-1)}
+.result .rcap{font-size:11px;color:var(--muted);letter-spacing:.06em}
+.result .headline{font-family:var(--font-display);font-weight:700;font-size:16px;line-height:1.5;margin:2px 0 0}
+.result .m{font-family:var(--font-mono);font-weight:600;font-variant-numeric:tabular-nums}
+.result details{margin-top:6px;font-size:13px;color:var(--muted)}
+.result summary{cursor:pointer;font-size:12px}
+.result details p{margin:2px 0}
+.cards{display:grid;gap:10px;margin-top:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow-1)}
+.card-top{display:flex;align-items:baseline;gap:8px}
+.card-top h3{font-family:var(--font-display);font-size:16px;margin:0;letter-spacing:-.01em}
+.card-top .n{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.card svg.minirow{display:block;width:100%;max-width:260px;height:auto;margin:6px 0 2px}
+.minirow .ms{fill:var(--surface-2);stroke:var(--muted);stroke-width:1}
+.minirow .mr{fill:var(--board)}
+.minirow .p0 circle,.minirow .p0 rect{fill:var(--surface);stroke:var(--muted);stroke-width:1}
+.minirow .p1 circle,.minirow .p1 rect{fill:var(--ok);stroke:var(--ok);stroke-width:1}
+.minirow .p2 circle,.minirow .p2 rect{fill:none;stroke:var(--ng);stroke-width:1.2;stroke-dasharray:2 1.5}
+.minirow .gr{fill:var(--ground)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.stat .k{font-size:11px;color:var(--muted)}
+.stat .v{font-family:var(--font-mono);font-weight:600;font-size:20px;font-variant-numeric:tabular-nums;line-height:1.3}
+.stat .v small{font-size:12px;color:var(--muted);font-weight:500}
+.mini{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:4px}
+.mini i{display:block;height:100%;background:var(--ok);width:0}
+.dots5{display:flex;gap:3px;margin-top:6px}
+.dots5 i{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--muted)}
+.dots5 i.on{background:var(--ink);border-color:var(--ink)}
+.reclist{list-style:none;margin:10px 0 0;padding:0;border-top:1px solid var(--line)}
+.reclist li{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:12px;font-variant-numeric:tabular-nums;padding:2px 0;border-bottom:1px solid var(--line)}
+.reclist li span{flex:1}
+.reclist .x{min-width:36px;min-height:36px;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:16px;border-radius:8px}
+.empty{display:flex;gap:14px;align-items:center;background:var(--surface);border:1px dashed var(--line);border-radius:var(--radius);padding:14px;margin-top:12px;color:var(--muted);font-size:14px}
+.empty svg{flex:none}
+.empty p{margin:0}
+.empty .ef{fill:none;stroke:var(--muted);stroke-width:1.5}
+.empty .es{fill:var(--line)}
+.foot{font-size:12px;color:var(--muted);margin-top:22px}
+
+/* トースト */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translate(-50%,16px);opacity:0;pointer-events:none;display:flex;align-items:center;gap:12px;background:var(--board);color:var(--board-ink);border-radius:12px;padding:8px 8px 8px 16px;font-size:14px;box-shadow:var(--shadow-2);max-width:calc(100% - 32px);z-index:30}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast .tbtn{min-height:36px;border:1px solid var(--board-ink);border-radius:8px;background:transparent;color:var(--board-ink);padding:2px 12px;cursor:pointer;font-size:13px;font-weight:700}
+
+@media (max-width:600px){
+  .wrap{padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px))}
+  .savebar{position:fixed;left:0;right:0;bottom:0;margin:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);box-shadow:var(--shadow-2);padding:10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom, 0px))}
+  h1{font-size:27px}
+}
+@media (min-width:601px){
+  .clues{grid-template-columns:1fr 1fr}
+  .clue-group.mate{grid-row:span 2}
+}
+
+@media (prefers-reduced-motion: no-preference){
+  .btn,.scale button,.tip button,.toast .tbtn,.reclist .x{transition:background-color .15s,border-color .15s,transform .12s}
+  .btn:active,.scale button:active,.reclist .x:active{transform:scale(.97)}
+  .bar i{transition:width .3s ease-out}
+  .mini i{transition:width .5s ease-out}
+  .scene .link{transition:opacity .25s}
+  .fig{transition:transform .25s ease-out}
+  .fig .b,.fig .h,.fig .lg{transition:fill .2s,stroke .2s}
+  .shadow{transition:fill .2s,opacity .2s}
+  .person:active .fig{transform:translateY(2px)}
+  .mark > *{transform-box:fill-box;transform-origin:50% 100%;animation:nkPop .3s cubic-bezier(.3,1.4,.6,1) both}
+  .ripple{transform-box:fill-box;transform-origin:50% 50%;animation:nkRipple .4s ease-out}
+  .flap.flip{animation:nkFlip .24s ease-out}
+  .toast{transition:transform .2s ease-out,opacity .2s}
+  .card,.empty,.result{animation:nkRise .28s ease-out both}
+  .tip{animation:nkRise .3s ease-out both}
+  .hyp summary .chev{transition:color .15s}
+}
+@keyframes nkPop{0%{transform:scale(.2);opacity:0}65%{transform:scale(1.18);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes nkRipple{0%{transform:scale(.4);opacity:.5}100%{transform:scale(1.6);opacity:0}}
+@keyframes nkFlip{0%{transform:rotateX(-90deg);opacity:.3}100%{transform:rotateX(0);opacity:1}}
+@keyframes nkRise{0%{transform:translateY(6px);opacity:0}100%{transform:none;opacity:1}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">← 一覧へ</a>
+  <h1>ナカマノシルシ</h1>
+  <p class="lead">列の中で、その店を大事にしている人の証拠を心の中で数える道具。相手には何もしません。</p>
+
+  <details class="hyp" id="hyp-card" open>
+    <summary><span class="pos">A2 共通の好き</span><span>仮説カード</span><span class="chev" aria-hidden="true"></span></summary>
+    <dl>
+      <dt>仮説の木での位置</dt>
+      <dd>A2 共通の好き（枝A「仲間の証拠が見えると仲間になる」）</dd>
+      <dt>仮説</dt>
+      <dd>列の人の中に「その店を大事にしている証拠」を自分で探しにいくと、周りの多くが仲間だと気づき、近さが平気になる。乱す人は少数だと分かる。</dd>
+      <dt>この試作で確かめること</dt>
+      <dd>当たり＝証拠を探すと「ほとんど仲間だった」と感じて楽になる</dd>
+      <dd>外れ＝証拠があっても近いものは近い</dd>
+    </dl>
+  </details>
+
+  <div class="samplebar">
+    <span class="tag" id="sample-tag">サンプルデータ</span>
+    <button class="btn small" id="btn-clear" type="button">サンプルを消して自分で使う</button>
+    <button class="btn small" id="btn-reset" type="button">サンプルに戻す</button>
+  </div>
+  <div id="confirm-area" aria-live="polite"></div>
+
+  <section aria-labelledby="h-queue">
+    <span class="step">1 見る ・ 2 タップする</span>
+    <h2 id="h-queue">いまの列</h2>
+    <p class="lead" style="margin-bottom:12px">店の入口に向かう列を横から見た絵。人を1タップするごとに「仲間の証拠あり」「外の人っぽい」「分からない」「未判定」と切りかわります。</p>
+    <div class="tip" id="tip" hidden>
+      <p>人を押すと、頭の上の印が切りかわります。</p>
+      <button type="button" id="tip-close" aria-label="この案内を閉じる">×</button>
+    </div>
+    <div class="scene" id="scene"></div>
+
+    <div class="clues" id="clues" aria-labelledby="h-signs">
+      <h3 class="sr" id="h-signs">見る手がかり</h3>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-board">
+    <span class="step">3 分かる</span>
+    <h2 id="h-board">この列の仲間</h2>
+    <div class="board" role="group" aria-label="この列の仲間の数">
+      <div class="cap" aria-hidden="true">この列の仲間</div>
+      <div class="big" aria-hidden="true"><span class="flaps" id="bd-mate"></span><small>／</small><span class="flaps" id="bd-total"></span><small>人</small></div>
+      <div class="sub" aria-hidden="true"><span>外の人 <span class="flaps" id="bd-out"></span> 人</span><span>分からない <span class="flaps" id="bd-unk"></span> 人</span></div>
+      <span class="sr" id="bd-live" aria-live="polite"></span>
+    </div>
+    <div class="bar" id="bar" role="img" aria-label="仲間と外の人の割合"></div>
+    <div class="barnote" id="barnote"></div>
+
+    <label class="fl" id="worry-label">この列での、近さの気になり度（0〜5）</label>
+    <div class="scale" id="worry-scale" role="group" aria-labelledby="worry-label"></div>
+    <div class="scalelab"><span>0 気にならない</span><span>5 とても気になる</span></div>
+  </section>
+
+  <section aria-labelledby="h-save">
+    <h2 id="h-save">この列を記録に残す</h2>
+    <label class="fl" for="sel-type">店のタイプ</label>
+    <select id="sel-type">
+      <option value="好きな個人店">好きな個人店</option>
+      <option value="二郎系の店">二郎系の店</option>
+      <option value="家系チェーン">家系チェーン</option>
+      <option value="SNSで有名な店">SNSで有名な店</option>
+    </select>
+    <div class="savebar"><button class="btn primary" id="btn-save" type="button">仲間の数と気になり度を記録に残す</button></div>
+    <p class="status" id="save-status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section aria-labelledby="h-rec">
+    <h2 id="h-rec">過去の観察</h2>
+    <div class="result" id="facts" aria-live="polite"></div>
+    <div id="rec-wrap"></div>
+  </section>
+
+  <p class="foot">データはこの端末のブラウザ内だけに保存されます。名前や位置は記録しません。</p>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "hack4-nk-2-v1";
+  var TIP_KEY = "hack4-nk-2-v1-tip";
+  var TYPES = ["好きな個人店","二郎系の店","家系チェーン","SNSで有名な店"];
+  var NAME = ["未判定","仲間の証拠あり","外の人っぽい","分からない"];
+  var SVGNS = "http://www.w3.org/2000/svg";
+
+  function sampleState(){
+    return {
+      sample:true,
+      line:[1,1,3,1,1,2,1,1,3,1],
+      worry:1,
+      nextId:7,
+      records:[
+        {id:1,type:"好きな個人店",mate:8,out:0,worry:1},
+        {id:2,type:"二郎系の店",mate:7,out:1,worry:2},
+        {id:3,type:"家系チェーン",mate:3,out:3,worry:3},
+        {id:4,type:"SNSで有名な店",mate:2,out:4,worry:4},
+        {id:5,type:"好きな個人店",mate:9,out:0,worry:1},
+        {id:6,type:"SNSで有名な店",mate:1,out:5,worry:5}
+      ]
+    };
+  }
+  function emptyState(){
+    return {sample:false,line:[0,0,0,0,0,0,0,0,0,0],worry:null,nextId:1,records:[]};
+  }
+
+  var state = load() || sampleState();
+
+  function load(){
+    try{
+      var raw = window.localStorage.getItem(KEY);
+      if(!raw) return null;
+      var s = JSON.parse(raw);
+      if(!s || !Array.isArray(s.line) || s.line.length !== 10 || !Array.isArray(s.records)) return null;
+      return s;
+    }catch(e){ return null; }
+  }
+  function save(){
+    try{ window.localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  }
+
+  function $(id){ return document.getElementById(id); }
+  function el(tag, cls, text){
+    var n = document.createElement(tag);
+    if(cls) n.className = cls;
+    if(text != null) n.textContent = text;
+    return n;
+  }
+  function sv(tag, attrs){
+    var n = document.createElementNS(SVGNS, tag);
+    if(attrs){ for(var k in attrs){ if(Object.prototype.hasOwnProperty.call(attrs,k)) n.setAttribute(k, String(attrs[k])); } }
+    return n;
+  }
+  function clear(n){ while(n.firstChild) n.removeChild(n.firstChild); }
+  function raf(fn){
+    if(typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(fn);
+    else setTimeout(fn, 16);
+  }
+
+  function counts(){
+    var c = [0,0,0,0];
+    for(var i=0;i<state.line.length;i++){ c[state.line[i]]++; }
+    return c;
+  }
+
+  /* ---------- 場面イラスト ---------- */
+  var G1 = 128, G2 = 250;
+  function posOf(i){
+    if(i === "me") return {x:320, y:G2};
+    return i < 5 ? {x:96 + 56*i, y:G1} : {x:264 - 56*(i-5), y:G2};
+  }
+  var CHAIN = [0,1,2,3,4,"me",5,6,7,8,9];
+  var LOOK = [
+    {h:1.05, bag:"back"},
+    {h:0.90, hat:"cap"},
+    {h:1.12, bag:"tote"},
+    {h:0.95, hat:"beanie", bag:"shoulder"},
+    {h:1.00},
+    {h:1.08, hat:"cap", bag:"tote"},
+    {h:0.88, bag:"back"},
+    {h:1.00, hat:"beanie"},
+    {h:1.15, bag:"shoulder"},
+    {h:0.93, hat:"cap", bag:"back"}
+  ];
+  var people = [], links = [], prevV = [];
+
+  /* 足もとを原点に、丸い頭＋角丸の胴の人を描く。dir=-1 は左向き */
+  function drawFigure(look, dir){
+    var g = sv("g", {"class":"fig"});
+    var bh = Math.round(30 * look.h);
+    var top = 12 + bh;
+    var back = -dir;
+    g.appendChild(sv("rect", {"class":"lg", x:-8, y:-12, width:6, height:12, rx:2}));
+    g.appendChild(sv("rect", {"class":"lg", x:2, y:-12, width:6, height:12, rx:2}));
+    if(look.bag === "back"){
+      g.appendChild(sv("rect", {"class":"acc", x:(back > 0 ? 8 : -16), y:-(12 + bh*0.92), width:8, height:Math.round(bh*0.62), rx:3}));
+    }
+    g.appendChild(sv("rect", {"class":"b", x:-11, y:-top, width:22, height:bh, rx:8}));
+    if(look.bag === "tote"){
+      var tx = dir < 0 ? -18 : 9;
+      g.appendChild(sv("path", {"class":"strap", d:"M"+(tx+2)+" -16 Q"+(tx+4.5)+" -24 "+(tx+7)+" -16"}));
+      g.appendChild(sv("rect", {"class":"acc", x:tx, y:-16, width:9, height:10, rx:2}));
+    }
+    if(look.bag === "shoulder"){
+      var sx = back > 0 ? 7 : -15;
+      g.appendChild(sv("path", {"class":"strap", d:"M"+(-back*6)+" "+(-top+3)+" L"+(sx+4)+" "+(-top+bh*0.6)}));
+      g.appendChild(sv("rect", {"class":"acc", x:sx, y:-top+bh*0.55, width:8, height:7, rx:2}));
+    }
+    var hy = -(top + 10);
+    g.appendChild(sv("circle", {"class":"h", cx:0, cy:hy, r:9}));
+    if(look.hat === "cap"){
+      g.appendChild(sv("path", {"class":"acc", d:"M-9 "+(hy-1)+" A9 9 0 0 1 9 "+(hy-1)+" Z"}));
+      g.appendChild(sv("rect", {"class":"acc", x:(dir < 0 ? -15 : 3), y:hy-2, width:12, height:3, rx:1.5}));
+    }
+    if(look.hat === "beanie"){
+      g.appendChild(sv("path", {"class":"acc", d:"M-9.5 "+(hy-1)+" A9.5 10 0 0 1 9.5 "+(hy-1)+" L9.5 "+(hy+1)+" L-9.5 "+(hy+1)+" Z"}));
+      g.appendChild(sv("circle", {"class":"acc", cx:0, cy:hy-11, r:2.5}));
+    }
+    return {g:g, markY: hy - 22};
+  }
+
+  function buildMark(v){
+    var m = sv("g", {"class":"mark"});
+    if(v === 1){
+      var n = sv("g", {"class":"mk-noren"});
+      n.appendChild(sv("rect", {x:-12, y:-14, width:24, height:3.5, rx:1.5}));
+      n.appendChild(sv("rect", {x:-11, y:-9, width:6.4, height:10, rx:1}));
+      n.appendChild(sv("rect", {x:-3.2, y:-9, width:6.4, height:10, rx:1}));
+      n.appendChild(sv("rect", {x:4.6, y:-9, width:6.4, height:10, rx:1}));
+      m.appendChild(n);
+    }else if(v === 2){
+      m.appendChild(sv("path", {"class":"mk-wave", d:"M-12 -4 q3 -6 6 0 t6 0 t6 0 t6 0"}));
+    }else if(v === 3){
+      var q = sv("g", {"class":"mk-q"});
+      q.appendChild(sv("circle", {cx:0, cy:-6, r:8}));
+      var t = sv("text", {x:0, y:-2, "text-anchor":"middle"});
+      t.textContent = "?";
+      q.appendChild(t);
+      m.appendChild(q);
+    }
+    return m;
+  }
+
+  function buildScene(){
+    var box = $("scene"); clear(box);
+    var svg = sv("svg", {viewBox:"0 0 360 282", role:"group", "aria-label":"店の入口に向かう列。前の5人、自分、後ろの5人"});
+    svg.appendChild(sv("rect", {"class":"floor", x:0, y:G1-6, width:360, height:16, rx:8}));
+    svg.appendChild(sv("rect", {"class":"floor", x:0, y:G2-6, width:360, height:16, rx:8}));
+    svg.appendChild(sv("path", {"class":"guide", d:"M66 "+G1+" L326 "+G1+" Q346 "+G1+" 346 "+(G1+20)+" L346 "+(G2-20)+" Q346 "+G2+" 326 "+G2+" L20 "+G2}));
+    /* 店 */
+    var shop = sv("g", {"aria-hidden":"true"});
+    shop.appendChild(sv("rect", {"class":"shop-wall", x:6, y:40, width:58, height:G1-40, rx:3}));
+    shop.appendChild(sv("rect", {"class":"shop-roof", x:2, y:32, width:66, height:10, rx:3}));
+    shop.appendChild(sv("rect", {"class":"shop-door", x:22, y:70, width:28, height:G1-70, rx:2}));
+    for(var k=0;k<3;k++) shop.appendChild(sv("rect", {"class":"shop-noren", x:20 + k*11, y:66, width:9.5, height:20, rx:1}));
+    var st = sv("text", {"class":"shop-text", x:35, y:58, "text-anchor":"middle"}); st.textContent = "入口";
+    shop.appendChild(st);
+    svg.appendChild(shop);
+    /* 仲間どうしをつなぐ地面の影 */
+    var lg = sv("g", {"aria-hidden":"true"});
+    links = [];
+    for(var c=0;c<CHAIN.length-1;c++){
+      var a = posOf(CHAIN[c]), b = posOf(CHAIN[c+1]);
+      var ln = sv("line", {"class":"link", x1:a.x, y1:a.y, x2:b.x, y2:b.y});
+      lg.appendChild(ln); links.push(ln);
+    }
+    svg.appendChild(lg);
+    /* 自分 */
+    var mp = posOf("me");
+    var meG = sv("g", {"class":"me", transform:"translate("+mp.x+" "+mp.y+")", "aria-label":"自分の位置", role:"img"});
+    meG.appendChild(sv("ellipse", {"class":"shadow", cx:0, cy:1, rx:18, ry:5}));
+    var mf = drawFigure({h:1.0}, 1);
+    meG.appendChild(mf.g);
+    meG.appendChild(sv("rect", {"class":"me-tag", x:-17, y:mf.markY+2, width:34, height:15, rx:7}));
+    var ml = sv("text", {"class":"me-label", x:0, y:mf.markY+13, "text-anchor":"middle"}); ml.textContent = "自分";
+    meG.appendChild(ml);
+    /* 列の人 */
+    people = [];
+    for(var i=0;i<10;i++){
+      people.push(buildPerson(svg, i));
+    }
+    svg.appendChild(meG);
+    box.appendChild(svg);
+  }
+
+  function buildPerson(svg, idx){
+    var p = posOf(idx);
+    var dir = idx < 5 ? -1 : 1;
+    var g = sv("g", {"class":"person", transform:"translate("+p.x+" "+p.y+")", tabindex:"0", role:"button", id:"person-" + idx});
+    g.appendChild(sv("ellipse", {"class":"shadow", cx:0, cy:1, rx:18, ry:5}));
+    var f = drawFigure(LOOK[idx], dir);
+    g.appendChild(f.g);
+    var markWrap = sv("g", {transform:"translate(0 "+f.markY+")"});
+    f.g.appendChild(markWrap);
+    var lab = sv("text", {"class":"pos-label", x:0, y:16, "text-anchor":"middle", "aria-hidden":"true"});
+    lab.textContent = idx < 5 ? "前" + (5 - idx) : "後" + (idx - 4);
+    g.appendChild(lab);
+    g.appendChild(sv("rect", {"class":"hit", x:-27, y:-104, width:54, height:124, rx:10}));
+    function act(){
+      state.line[idx] = (state.line[idx] + 1) % 4;
+      save();
+      ripple(g);
+      renderLine();
+      dismissTip();
+    }
+    g.addEventListener("click", act);
+    g.addEventListener("keydown", function(e){
+      if(e.key === "Enter" || e.key === " " || e.key === "Spacebar"){ e.preventDefault(); act(); }
+    });
+    svg.appendChild(g);
+    return {g:g, mark:markWrap};
+  }
+
+  function ripple(g){
+    var r = sv("ellipse", {"class":"ripple", cx:0, cy:1, rx:20, ry:7});
+    g.insertBefore(r, g.firstChild);
+    setTimeout(function(){ if(r.parentNode) r.parentNode.removeChild(r); }, 450);
+  }
+
+  function renderScene(){
+    for(var i=0;i<10;i++){
+      var v = state.line[i];
+      var p = people[i];
+      p.g.setAttribute("data-v", String(v));
+      var where = i < 5 ? "前の" + (5 - i) + "人目" : "後ろの" + (i - 4) + "人目";
+      p.g.setAttribute("aria-label", where + "：" + NAME[v] + "。タップで切りかえ");
+      if(prevV[i] !== v){
+        clear(p.mark);
+        if(v !== 0) p.mark.appendChild(buildMark(v));
+        prevV[i] = v;
+      }
+    }
+    for(var c=0;c<links.length;c++){
+      var a = CHAIN[c], b = CHAIN[c+1];
+      var va = a === "me" ? -1 : state.line[a];
+      var vb = b === "me" ? -1 : state.line[b];
+      var on = (va === 1 || va === -1) && (vb === 1 || vb === -1) && !(va === -1 && vb === -1);
+      links[c].setAttribute("class", on ? "link on" : "link");
+    }
+  }
+
+  /* ---------- 見る手がかり（凡例を兼ねる） ---------- */
+  var ICON = {
+    solo:"M8 4.5a2 2 0 1 0 0 .01M5 14v-4a3 3 0 0 1 6 0v4",
+    bag:"M3.5 6h9l-1 8h-7zM6 6V4.5a2 2 0 0 1 4 0V6",
+    ticket:"M2.5 5h11v2a1.5 1.5 0 0 0 0 3v2h-11v-2a1.5 1.5 0 0 0 0-3zM9 5v7",
+    quiet:"M4 8h.01M8 8h.01M12 8h.01",
+    phone:"M5 2.5h6v11H5zM7.3 11.5h1.4",
+    loud:"M3 6.5h2.5L9 3.5v9L5.5 9.5H3zM11 6a3 3 0 0 1 0 4M12.8 4.3a5.5 5.5 0 0 1 0 7.4",
+    camera:"M2.5 5.5h3l1-1.5h3l1 1.5h3v7h-11zM8 7.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0-3.6",
+    spread:"M2.5 8h11M2.5 8l2-2M2.5 8l2 2M13.5 8l-2-2M13.5 8l-2 2"
+  };
+  function icon(name){
+    var s = sv("svg", {width:16, height:16, viewBox:"0 0 16 16", "aria-hidden":"true"});
+    s.appendChild(sv("path", {d:ICON[name], fill:"none", stroke:"currentColor", "stroke-width":"1.5", "stroke-linecap":"round", "stroke-linejoin":"round"}));
+    return s;
+  }
+  function legendMark(v){
+    var s = sv("svg", {width:26, height:20, viewBox:"-13 -17 26 20", "aria-hidden":"true"});
+    s.appendChild(buildMark(v));
+    return s;
+  }
+  function buildClues(){
+    var box = $("clues");
+    var groups = [
+      {cls:"mate", v:1, head:"のれんの印＝仲間の証拠あり", items:[["solo","一人で来ている"],["bag","店のグッズや店名入りの物を持っている"],["ticket","食券の買い方や注文に迷いがない"],["quiet","静かに待っている"],["phone","スマホでその店のことを見ている"]]},
+      {cls:"out", v:2, head:"波線の印＝外の人っぽい", items:[["loud","大声ではしゃぐ"],["camera","写真撮影ばかり"],["spread","列を気にせず広がる"]]},
+      {cls:"unk", v:3, head:"？の印＝分からない", note:"どちらの手がかりも見えない人。印なしは未判定。"}
+    ];
+    groups.forEach(function(gr){
+      var d = el("div", "clue-group " + gr.cls);
+      var h = el("div", "clue-head");
+      h.appendChild(legendMark(gr.v));
+      h.appendChild(el("span", null, gr.head));
+      d.appendChild(h);
+      if(gr.items){
+        var ch = el("div", "chips");
+        gr.items.forEach(function(it){
+          var c = el("span", "chip");
+          c.appendChild(icon(it[0]));
+          c.appendChild(el("span", null, it[1]));
+          ch.appendChild(c);
+        });
+        d.appendChild(ch);
+      }
+      if(gr.note) d.appendChild(el("p", "clue-note", gr.note));
+      box.appendChild(d);
+    });
+  }
+
+  /* ---------- 発車標の数字 ---------- */
+  function setFlaps(box, str){
+    var kids = box.children;
+    if(kids.length !== str.length){
+      clear(box);
+      for(var i=0;i<str.length;i++){ box.appendChild(el("span", "flap flip", str.charAt(i))); }
+      return;
+    }
+    for(var j=0;j<str.length;j++){
+      var cur = kids[j];
+      if(cur.textContent !== str.charAt(j)){
+        var nx = el("span", "flap flip", str.charAt(j));
+        box.replaceChild(nx, cur);
+      }
+    }
+  }
+
+  var barSegs = null;
+  var ORDER = [1,3,2,0], SEGCLS = ["b0","b1","b2","b3"];
+  function buildBar(){
+    var bar = $("bar"); clear(bar);
+    barSegs = [];
+    for(var i=0;i<ORDER.length;i++){
+      var seg = el("i", SEGCLS[ORDER[i]]);
+      bar.appendChild(seg); barSegs.push(seg);
+    }
+  }
+  function renderBar(){
+    var c = counts();
+    for(var i=0;i<ORDER.length;i++) barSegs[i].style.width = (c[ORDER[i]] * 10) + "%";
+  }
+
+  function renderLine(){
+    var c = counts();
+    renderScene();
+    setFlaps($("bd-mate"), String(c[1]));
+    setFlaps($("bd-total"), "10");
+    setFlaps($("bd-out"), String(c[2]));
+    setFlaps($("bd-unk"), String(c[3]));
+    $("bd-live").textContent = "この列の仲間 " + c[1] + "／10人、外の人 " + c[2] + "人、分からない " + c[3] + "人";
+    renderBar();
+    $("bar").setAttribute("aria-label", "10人のうち 仲間" + c[1] + "人、分からない" + c[3] + "人、外の人" + c[2] + "人、未判定" + c[0] + "人");
+    var nt = $("barnote"); clear(nt);
+    nt.appendChild(el("span","n1","仲間 " + c[1]));
+    nt.appendChild(el("span","n3","分からない " + c[3]));
+    nt.appendChild(el("span","n2","外の人 " + c[2]));
+    nt.appendChild(el("span","n0","未判定 " + c[0]));
+    renderWorry();
+  }
+
+  function buildWorry(){
+    var w = $("worry-scale"); clear(w);
+    for(var i=0;i<=5;i++){
+      (function(n){
+        var b = el("button", null, String(n));
+        b.type = "button";
+        b.id = "worry-" + n;
+        b.addEventListener("click", function(){
+          state.worry = (state.worry === n) ? null : n;
+          save();
+          renderWorry();
+        });
+        w.appendChild(b);
+      })(i);
+    }
+  }
+  function renderWorry(){
+    for(var i=0;i<=5;i++){
+      $("worry-" + i).setAttribute("aria-pressed", state.worry === i ? "true" : "false");
+    }
+  }
+
+  function mean(a){
+    var s = 0; for(var i=0;i<a.length;i++) s += a[i];
+    return s / a.length;
+  }
+  function pearson(xs, ys){
+    var n = xs.length;
+    if(n < 3) return null;
+    var mx = mean(xs), my = mean(ys), sxy = 0, sxx = 0, syy = 0;
+    for(var i=0;i<n;i++){
+      sxy += (xs[i]-mx)*(ys[i]-my);
+      sxx += (xs[i]-mx)*(xs[i]-mx);
+      syy += (ys[i]-my)*(ys[i]-my);
+    }
+    if(sxx === 0 || syy === 0) return null;
+    return sxy / Math.sqrt(sxx*syy);
+  }
+  function fmt(n){ return (Math.round(n*10)/10).toFixed(1); }
+
+  /* ---------- 過去の観察（店のタイプごとのカード） ---------- */
+  function miniRow(mate, out){
+    var s = sv("svg", {"class":"minirow", viewBox:"0 0 160 40", "aria-hidden":"true"});
+    s.appendChild(sv("rect", {"class":"gr", x:0, y:33, width:160, height:5, rx:2.5}));
+    s.appendChild(sv("rect", {"class":"ms", x:1, y:12, width:16, height:22, rx:1.5}));
+    s.appendChild(sv("rect", {"class":"mr", x:0, y:9, width:18, height:4, rx:1.5}));
+    var m = Math.max(0, Math.min(10, Math.round(mate)));
+    var o = Math.max(0, Math.min(10 - m, Math.round(out)));
+    for(var i=0;i<10;i++){
+      var kind = i < m ? 1 : (i >= 10 - o ? 2 : 0);
+      var g = sv("g", {"class":"p" + kind, transform:"translate(" + (28 + i*13) + " 34)"});
+      g.appendChild(sv("rect", {x:-3.5, y:-11, width:7, height:10, rx:2.5}));
+      g.appendChild(sv("circle", {cx:0, cy:-15, r:3.2}));
+      s.appendChild(g);
+    }
+    return s;
+  }
+  var pendingFills = [];
+  function renderRecords(){
+    var wrap = $("rec-wrap"); clear(wrap);
+    pendingFills = [];
+    var rs = state.records;
+    if(!rs.length){
+      var e = el("div", "empty");
+      var es = sv("svg", {width:96, height:56, viewBox:"0 0 96 56", "aria-hidden":"true"});
+      es.appendChild(sv("rect", {"class":"es", x:0, y:48, width:96, height:5, rx:2.5}));
+      es.appendChild(sv("rect", {"class":"ef", x:2, y:18, width:18, height:30, rx:2}));
+      for(var k=0;k<5;k++){
+        es.appendChild(sv("circle", {"class":"ef", cx:32 + k*14, cy:28, r:4}));
+        es.appendChild(sv("rect", {"class":"ef", x:28 + k*14, y:34, width:8, height:13, rx:3}));
+      }
+      e.appendChild(es);
+      e.appendChild(el("p", null, "まだ記録がありません。列の人をタップして「記録に残す」を押すと、店のタイプごとにカードが並び、仲間の割合と気になり度の関係がここに出ます。"));
+      wrap.appendChild(e);
+    }else{
+      var groups = {};
+      rs.forEach(function(r){ (groups[r.type] = groups[r.type] || []).push(r); });
+      var keys = Object.keys(groups);
+      function avg(k, f){ return mean(groups[k].map(function(r){ return r[f]; })); }
+      keys.sort(function(a,b){ return avg(b,"mate") - avg(a,"mate") || TYPES.indexOf(a) - TYPES.indexOf(b); });
+      var cards = el("div", "cards");
+      keys.forEach(function(k){
+        var list = groups[k].slice().sort(function(a,b){ return b.mate - a.mate || a.id - b.id; });
+        var am = avg(k,"mate"), ao = avg(k,"out"), aw = avg(k,"worry");
+        var card = el("article", "card");
+        var top = el("div", "card-top");
+        top.appendChild(el("h3", null, k));
+        top.appendChild(el("span", "n", list.length + "件"));
+        card.appendChild(top);
+        card.appendChild(miniRow(am, ao));
+        var stats = el("div", "stats");
+        var s1 = el("div", "stat");
+        s1.appendChild(el("div", "k", "仲間の割合（平均）"));
+        var v1 = el("div", "v", String(Math.round(am * 10)));
+        v1.appendChild(el("small", null, " %"));
+        s1.appendChild(v1);
+        var mb = el("div", "mini"); var fill = el("i");
+        mb.appendChild(fill); s1.appendChild(mb);
+        pendingFills.push([fill, (am * 10) + "%"]);
+        stats.appendChild(s1);
+        var s2 = el("div", "stat");
+        s2.appendChild(el("div", "k", "気になり度（平均）"));
+        var v2 = el("div", "v", fmt(aw));
+        v2.appendChild(el("small", null, " /5"));
+        s2.appendChild(v2);
+        var dts = el("div", "dots5"); dts.setAttribute("aria-hidden", "true");
+        for(var d=1; d<=5; d++){ dts.appendChild(el("i", d <= Math.round(aw) ? "on" : null)); }
+        s2.appendChild(dts);
+        stats.appendChild(s2);
+        card.appendChild(stats);
+        var ul = el("ul", "reclist");
+        list.forEach(function(r){
+          var li = el("li");
+          li.appendChild(el("span", null, "仲間 " + r.mate + "/10 ・ 外 " + r.out + " ・ 気になり度 " + r.worry + "/5"));
+          var x = el("button", "x", "×");
+          x.type = "button";
+          x.setAttribute("aria-label", r.type + "（仲間" + r.mate + "/10、気になり度" + r.worry + "）の記録を消す");
+          x.addEventListener("click", function(){
+            var removed = r;
+            state.records = state.records.filter(function(q){ return q.id !== r.id; });
+            save(); renderRecords();
+            toast("記録を消しました", function(){
+              state.records.push(removed);
+              save(); renderRecords();
+            });
+          });
+          li.appendChild(x);
+          ul.appendChild(li);
+        });
+        card.appendChild(ul);
+        cards.appendChild(card);
+      });
+      wrap.appendChild(cards);
+      raf(function(){ raf(function(){
+        pendingFills.forEach(function(p){ p[0].style.width = p[1]; });
+      }); });
+    }
+    renderFacts();
+  }
+
+  function addFact(box, parts, cls){
+    var p = el("p", cls || null);
+    parts.forEach(function(x){
+      if(typeof x === "string") p.appendChild(document.createTextNode(x));
+      else p.appendChild(el("span","m", x.m));
+    });
+    box.appendChild(p);
+    return p;
+  }
+  function renderFacts(){
+    var box = $("facts"); clear(box);
+    box.appendChild(el("div", "rcap", "いまのデータで分かること"));
+    var rs = state.records;
+    if(rs.length < 2){
+      box.appendChild(el("p", "headline", "記録が2件以上になると、仲間の割合と気になり度の関係を数字で並べます。"));
+      return;
+    }
+    var hi = rs.filter(function(r){ return r.mate >= 6; });
+    var lo = rs.filter(function(r){ return r.mate <= 5; });
+    var hw = hi.length ? fmt(mean(hi.map(function(r){return r.worry;}))) : null;
+    var lw = lo.length ? fmt(mean(lo.map(function(r){return r.worry;}))) : null;
+    if(hw !== null && lw !== null){
+      addFact(box, ["仲間が6割以上の列は気になり度 平均 ", {m:hw}, "、5割以下の列は ", {m:lw}], "headline");
+    }else if(hw !== null){
+      addFact(box, ["仲間が6割以上の列（", {m: hi.length + "件"}, "）の気になり度 平均 ", {m:hw}], "headline");
+    }else{
+      addFact(box, ["仲間が5割以下の列（", {m: lo.length + "件"}, "）の気になり度 平均 ", {m:lw}], "headline");
+    }
+    var det = el("details");
+    det.appendChild(el("summary", null, "くわしい数字"));
+    addFact(det, ["記録 ", {m: rs.length + "件"}, " の関係"]);
+    if(hi.length) addFact(det, ["仲間が6人以上の列（", {m: hi.length + "件"}, "）の気になり度 平均 ", {m: hw}]);
+    if(lo.length) addFact(det, ["仲間が5人以下の列（", {m: lo.length + "件"}, "）の気になり度 平均 ", {m: lw}]);
+    var r = pearson(rs.map(function(q){return q.mate;}), rs.map(function(q){return q.worry;}));
+    if(r !== null){
+      addFact(det, ["仲間の数と気になり度の相関 ", {m: (Math.round(r*100)/100).toFixed(2)}, "（-1 に近いほど、仲間が多い列で気になり度が低い）"]);
+    }
+    addFact(det, ["判断は記録を見た本人に任せます。件数が少ないうちは偶然の差も混ざります。"]);
+    box.appendChild(det);
+  }
+
+  function renderSampleTag(){
+    $("sample-tag").style.display = state.sample ? "" : "none";
+  }
+
+  /* ---------- トースト ---------- */
+  var toastTimer = null;
+  function hideToast(){
+    var t = $("toast");
+    t.classList.remove("show");
+    if(toastTimer){ clearTimeout(toastTimer); toastTimer = null; }
+  }
+  function toast(msg, undoFn){
+    var t = $("toast"); clear(t);
+    t.appendChild(el("span", null, msg));
+    if(undoFn){
+      var b = el("button", "tbtn", "取り消す");
+      b.type = "button"; b.id = "toast-undo";
+      b.addEventListener("click", function(){ hideToast(); undoFn(); });
+      t.appendChild(b);
+    }
+    t.classList.add("show");
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 6000);
+  }
+
+  /* ---------- 初回の吹き出し ---------- */
+  function tipDismissed(){
+    try{ return window.localStorage.getItem(TIP_KEY) === "1"; }catch(e){ return false; }
+  }
+  var tipShown = false;
+  function dismissTip(){
+    if(!tipShown) return;
+    tipShown = false;
+    $("tip").hidden = true;
+    try{ window.localStorage.setItem(TIP_KEY, "1"); }catch(e){}
+  }
+  function initTip(){
+    if(!tipDismissed()){ $("tip").hidden = false; tipShown = true; }
+    $("tip-close").addEventListener("click", dismissTip);
+  }
+
+  function showConfirm(msg, onYes){
+    var area = $("confirm-area"); clear(area);
+    var box = el("div","confirm");
+    box.appendChild(el("div", null, msg));
+    var row = el("div","row");
+    var yes = el("button","btn primary","はい、実行する"); yes.type = "button"; yes.id = "confirm-yes";
+    var no = el("button","btn","やめる"); no.type = "button"; no.id = "confirm-no";
+    yes.addEventListener("click", function(){ clear(area); onYes(); });
+    no.addEventListener("click", function(){ clear(area); });
+    row.appendChild(yes); row.appendChild(no);
+    box.appendChild(row);
+    area.appendChild(box);
+    yes.focus();
+  }
+
+  function renderAll(){
+    renderSampleTag();
+    renderLine();
+    renderRecords();
+  }
+
+  $("btn-clear").addEventListener("click", function(){
+    showConfirm("サンプルの列と過去の記録をすべて消して、空の状態から始めます。", function(){
+      state = emptyState(); save(); renderAll();
+      $("save-status").textContent = "";
+    });
+  });
+  $("btn-reset").addEventListener("click", function(){
+    showConfirm("いまの列と記録を消して、サンプルの状態に戻します。", function(){
+      state = sampleState(); save(); renderAll();
+      $("save-status").textContent = "";
+    });
+  });
+
+  $("btn-save").addEventListener("click", function(){
+    var st = $("save-status");
+    if(state.worry === null){
+      st.textContent = "気になり度（0〜5）を1つ選ぶと記録できます。";
+      toast(st.textContent);
+      return;
+    }
+    var c = counts();
+    if(c[0] === 10){
+      st.textContent = "まだ誰も判定していません。列の人をタップしてから記録できます。";
+      toast(st.textContent);
+      return;
+    }
+    var type = $("sel-type").value;
+    var rec = {id: state.nextId++, type: type, mate: c[1], out: c[2], worry: state.worry};
+    state.records.push(rec);
+    save();
+    renderRecords();
+    st.textContent = type + "：仲間 " + c[1] + "/10、気になり度 " + state.worry + "/5 を記録しました。";
+    toast("記録しました", function(){
+      state.records = state.records.filter(function(q){ return q.id !== rec.id; });
+      save(); renderRecords();
+      st.textContent = "記録を取り消しました。";
+    });
+  });
+
+  buildScene();
+  buildClues();
+  buildBar();
+  buildWorry();
+  initTip();
+  renderAll();
+  /* 帯グラフは0からのびて現れる */
+  for(var bi=0; bi<barSegs.length; bi++) barSegs[bi].style.width = "0%";
+  raf(function(){ raf(renderBar); });
+})();
+</script>
+</body>
+</html>

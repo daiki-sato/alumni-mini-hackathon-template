@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ジカンシテイケン</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0;line-height:1.6;font-size:15px}
+.wrap{max-width:560px;margin:0 auto;padding:12px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px))}
+.back{display:inline-block;color:var(--muted);font-size:13px;padding:6px 0;text-decoration:none}
+.back:hover{color:var(--ink);text-decoration:underline}
+h1{font-family:var(--font-display);font-size:24px;margin:4px 0 10px;letter-spacing:.02em}
+h2{font-family:var(--font-display);font-size:16px;margin:0 0 8px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.hyp{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:8px 12px;font-size:12px;color:var(--muted);margin-bottom:14px}
+.hyp dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 10px}
+.hyp dt{font-weight:700;color:var(--ink);white-space:nowrap}
+.hyp dd{margin:0}
+.hyp .ok{color:var(--ok);font-weight:700}
+.hyp .ng{color:var(--ng);font-weight:700}
+.tabs{display:flex;gap:6px;margin:0 0 12px}
+.tabs button{flex:1;padding:10px 8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;font:inherit;font-weight:700;cursor:pointer;min-height:44px}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.panel[hidden]{display:none}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:12px 14px;margin-bottom:12px}
+.board .lab{font-size:12px;opacity:.85}
+.board .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:44px;line-height:1.15}
+.board .num small{font-size:16px;margin-left:4px}
+.board .sub{font-size:13px;opacity:.9}
+.board.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.btn{font:inherit;font-weight:700;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal)}
+.btn.ghost{border-color:var(--line);font-weight:500}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.block{display:block;width:100%}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.row{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.bar{height:10px;background:var(--line);border-radius:4px;overflow:hidden;flex:1}
+.bar>i{display:block;height:100%;background:var(--ink)}
+.bar.sig>i{background:var(--signal)}
+.bar.ngc>i{background:var(--ng)}
+.note{font-size:12px;color:var(--muted);margin:6px 0 0}
+.verdict{border-top:1px dashed var(--line);margin-top:18px;padding-top:12px}
+.verdict h2{font-size:14px}
+.verdict .btns button{flex:1;min-width:140px;text-align:left;font-weight:500;font-size:13px}
+.verdict .btns button[aria-pressed="true"]{border-width:3px}
+.verdict .btns .vok[aria-pressed="true"]{border-color:var(--ok)}
+.verdict .btns .vng[aria-pressed="true"]{border-color:var(--ng)}
+.foot{margin-top:18px;font-size:12px;color:var(--muted)}
+.foot .btns{margin-top:8px}
+.foot .btn{min-height:40px;font-size:13px;font-weight:500}
+.confirm{margin-top:10px;border:1px solid var(--ink);border-radius:8px;padding:10px;background:var(--surface);color:var(--ink)}
+.confirm[hidden]{display:none}
+.pill{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 6px;color:var(--muted)}
+.demo{border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-size:12px;color:var(--muted)}
+.demo .btns{margin-top:6px}
+.demo .btn{min-height:36px;font-size:12px;font-weight:500}
+@media (prefers-reduced-motion: no-preference){.bar>i{transition:width .3s}}
+.slot{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:6px 10px;margin:0 0 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;text-align:left}
+.slot[aria-pressed="true"]{border:3px solid var(--signal);padding:4px 8px}
+.slot[disabled]{opacity:.45;cursor:not-allowed}
+.slot .tm{font-family:var(--font-mono);font-weight:600;width:52px;font-variant-numeric:tabular-nums}
+.slot .rem{font-size:12px;color:var(--muted);width:64px;text-align:right}
+.cmpr{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)}
+.cmpr:last-child{border-bottom:0}
+.cmpr b{font-family:var(--font-mono);font-size:20px}
+.srow{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:13px}
+.srow .tm{font-family:var(--font-mono);width:48px}
+.srow .ct{font-family:var(--font-mono);width:44px;text-align:right}
+.srow .dr{width:84px;text-align:right;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<h1>ジカンシテイケン</h1>
+<div class="hyp"><dl><dt>視点</dt><dd>仕組み・テック</dd><dt>具体/抽象</dt><dd>具体</dd><dt>仮説</dt><dd>並ぶ代わりに入店時刻が決まれば、店は変えずに近さだけを消せる。</dd><dt>確かめること</dt><dd><span class="ok">当たり</span>＝時刻をもらえるなら並ばずに済む方がいい<br><span class="ng">外れ</span>＝時刻に縛られる方が嫌、並んだ方が気楽</dd></dl></div>
+<div class="tabs" role="tablist"><button id="tab-cust" type="button" role="tab" data-tab="cust" aria-selected="true">客の画面</button><button id="tab-shop" type="button" role="tab" data-tab="shop" aria-selected="false">店の画面</button></div>
+<div id="view-cust" class="panel">
+  <p class="small muted">店頭のQRコードを読み取った画面です（想定）。ラーメン店・営業 11:00〜14:00。</p>
+  <div class="board" aria-live="polite">
+    <div class="lab" id="b-lab">入店まで</div>
+    <div class="num"><span id="b-num">--</span><small id="b-unit">分</small></div>
+    <div class="sub" id="b-sub"></div>
+  </div>
+  <div class="demo">デモ用の時計: いま <b id="clk" class="mono"></b>
+    <div class="btns">
+      <button id="clk-p" class="btn ghost" type="button">時計を15分進める</button>
+      <button id="clk-m" class="btn ghost" type="button">15分戻す</button>
+    </div>
+  </div>
+  <div class="sec"><h2>入店時刻（15分刻み）</h2><div id="slots"></div>
+    <p class="note">タップすると、その時刻のチケットが出ます。選び直せます。</p></div>
+  <div class="sec" id="ticket-box" hidden>
+    <h2>あなたのチケット</h2>
+    <div class="row"><div><span class="mono" id="t-no" style="font-size:22px;font-weight:600"></span> <span id="t-time" class="mono"></span></div>
+    <button id="t-cancel" class="btn ghost" type="button">チケットを取り消す</button></div>
+    <p class="note">枠の前後5分に店の前へ。それまでは別の場所にいて構いません。</p>
+  </div>
+  <div class="sec"><h2>同じ時刻に入る場合の比べ方（仮定）</h2><div id="cmp"></div>
+    <p class="note">前提: 1組3分で入店、選んだ時刻に入るまで。実測ではなく計算上の目安です。</p></div>
+</div>
+<div id="view-shop" class="panel" hidden>
+  <p class="small muted">店の人が見る画面です。枠ごとの予約組数と、店の前に同時にいる人数の見込み。</p>
+  <div class="board two">
+    <div><div class="lab">店の前に同時にいる人 最大</div><div class="num"><span id="s-peak">0</span><small>人</small></div></div>
+    <div><div class="lab">予約の合計</div><div class="num"><span id="s-sum">0</span><small>組</small></div></div>
+  </div>
+  <div class="sec"><div class="row"><h2 style="margin:0">1枠の上限</h2>
+    <div class="btns"><button id="cap-m" class="btn ghost" type="button" aria-label="上限を1組減らす">−</button><b id="cap-v" class="mono" style="min-width:56px;text-align:center"></b><button id="cap-p" class="btn ghost" type="button" aria-label="上限を1組増やす">＋</button></div></div></div>
+  <div class="sec"><h2>枠ごとの人数</h2><div id="shop-rows"></div>
+    <p class="note">前提: 1組2人、枠の5分前から店の前に来る。</p></div>
+</div>
+
+<div class="verdict"><h2>触ってみて、どちらに近い？</h2><div class="btns"><button id="vote-ok" class="btn vok" type="button" aria-pressed="false">当たり: 時刻をもらえるなら、並ばない方がいい</button><button id="vote-ng" class="btn vng" type="button" aria-pressed="false">外れ: 時刻に縛られるより、並ぶ方が気楽</button></div><p id="vote-res" class="note"></p></div>
+<div class="foot"><span id="sample-note"></span> この端末の中だけで動く、通信しないシミュレーションです。<div class="btns"><button id="btn-empty" class="btn ghost" type="button">サンプルを消して自分で使う</button><button id="btn-sample" class="btn ghost" type="button">サンプルに戻す</button></div><div id="confirm" class="confirm" hidden><p id="conf-msg" style="margin:0 0 8px"></p><div class="btns"><button id="conf-yes" class="btn primary" type="button">はい、実行する</button><button id="conf-no" class="btn ghost" type="button">やめる</button></div></div></div>
+</div>
+<script>
+var KEY="hack3-g6-1-v1";
+var OPEN=660, N=12, PER=3;
+function sample(){return {sample:true,cap:6,booked:[6,6,6,5,6,4,3,4,2,1,0,1],mine:null,no:'',now:640}}
+function empty(){return {sample:false,cap:6,booked:[0,0,0,0,0,0,0,0,0,0,0,0],mine:null,no:'',now:640}}
+function slotT(i){return OPEN+15*i}
+function avail(i){return S.booked[i]<S.cap}
+function firstAvail(){for(var i=0;i<N;i++){if(slotT(i)>=S.now&&avail(i))return i}return -1}
+function init(){
+  $('slots').addEventListener('click',function(e){
+    var b=e.target.closest?e.target.closest('button[data-slot]'):null;if(!b||b.disabled)return;
+    var i=parseInt(b.getAttribute('data-slot'),10);
+    if(S.mine===i)return;
+    if(S.mine!==null)S.booked[S.mine]--;
+    S.mine=i;S.booked[i]++;S.no='T-'+pad(i+1)+pad(S.booked[i]);upd();
+  });
+  $('t-cancel').addEventListener('click',function(){if(S.mine!==null){S.booked[S.mine]--;S.mine=null;S.no='';upd()}});
+  $('clk-p').addEventListener('click',function(){S.now+=15;upd()});
+  $('clk-m').addEventListener('click',function(){S.now-=15;upd()});
+  $('cap-m').addEventListener('click',function(){var mx=Math.max.apply(null,S.booked);if(S.cap>Math.max(2,mx)){S.cap--;upd()}});
+  $('cap-p').addEventListener('click',function(){if(S.cap<12){S.cap++;upd()}});
+}
+function render(){
+  var i,h='';
+  $('clk').textContent=hm(S.now);
+  for(i=0;i<N;i++){
+    var t=slotT(i),past=t<S.now,mine=S.mine===i,full=!avail(i)&&!mine;
+    var left=Math.max(0,S.cap-S.booked[i]);
+    h+='<button type="button" class="slot" id="slot-'+i+'" data-slot="'+i+'" aria-pressed="'+(mine?'true':'false')+'"'+((past||full)?' disabled':'')+'>'
+      +'<span class="tm">'+hm(t)+'</span><span class="bar'+(full?' ngc':'')+'"><i style="width:'+Math.min(100,S.booked[i]/S.cap*100)+'%"></i></span>'
+      +'<span class="rem">'+(past?'終了':full?'満席':'残り'+left+'枠')+'</span></button>';
+  }
+  $('slots').innerHTML=h;
+  var target=S.mine!==null?S.mine:firstAvail();
+  if(S.mine!==null){
+    var d=slotT(S.mine)-S.now;
+    $('b-lab').textContent='入店まで あと';
+    if(d>5){$('b-num').textContent=d;$('b-unit').textContent='分';$('b-sub').textContent='入店 '+hm(slotT(S.mine))+' ／ '+S.no}
+    else if(d>=-5){$('b-num').textContent='0';$('b-unit').textContent='分';$('b-sub').textContent='入店の時間です（前後5分）／ '+S.no}
+    else{$('b-num').textContent='--';$('b-unit').textContent='';$('b-sub').textContent='枠を過ぎています。選び直せます。'}
+  }else if(target>=0){
+    $('b-lab').textContent='いちばん早い空き枠まで あと';
+    $('b-num').textContent=Math.max(0,slotT(target)-S.now);$('b-unit').textContent='分';
+    $('b-sub').textContent=hm(slotT(target))+' の枠が空いています。まだ時刻はもらっていません。';
+  }else{$('b-lab').textContent='入店まで';$('b-num').textContent='--';$('b-unit').textContent='';$('b-sub').textContent='いま取れる枠はありません。'}
+  $('ticket-box').hidden=S.mine===null;
+  if(S.mine!==null){$('t-no').textContent=S.no;$('t-time').textContent=hm(slotT(S.mine))+' 入店'}
+  var c='';
+  if(target>=0){
+    var ahead=0;for(i=0;i<=target;i++)ahead+=S.booked[i];
+    if(S.mine===null)ahead+=1;
+    var wait=Math.max(5,ahead*PER);
+    c='<div class="cmpr"><span>並ぶ場合（列の中にいる時間）</span><b>約'+wait+'分</b></div>'
+     +'<div class="cmpr"><span>時刻指定の場合（店の前にいる時間）</span><b>約5分</b></div>'
+     +'<div class="cmpr"><span class="muted">対象の枠</span><b>'+hm(slotT(target))+'</b></div>';
+  }else c='<p class="muted small">比べる枠がありません。</p>';
+  $('cmp').innerHTML=c;
+  var peak=0,sum=0,r='';
+  for(i=0;i<N;i++){
+    var b=S.booked[i];sum+=b;peak=Math.max(peak,b*2);
+    r+='<div class="srow"><span class="tm">'+hm(slotT(i))+'</span><span class="bar sig"><i style="width:'+Math.min(100,b/S.cap*100)+'%"></i></span><span class="ct">'+b+'/'+S.cap+'</span><span class="dr">店の前 約'+b*2+'人</span></div>';
+  }
+  $('shop-rows').innerHTML=r;$('s-peak').textContent=peak;$('s-sum').textContent=sum;$('cap-v').textContent=S.cap+'組';
+}
+
+/* common helpers */
+var S=null, tab='cust', pending=null;
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function pad(n){return (n<10?'0':'')+n}
+function hm(min){min=Math.round(min);var h=Math.floor(min/60)%24,m=((min%60)+60)%60;return pad(h)+':'+pad(m)}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function upd(){save();render();commonRender()}
+function commonRender(){
+  $('sample-note').textContent=S.sample?'表示中はサンプルデータです。':'あなたのデータで動いています。';
+  var v=S.vote||null;
+  var o=$('vote-ok'),n=$('vote-ng');
+  o.setAttribute('aria-pressed',v==='ok'?'true':'false');
+  n.setAttribute('aria-pressed',v==='ng'?'true':'false');
+  $('vote-res').textContent=v==='ok'?'この端末の回答: 当たり':v==='ng'?'この端末の回答: 外れ':'まだ回答していません。';
+  var ps=document.querySelectorAll('.panel');
+  for(var i=0;i<ps.length;i++){ps[i].hidden=(ps[i].id!=='view-'+tab)}
+  var ts=document.querySelectorAll('.tabs button');
+  for(var j=0;j<ts.length;j++){ts[j].setAttribute('aria-selected',ts[j].getAttribute('data-tab')===tab?'true':'false')}
+}
+function bindCommon(){
+  var ts=document.querySelectorAll('.tabs button');
+  for(var i=0;i<ts.length;i++){(function(b){b.addEventListener('click',function(){tab=b.getAttribute('data-tab');commonRender()})})(ts[i])}
+  $('vote-ok').addEventListener('click',function(){S.vote=S.vote==='ok'?null:'ok';upd()});
+  $('vote-ng').addEventListener('click',function(){S.vote=S.vote==='ng'?null:'ng';upd()});
+  function ask(kind,msg){pending=kind;$('conf-msg').textContent=msg;$('confirm').hidden=false;$('conf-yes').focus()}
+  $('btn-empty').addEventListener('click',function(){ask('empty','サンプルを消して、空の状態から使います。よろしいですか。')});
+  $('btn-sample').addEventListener('click',function(){ask('sample','今の内容を捨てて、サンプルに戻します。よろしいですか。')});
+  $('conf-no').addEventListener('click',function(){pending=null;$('confirm').hidden=true});
+  $('conf-yes').addEventListener('click',function(){
+    var v=S.vote||null;
+    S=(pending==='empty')?empty():sample();S.v=1;S.vote=v;
+    pending=null;$('confirm').hidden=true;upd();
+  });
+}
+function boot(){
+  var s=null;
+  try{var r=localStorage.getItem(KEY);if(r)s=JSON.parse(r)}catch(e){s=null}
+  S=(s&&s.v===1)?s:sample();S.v=1;
+  bindCommon();init();render();commonRender();
+}
+
+boot();
+</script>
+</body>
+</html>

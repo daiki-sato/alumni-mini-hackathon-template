@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>マチアワセノルール</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{font-size:15px;line-height:1.7}
+.outer{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:12px;padding-bottom:48px}
+.wrap{max-width:560px;margin:0 auto}
+.back{display:inline-block;color:var(--muted);font-size:13px;text-decoration:none;padding:6px 0}
+.back:hover{text-decoration:underline}
+h1{font-family:var(--font-display);font-size:24px;line-height:1.3;margin:6px 0 10px}
+h2{font-family:var(--font-display);font-size:16px;margin:24px 0 8px}
+p{margin:0 0 8px}
+.hyp{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);font-size:12.5px;line-height:1.6;color:var(--muted);margin-bottom:14px}
+.hyp-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.hyp-tags span{border:1px solid var(--line);border-radius:8px;padding:0 8px;font-size:11.5px;color:var(--muted)}
+.hyp-h{color:var(--ink);font-weight:500;margin:0 0 6px}
+.hyp-c{margin:0 0 4px}
+.hyp-c b,.hyp-j b{display:inline-block;margin-right:6px;color:var(--ink)}
+.hyp-j{list-style:none;margin:0;padding:0}
+.hyp-j li{margin:2px 0}
+.hyp-j .ok b{color:var(--ok)}
+.hyp-j .ng b{color:var(--ng)}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:14px 16px;font-family:var(--font-mono)}
+.board .lab{font-family:var(--font-body);font-size:12px;opacity:.85;color:var(--board-ink)}
+.board .big{font-size:46px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.board .sub{font-family:var(--font-body);font-size:13px;margin-top:4px;color:var(--board-ink);opacity:.9}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.btn{font:inherit;font-weight:500;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);font-weight:700}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{min-height:36px;padding:4px 10px;font-size:13px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row.grow>.btn{flex:1 1 auto}
+.panel{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:12px 14px;margin:10px 0}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+input[type=text],textarea,select{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+textarea{resize:vertical;min-height:90px}
+input[type=range]{width:100%;accent-color:var(--ink)}
+label{display:block;font-size:13px;color:var(--muted);margin:6px 0 2px}
+.ok-t{color:var(--ok);font-weight:700}
+.ng-t{color:var(--ng);font-weight:700}
+.sample{margin-top:32px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.sample .row{margin:8px 0}
+.confirm{border:1px solid var(--ng);border-radius:8px;padding:10px 12px;background:var(--surface);color:var(--ink);margin-top:8px}
+.bar{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--ink)}
+@media (prefers-reduced-motion: no-preference){.bar>i{transition:width .25s}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+.opts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.opts2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.progress{margin-top:10px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cmp>div{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--surface)}
+.cmp .n{font-family:var(--font-mono);font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}
+ul.rec{list-style:none;padding:0;margin:8px 0 0;font-size:13px}
+ul.rec li{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:4px 0}
+</style>
+</head>
+<body>
+<div class="outer"><div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<section class="hyp" aria-label="仮説カード">
+<div class="hyp-tags"><span>視点 行列以外の悩み</span><span>具体</span></div>
+<p class="hyp-h">待ち合わせの嫌さは「何分待てばいいか分からない」ことから来る。上限を先に決めて伝えれば消える。</p>
+<p class="hyp-c"><b>確かめること</b></p>
+<ul class="hyp-j"><li class="ok"><b>当たり</b>上限を伝えた日は待っても平気</li><li class="ng"><b>外れ</b>上限を決めても待たされること自体が嫌</li></ul>
+</section>
+<h1>マチアワセノルール</h1>
+
+<div class="board" aria-live="polite">
+  <div class="lab" id="b-lab">待つ上限</div>
+  <div class="big" id="b-big">10:00</div>
+  <div class="sub" id="b-sub">過ぎたら: 先にお店に入る</div>
+  <div class="progress bar" aria-hidden="true"><i id="b-bar" style="width:0%"></i></div>
+</div>
+
+<h2>1. 待つ上限</h2>
+<div class="opts" id="lims" role="group" aria-label="待つ上限（分）"></div>
+
+<h2>2. 上限を過ぎたらすること</h2>
+<div class="opts2" id="acts" role="group" aria-label="過ぎたらすること"></div>
+
+<h2>3. 相手に送る一言</h2>
+<label for="msg">そのまま送れる文</label>
+<textarea id="msg" readonly rows="4"></textarea>
+<div class="row" style="margin-top:8px"><button class="btn primary" id="btn-copy" type="button">この文をコピーする</button><span class="small muted" id="copy-status" role="status"></span></div>
+
+<h2>4. 待ち合わせ場所で</h2>
+<div class="row grow">
+  <button class="btn primary" id="btn-arrive" type="button">着いた（タイマー開始）</button>
+  <button class="btn" id="btn-met" type="button" disabled>会えた</button>
+</div>
+<div class="panel" id="over" hidden><span class="ok-t">上限の時間です。</span> 決めてあった「<span id="over-act"></span>」に動いて大丈夫な時間です。<div class="row" style="margin-top:8px"><button class="btn sm" id="btn-moved" type="button">先に動いた</button></div></div>
+<label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="speed"> デモ速度（1分を3秒で進める）</label>
+
+<div class="panel" id="rate" hidden>
+  <p><b>待ってみて、どうでしたか。</b> <span class="small muted" id="rate-info"></span></p>
+  <label style="display:flex;gap:8px;align-items:center;margin:0 0 8px;color:var(--ink)"><input type="checkbox" id="chk-told"> この待ち合わせで、上限を相手に伝えた</label>
+  <div class="opts" style="grid-template-columns:repeat(3,1fr)">
+    <button class="btn" type="button" data-lv="0" id="lv-0">平気</button>
+    <button class="btn" type="button" data-lv="4" id="lv-4">少し嫌</button>
+    <button class="btn" type="button" data-lv="8" id="lv-8">嫌</button>
+  </div>
+</div>
+
+<h2>これまでの記録（嫌さ 0〜10）</h2>
+<div class="cmp">
+  <div><div class="small muted">上限を伝えた日</div><div class="n" id="avg-told">-</div><div class="small muted" id="n-told"></div></div>
+  <div><div class="small muted">伝えなかった日</div><div class="n" id="avg-not">-</div><div class="small muted" id="n-not"></div></div>
+</div>
+<p class="small muted" id="cmp-note" style="margin-top:8px"></p>
+<ul class="rec" id="rec-list"></ul>
+
+<footer class="sample">
+<p id="sample-note">サンプルデータ（架空）で動いています。</p>
+<div class="row"><button class="btn sm" id="btn-clear" type="button">サンプルを消して自分で使う</button><button class="btn sm" id="btn-reset" type="button">サンプルに戻す</button></div>
+<div class="confirm" id="confirm" role="alertdialog" aria-live="polite" hidden><p id="confirm-msg"></p><div class="row"><button class="btn sm primary" id="confirm-yes" type="button">実行する</button><button class="btn sm" id="confirm-no" type="button">やめる</button></div></div>
+</footer>
+</div></div>
+<script>
+(function(){
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+var KEY='hack3-g9-1-v1';
+function loadState(){try{var s=localStorage.getItem(KEY);return s?JSON.parse(s):null}catch(e){return null}}
+function saveState(o){try{localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
+function setNote(isSample){$('sample-note').textContent=isSample?'サンプルデータ（架空）で動いています。':'あなたのデータで動いています。'}
+var confirmFn=null;
+function showConfirm(msg,fn){confirmFn=fn;$('confirm-msg').textContent=msg;$('confirm').hidden=false;$('confirm-yes').focus()}
+
+var LIMS=[5,10,15,30];
+var ACTS={
+ enter:{label:'先にお店に入る',say:'先にお店に入って待ってるね'},
+ near:{label:'近くで時間をつぶす',say:'近くで時間をつぶして待ってるね'},
+ errand:{label:'先に用事を済ませる',say:'先に用事を済ませてくるね'},
+ home:{label:'今日はやめて帰る',say:'今日はまた今度にして帰るね'}
+};
+function sampleState(){return {limit:10,act:'enter',speed:true,sample:true,rec:[
+ {told:true,lv:0},{told:true,lv:0},{told:true,lv:4},{told:true,lv:0},{told:true,lv:8},
+ {told:false,lv:8},{told:false,lv:4},{told:false,lv:8},{told:false,lv:8},{told:false,lv:4}]}}
+var S;
+var T={on:false,start:0,over:false,mins:0,pending:false};
+var tick=null;
+
+function fmt(sec){var m=Math.floor(sec/60),s=sec%60;return (m<10?'0':'')+m+':'+(s<10?'0':'')+s}
+function simMins(){return (Date.now()-T.start)/(S.speed?3000:60000)}
+function renderOpts(){
+ var h='';
+ LIMS.forEach(function(n){h+='<button class="btn" type="button" data-lim="'+n+'" aria-pressed="'+(S.limit===n)+'">'+n+'分</button>'});
+ $('lims').innerHTML=h;
+ var a='';
+ Object.keys(ACTS).forEach(function(k){a+='<button class="btn" type="button" data-act="'+k+'" aria-pressed="'+(S.act===k)+'">'+ACTS[k].label+'</button>'});
+ $('acts').innerHTML=a;
+}
+function renderMsg(){
+ $('msg').value='待ち合わせの件。私は'+S.limit+'分まで待つつもりでいるよ。それでも会えなかったら、'+ACTS[S.act].say+'。遅れそうなら早めに連絡くれると助かる。';
+}
+function renderBoard(){
+ var lab=$('b-lab'),big=$('b-big'),sub=$('b-sub'),bar=$('b-bar');
+ if(!T.on){
+  lab.textContent=T.pending?'待った時間':'待つ上限';
+  big.textContent=T.pending?fmt(Math.round(T.mins*60)):fmt(S.limit*60);
+  sub.textContent='過ぎたら: '+ACTS[S.act].label;
+  bar.style.width=T.pending?Math.min(100,T.mins/S.limit*100)+'%':'0%';
+  return;
+ }
+ var m=simMins();
+ var rem=Math.max(0,Math.round((S.limit-m)*60));
+ lab.textContent=rem>0?'残り':'上限です';
+ big.textContent=fmt(rem);
+ sub.textContent='待っている時間 '+fmt(Math.round(m*60))+' ／ 過ぎたら: '+ACTS[S.act].label;
+ bar.style.width=Math.min(100,m/S.limit*100)+'%';
+ if(rem<=0&&!T.over){T.over=true;$('over').hidden=false;$('over-act').textContent=ACTS[S.act].label}
+}
+function startTimer(){
+ T.on=true;T.start=Date.now();T.over=false;T.pending=false;
+ $('over').hidden=true;$('rate').hidden=true;
+ $('btn-arrive').disabled=true;$('btn-met').disabled=false;
+ if(tick)clearInterval(tick);
+ tick=setInterval(renderBoard,250);
+ renderBoard();
+}
+function stopTimer(){
+ if(!T.on)return;
+ T.mins=simMins();T.on=false;T.pending=true;
+ if(tick){clearInterval(tick);tick=null}
+ $('btn-met').disabled=true;$('btn-arrive').disabled=false;
+ $('rate').hidden=false;
+ $('rate-info').textContent='待った時間 '+Math.round(T.mins*10)/10+'分（上限 '+S.limit+'分）';
+ renderBoard();
+}
+function addRec(lv){
+ S.rec.push({told:$('chk-told').checked,lv:lv});
+ if(S.rec.length>60)S.rec.shift();
+ S.sample=false;setNote(false);
+ T.pending=false;$('rate').hidden=true;$('over').hidden=true;
+ saveState(S);renderStats();renderBoard();
+}
+function avg(a){if(!a.length)return null;var s=0;a.forEach(function(r){s+=r.lv});return s/a.length}
+function renderStats(){
+ var t=S.rec.filter(function(r){return r.told}),n=S.rec.filter(function(r){return !r.told});
+ var at=avg(t),an=avg(n);
+ $('avg-told').textContent=at===null?'-':at.toFixed(1);
+ $('avg-not').textContent=an===null?'-':an.toFixed(1);
+ $('n-told').textContent=t.length+'回';
+ $('n-not').textContent=n.length+'回';
+ var note='';
+ if(at!==null&&an!==null){
+  var d=an-at;
+  note='平均の差 '+d.toFixed(1)+'。'+(Math.abs(d)<1?'ほぼ同じ。上限を伝えても待つこと自体が嫌、の側に近い数字です。':(d>0?'上限を伝えた日のほうが低い数字です。':'上限を伝えた日のほうが高い数字です。'));
+  var hi=t.filter(function(r){return r.lv>=8}).length;
+  if(hi)note+=' 上限を伝えても「嫌」だった日が'+hi+'回あります。';
+ }else note='どちらも記録が入ると、平均を並べます。';
+ $('cmp-note').textContent=note;
+ var h='',names={0:'平気',4:'少し嫌',8:'嫌'};
+ S.rec.slice(-6).reverse().forEach(function(r){h+='<li><span>'+(r.told?'上限を伝えた':'伝えなかった')+'</span><span>'+names[r.lv]+'（'+r.lv+'）</span></li>'});
+ $('rec-list').innerHTML=h;
+}
+function copyMsg(){
+ function say(t){$('copy-status').textContent=t}
+ function fb(){try{$('msg').select();var r=document.execCommand('copy');say(r?'コピーしました':'選択しました。長押しでコピーできます')}catch(e){say('選択しました。長押しでコピーできます')}}
+ try{
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+   navigator.clipboard.writeText($('msg').value).then(function(){say('コピーしました')},fb);
+  }else fb();
+ }catch(e){fb()}
+ $('chk-told').checked=true;
+}
+function renderAll(){renderOpts();renderMsg();renderBoard();renderStats();$('speed').checked=!!S.speed;setNote(S.sample)}
+function doClear(){S=sampleState();S.rec=[];S.sample=false;saveState(S);renderAll()}
+function doReset(){S=sampleState();saveState(S);renderAll()}
+function init(){
+ S=loadState();
+ if(!S||!S.rec||!S.limit)S=sampleState();
+ $('lims').addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-lim]');if(!b)return;S.limit=parseInt(b.getAttribute('data-lim'),10);saveState(S);renderOpts();renderMsg();renderBoard()});
+ $('acts').addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-act]');if(!b)return;S.act=b.getAttribute('data-act');saveState(S);renderOpts();renderMsg();renderBoard()});
+ $('btn-copy').addEventListener('click',copyMsg);
+ $('btn-arrive').addEventListener('click',startTimer);
+ $('btn-met').addEventListener('click',stopTimer);
+ $('btn-moved').addEventListener('click',stopTimer);
+ $('speed').addEventListener('change',function(){S.speed=$('speed').checked;saveState(S)});
+ $('rate').addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-lv]');if(!b)return;addRec(parseInt(b.getAttribute('data-lv'),10))});
+ renderAll();
+}
+
+$('btn-clear').addEventListener('click',function(){showConfirm('サンプルを消して、空の状態から使います。',doClear)});
+$('btn-reset').addEventListener('click',function(){showConfirm('サンプルの状態に戻します。入力した内容は消えます。',doReset)});
+$('confirm-yes').addEventListener('click',function(){$('confirm').hidden=true;var f=confirmFn;confirmFn=null;if(f)f()});
+$('confirm-no').addEventListener('click',function(){$('confirm').hidden=true;confirmFn=null});
+init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>キャクソウヨホウ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --raised:#FFFFFF; --sunk:#E7EAE5;
+  --shadow-1:0 1px 2px rgba(26,35,32,.08),0 1px 1px rgba(26,35,32,.04);
+  --shadow-2:0 6px 18px rgba(26,35,32,.14),0 2px 4px rgba(26,35,32,.06);
+  --radius:12px; --flap:rgba(255,255,255,.07); --board-rule:rgba(246,195,67,.28);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --raised:#232A26; --sunk:#151A18;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 8px 22px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.3);}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --raised:#232A26; --sunk:#151A18;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 8px 22px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.3);}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+.wrap{max-width:560px;margin:0 auto;padding:12px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px))}
+a{color:var(--ink)}
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.back{display:inline-block;font-size:14px;margin:4px 0 12px;color:var(--muted)}
+h1{font-family:var(--font-display);font-size:30px;letter-spacing:-.02em;margin:0 0 4px;font-weight:700;line-height:1.2}
+.lead{font-size:13px;color:var(--muted);margin:0 0 12px;line-height:1.6}
+h2{font-family:var(--font-display);font-size:19px;letter-spacing:-.01em;margin:30px 0 10px;font-weight:700}
+h2 .step{font-family:var(--font-mono);font-size:12px;color:var(--muted);font-weight:600;margin-right:8px;letter-spacing:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* 仮説カード */
+.hyp{border:1px solid var(--line);border-left:4px solid var(--signal);background:var(--surface);border-radius:var(--radius);font-size:13px;line-height:1.6}
+.hyp summary{cursor:pointer;padding:9px 12px;list-style:none;display:flex;gap:8px;align-items:baseline}
+.hyp summary::-webkit-details-marker{display:none}
+.hyp summary::after{content:"開く";margin-left:auto;font-size:11px;color:var(--muted);flex:none}
+.hyp[open] summary::after{content:"たたむ"}
+.hyp .pos{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.hyp .body{padding:0 12px 10px}
+.hyp p{margin:4px 0 0}
+.hyp b{font-weight:700}
+
+.sample{font-size:12px;color:var(--muted);margin:12px 0 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-size:14px;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.main{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+.btn.small{min-height:36px;font-size:12px;padding:0 10px}
+.btn[disabled]{opacity:.45;cursor:default}
+.notice{background:var(--raised);border:1px solid var(--ink);border-radius:var(--radius);padding:12px;margin-top:10px;font-size:14px;box-shadow:var(--shadow-2);line-height:1.6}
+.notice .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+/* 店の選択 */
+.shops{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.shops button{font:inherit;text-align:left;min-height:52px;padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;line-height:1.35;box-shadow:var(--shadow-1)}
+.shops button .k{display:block;font-size:13px;font-weight:700;word-break:break-all}
+.shops button .nm{display:block;font-size:11px;color:var(--muted);word-break:break-all}
+.shops button[aria-pressed="true"]{background:var(--board);border-color:var(--board);color:var(--board-ink)}
+.shops button[aria-pressed="true"] .nm{color:var(--board-ink);opacity:.8}
+.shops .none{grid-column:1/-1;font-size:13px;color:var(--muted);padding:10px;border:1px dashed var(--line);border-radius:10px}
+
+/* 場面 */
+.scene{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 10px 8px;box-shadow:var(--shadow-1)}
+.scene svg{display:block;width:100%;height:auto;overflow:visible}
+.scene .cap{font-size:12px;color:var(--muted);margin:6px 2px 0;line-height:1.6}
+.scene .cap b{color:var(--ink);font-weight:700}
+.scene .key{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:var(--muted);margin:6px 2px 0}
+.scene .key svg{display:inline-block;width:auto;height:16px;vertical-align:-4px;margin-right:3px}
+.sc-ground{stroke:var(--line);stroke-width:2}
+.sc-bld{fill:var(--raised);stroke:var(--muted);stroke-width:1}
+.sc-roof{fill:var(--board)}
+.sc-door{fill:var(--board)}
+.sc-win{fill:var(--sunk);stroke:var(--muted);stroke-width:.8}
+.sc-signbg{fill:var(--board)}
+.sc-signtx{fill:var(--board-ink);font-family:var(--font-display);font-weight:700;font-size:8px;text-anchor:middle;dominant-baseline:central}
+.p-solo{fill:var(--ok)}
+.p-couple{fill:var(--muted)}
+.p-group{fill:var(--ng)}
+.p-family{fill:var(--muted)}
+.p-me{fill:var(--signal)}
+.p-tie{stroke:var(--muted);stroke-width:1.4;fill:none}
+.sc-lab{fill:var(--ink);font-size:8px;font-family:var(--font-body);text-anchor:middle}
+.sc-lab.b{font-weight:700}
+.sc-behind{fill:none;stroke:var(--signal);stroke-width:1.6;stroke-dasharray:3 2}
+.sc-buzz{fill:none;stroke:var(--muted);stroke-width:1.3;stroke-linecap:round}
+.sc-buzz.hot{stroke:var(--ng)}
+.sc-empty{fill:var(--muted);font-size:9px;font-family:var(--font-body)}
+
+/* ボード */
+.board{background:var(--board);color:var(--board-ink);border-radius:var(--radius);padding:14px 16px 12px;margin-top:12px;box-shadow:var(--shadow-1)}
+.board .cap{font-size:12px;opacity:.85;margin-bottom:8px;line-height:1.5}
+.board .row{display:flex;gap:10px;align-items:stretch}
+.board .col{flex:1;min-width:0}
+.board .sep{font-family:var(--font-mono);font-size:28px;opacity:.5;align-self:center;padding-top:14px}
+.board .lab{font-size:12px;line-height:1.4;min-height:34px}
+.board .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:46px;line-height:1.1;display:flex;gap:3px;margin-top:4px;align-items:baseline}
+.board .unit{font-family:var(--font-mono);font-size:20px;opacity:.85;margin-left:2px}
+.fc{display:inline-block;min-width:.66em;text-align:center;background:var(--flap);border-radius:4px;padding:0 2px;position:relative}
+.board .diff{margin-top:10px;font-size:13px;border-top:1px solid var(--board-rule);padding-top:8px;opacity:.95;font-variant-numeric:tabular-nums}
+.board .diff .mono{font-family:var(--font-mono)}
+
+/* 予報の表 */
+.tip{position:relative;background:var(--board);color:var(--board-ink);border-radius:var(--radius);padding:10px 44px 10px 12px;font-size:13px;line-height:1.5;box-shadow:var(--shadow-2);margin-bottom:12px}
+.tip::after{content:"";position:absolute;left:50%;bottom:-6px;width:12px;height:12px;background:var(--board);transform:rotate(45deg)}
+.xbtn{position:absolute;top:4px;right:4px;width:36px;height:36px;border:0;background:none;color:var(--board-ink);font:inherit;font-size:18px;cursor:pointer;border-radius:8px}
+.fc-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 8px;box-shadow:var(--shadow-1)}
+.fgrid{display:grid;grid-template-columns:34px repeat(5,minmax(0,1fr));gap:4px;align-items:stretch}
+.fgrid .th{font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center;padding:2px 0 4px}
+.fgrid .rh{font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;writing-mode:horizontal-tb}
+.cell{font:inherit;min-height:74px;padding:4px 2px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:0}
+.cell svg{width:30px;height:22px;display:block}
+.cell .pc{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;line-height:1.1}
+.cell .pc small{font-size:9px;font-weight:500;color:var(--muted)}
+.cell[aria-pressed="true"]{background:var(--board);border-color:var(--board);color:var(--board-ink)}
+.cell[aria-pressed="true"] .pc small{color:var(--board-ink)}
+.qd{display:flex;gap:1px}
+.qd i{display:block;width:5px;height:4px;border-radius:1px;background:var(--line)}
+.qd i.on{background:var(--ok)}
+.cell[aria-pressed="true"] .qd i{background:var(--flap)}
+.cell[aria-pressed="true"] .qd i.on{background:var(--board-ink)}
+.cell .na{font-family:var(--font-mono);color:var(--muted);font-size:13px}
+.w-sun{fill:var(--signal)}
+.w-ray{stroke:var(--signal);stroke-width:1.6;stroke-linecap:round}
+.w-cloud{fill:var(--muted)}
+.w-cloud-edge{stroke:var(--bg);stroke-width:1.2}
+.cell[aria-pressed="true"] .w-cloud-edge{stroke:var(--board)}
+.w-rain{stroke:var(--ng);stroke-width:1.8;stroke-linecap:round}
+.cell[aria-pressed="true"] .w-cloud{fill:var(--line)}
+.legend{font-size:11px;color:var(--muted);margin:10px 2px 0;line-height:1.5;display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center}
+.legend svg{width:26px;height:19px;display:block}
+.legend .w-cloud-edge{stroke:var(--surface)}
+.nav{display:flex;gap:8px;margin-top:10px}
+.nav .btn{flex:1}
+
+/* 結果 */
+.result{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow-1)}
+.fact{font-family:var(--font-display);font-size:16px;font-weight:700;line-height:1.55;letter-spacing:-.01em;margin:0 0 4px}
+.fact .mono,.fact2 .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.fact2{font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.6}
+.sub{font-size:12px;color:var(--muted);margin:0 0 6px}
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:8px 10px;align-items:center}
+.bars .bl{font-size:13px;line-height:1.3;white-space:nowrap}
+.track{position:relative;height:16px;background:var(--sunk);border-radius:6px;overflow:hidden}
+.fill{height:100%;width:0;border-radius:6px;background:var(--muted)}
+.fill.solo{background:var(--ok)}
+.fill.group{background:var(--ng)}
+.bars .bv{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;text-align:right;min-width:44px}
+.ticks{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--muted);grid-column:2}
+.quiet{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+.qrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.qmeter{display:flex;gap:3px}
+.qmeter i{display:block;width:26px;height:14px;border-radius:3px;background:var(--sunk)}
+.qmeter i.on{background:var(--ok)}
+.qmeter.lo i.on{background:var(--ng)}
+.qval{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:14px}
+.qtx{font-size:13px}
+.note{font-size:12px;color:var(--muted);line-height:1.7;margin-top:14px}
+
+/* 入力（自分で使う時） */
+.editor{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow-1)}
+.field{margin:12px 0 0}
+.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+.nums{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+input[type=text],input[type=number],select{font:inherit;font-size:16px;min-height:44px;width:100%;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+input[type=number]{font-family:var(--font-mono)}
+.editor .hd{font-family:var(--font-display);font-weight:700;font-size:16px;margin:0}
+.editor .hint{font-size:12px;color:var(--muted);margin:4px 0 0;line-height:1.6}
+.editor hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+
+/* 空の状態 */
+.empty{text-align:center;padding:14px 10px}
+.empty svg{width:170px;height:auto}
+.empty p{font-size:13px;line-height:1.7;color:var(--muted);margin:8px auto 0;max-width:300px}
+.empty p b{color:var(--ink)}
+
+/* トースト・下部バー */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--board);color:var(--board-ink);border-radius:var(--radius);box-shadow:var(--shadow-2);padding:6px 6px 6px 16px;display:flex;align-items:center;gap:10px;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
+.toast[hidden]{display:none}
+.toast button{font:inherit;font-size:14px;font-weight:700;min-height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--board-ink);background:none;color:var(--board-ink);cursor:pointer;flex:none}
+.bar{display:none}
+@media (max-width:600px){
+  .wrap{padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px))}
+  .bar{display:block;position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--raised);border-top:1px solid var(--line);box-shadow:var(--shadow-2);padding:8px max(12px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px))}
+  .bar .bt{font-size:12px;color:var(--muted);margin:0 2px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar .bt b{color:var(--ink)}
+  .bar .row{display:flex;gap:8px}
+  .bar .btn{flex:1}
+  .nav{display:none}
+  .toast{bottom:calc(100px + env(safe-area-inset-bottom, 0px))}
+  h1{font-size:27px}
+  .board .num{font-size:40px}
+}
+
+@media (prefers-reduced-motion: no-preference){
+  .btn,.shops button,.cell,.xbtn,.toast button{transition:transform .15s ease,background-color .2s ease,color .2s ease,border-color .2s ease}
+  .btn:active,.shops button:active,.cell:active,.toast button:active{transform:scale(.95)}
+  .fc.go{animation:flip .26s ease-out}
+  @keyframes flip{0%{transform:rotateX(90deg);opacity:.2}100%{transform:rotateX(0);opacity:1}}
+  .qset{transition:opacity .28s ease,transform .28s ease}
+  .qset.entering{opacity:0;transform:translateX(12px)}
+  .qset.leaving{opacity:0;transform:translateX(-12px)}
+  .fill{transition:width .5s cubic-bezier(.3,.7,.4,1)}
+  .qmeter i{transition:background-color .25s ease}
+  .tip,.notice{animation:pop .2s ease-out}
+  @keyframes pop{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
+  .toast:not([hidden]){animation:toastin .22s ease-out}
+  @keyframes toastin{0%{opacity:0;transform:translate(-50%,10px)}100%{opacity:1;transform:translate(-50%,0)}}
+  .cell.ping{animation:ping .28s ease-out}
+  @keyframes ping{0%{transform:scale(.92)}100%{transform:scale(1)}}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">← 一覧へ</a>
+  <h1>キャクソウヨホウ</h1>
+  <p class="lead">行く前に見る、店の客層の予報。曜日と時間帯ごとに、列に並ぶ組の内訳と静かさを並べています。</p>
+
+  <details class="hyp" open aria-label="仮説カード">
+    <summary><span class="pos">63 キャクソウヨホウ</span></summary>
+    <div class="body">
+      <p><b>仮説</b> 一人客が多く、カップル・グループが少ない店と時間帯を行く前に選べば、列で後ろに誰が来ても安心できる。</p>
+      <p><b>確かめること</b></p>
+      <p>当たり＝「後ろにカップルが来る確率」が分かると、行く時間を決めやすく、安心して並べそう</p>
+      <p>外れ＝確率が分かっても、実際に誰が来るかは運なので安心できない</p>
+    </div>
+  </details>
+
+  <div class="sample">
+    <span id="sampleTag">サンプルデータ（表示中）</span>
+    <button class="btn small" id="btnClear" type="button">サンプルを消して自分で使う</button>
+    <button class="btn small" id="btnSample" type="button">サンプルに戻す</button>
+  </div>
+  <div id="notice" role="status" aria-live="polite"></div>
+
+  <div class="shops" id="shops" role="group" aria-label="店を選ぶ"></div>
+
+  <section class="scene" aria-label="選んだ時間帯の列の見込み">
+    <svg id="scene" viewBox="0 0 360 134" aria-hidden="true">
+      <g id="sceneStatic"></g><g id="qlayer"></g>
+    </svg>
+    <div class="cap" id="sceneCap"></div>
+    <div class="key" aria-hidden="true">
+      <span><svg viewBox="0 0 12 26"><circle class="p-solo" cx="6" cy="5" r="4.5"/><rect class="p-solo" x="1.5" y="10" width="9" height="15" rx="4"/></svg>一人客</span>
+      <span><svg viewBox="0 0 22 26"><circle class="p-couple" cx="6" cy="5" r="4.5"/><rect class="p-couple" x="1.5" y="10" width="9" height="15" rx="4"/><circle class="p-couple" cx="16" cy="5" r="4.5"/><rect class="p-couple" x="11.5" y="10" width="9" height="15" rx="4"/></svg>カップル</span>
+      <span><svg viewBox="0 0 32 26"><circle class="p-group" cx="6" cy="5" r="4.5"/><rect class="p-group" x="1.5" y="10" width="9" height="15" rx="4"/><circle class="p-group" cx="16" cy="5" r="4.5"/><rect class="p-group" x="11.5" y="10" width="9" height="15" rx="4"/><circle class="p-group" cx="26" cy="5" r="4.5"/><rect class="p-group" x="21.5" y="10" width="9" height="15" rx="4"/></svg>グループ</span>
+      <span><svg viewBox="0 0 30 26"><circle class="p-family" cx="6" cy="5" r="4.5"/><rect class="p-family" x="1.5" y="10" width="9" height="15" rx="4"/><circle class="p-family" cx="16" cy="12" r="3.2"/><rect class="p-family" x="12.8" y="16" width="6.4" height="9" rx="3"/><circle class="p-family" cx="24" cy="5" r="4.5"/><rect class="p-family" x="19.5" y="10" width="9" height="15" rx="4"/></svg>家族</span>
+      <span><svg viewBox="0 0 12 26"><circle class="p-me" cx="6" cy="5" r="4.5"/><rect class="p-me" x="1.5" y="10" width="9" height="15" rx="4"/></svg>自分</span>
+    </div>
+  </section>
+
+  <section class="board" aria-label="次に後ろへ並ぶ1組の見込み">
+    <div class="cap" id="bCap"></div>
+    <div class="row">
+      <div class="col"><div class="lab">後ろに一人客が<br>来る確率</div><div class="num"><span id="bSolo" aria-hidden="true"></span><span class="unit">%</span></div></div>
+      <div class="sep" aria-hidden="true">／</div>
+      <div class="col"><div class="lab">後ろにカップルが<br>来る確率</div><div class="num"><span id="bCouple" aria-hidden="true"></span><span class="unit">%</span></div></div>
+    </div>
+    <div class="diff" id="bDiff"></div>
+    <span class="sr" id="bLive" aria-live="polite"></span>
+  </section>
+
+  <h2><span class="step">1</span>曜日と時間帯を選ぶ</h2>
+  <div id="tip"></div>
+  <div class="fc-wrap" id="fcWrap">
+    <div class="fgrid" id="fgrid"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="nav">
+    <button class="btn" id="navPrev" type="button">← 前の時間帯を見る</button>
+    <button class="btn" id="navNext" type="button">次の時間帯を見る →</button>
+  </div>
+
+  <h2><span class="step">2</span>いまのデータで分かること</h2>
+  <div class="result">
+    <p class="fact" id="fact" aria-live="polite"></p>
+    <p class="fact2" id="fact2"></p>
+    <p class="sub" id="barsCap"></p>
+    <div class="bars" id="bars"></div>
+    <div class="quiet">
+      <p class="sub">静かさ（話し声の少なさ）　カップル率とは別の軸</p>
+      <div class="qrow"><div class="qmeter" id="qmeter" aria-hidden="true"></div><span class="qval" id="qval"></span><span class="qtx" id="qtx"></span></div>
+    </div>
+    <p class="note">割合は「組」の数で数えた値です。1人でも4人でも1組。後ろに来る確率＝次に並ぶ1組がその客層である割合の見込みです。カップルが多くても話し声が少ない時間帯があるので、静かさは別に出しています。</p>
+  </div>
+
+  <div id="editorSec"></div>
+
+  <p class="note">サンプルデータ。店名は架空です。実際はGoogleマップ等の公開情報（混雑する時間帯・口コミの写真や文面）から作る想定です。覚えておくのは選んだ店（と自分で足した店）だけで、この端末の中だけに保存されます。</p>
+</div>
+
+<div class="bar" id="bar" aria-label="時間帯の切りかえ">
+  <div class="bt" id="barTx"></div>
+  <div class="row">
+    <button class="btn" id="barPrev" type="button">← 前の時間帯</button>
+    <button class="btn main" id="barNext" type="button">次の時間帯 →</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button type="button" id="toastUndo">取り消す</button></div>
+
+<script>
+(function(){
+  var KEY = "hack5-ik-3-v1";
+  var NS = "http://www.w3.org/2000/svg";
+  var DAYS = ["平日","土日"];
+  var SLOTS = ["11時台","12時台","14時台","18時台","20時台"];
+  var SLOT_H = [11,12,14,18,20];
+  var TYPES = [{k:"solo",n:"一人客"},{k:"couple",n:"カップル"},{k:"group",n:"グループ"},{k:"family",n:"家族"}];
+  var QUIET_TX = ["","にぎやか（話し声が多い）","やや にぎやか","ふつう","静かめ","静か（ほぼ話し声なし）"];
+  // cells[day][slot] = [一人客, カップル, グループ, 家族, 静かさ1-5]（組数。サンプルは割合）
+  var SAMPLE = [
+    {id:"s1", kind:"好きな個人のラーメン店", name:"麺処 しずく", cells:[
+      [[60,15,15,10,4],[55,10,30,5,3],[72,12,8,8,5],[50,20,25,5,3],[65,20,15,0,4]],
+      [[45,25,15,15,3],[35,30,20,15,2],[50,25,10,15,3],[38,30,22,10,2],[52,28,20,0,3]]]},
+    {id:"s2", kind:"二郎系の店", name:"らーめん 鉄塊", cells:[
+      [[78,8,14,0,5],[70,6,24,0,4],[82,8,10,0,5],[68,10,22,0,4],[74,10,16,0,4]],
+      [[66,14,20,0,4],[60,14,26,0,3],[70,14,16,0,4],[58,16,26,0,3],[64,16,20,0,4]]]},
+    {id:"s3", kind:"SNSで有名なクレープ店", name:"クレープ ルミエ", cells:[
+      [[25,40,30,5,2],[20,40,35,5,2],[18,45,32,5,1],[22,48,28,2,2],[28,50,22,0,2]],
+      [[12,40,38,10,1],[10,42,38,10,1],[8,45,40,7,1],[12,50,35,3,1],[18,52,30,0,2]]]},
+    {id:"s4", kind:"地元の古い喫茶店", name:"喫茶 ひだまり", cells:[
+      [[62,22,6,10,5],[50,25,15,10,4],[58,36,2,4,5],[58,30,8,4,5],[60,30,10,0,5]],
+      [[48,32,8,12,4],[40,30,18,12,3],[50,34,8,8,4],[45,38,12,5,4],[50,35,15,0,4]]]},
+    {id:"s5", kind:"駅前の餃子店", name:"餃子 福来軒", cells:[
+      [[50,15,30,5,3],[45,10,40,5,2],[60,20,15,5,3],[25,20,50,5,1],[30,22,48,0,1]],
+      [[30,25,25,20,2],[25,25,30,20,2],[40,25,20,15,3],[18,22,45,15,1],[22,25,53,0,1]]]}
+  ];
+
+  var state = {sample:true, shops:[], shopId:"s1", day:0, slot:2, tip:0, seq:1};
+  var qseq = 0;
+  var raf = (typeof window!=="undefined" && window.requestAnimationFrame) ? function(f){ window.requestAnimationFrame(f); } : function(f){ setTimeout(f,0); };
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+  function reduced(){
+    try{ return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); }catch(e){ return false; }
+  }
+
+  /* ---------- 保存（選んだ店・自分で足した店・吹き出しを閉じたか） ---------- */
+  function emptyCells(){ return [[null,null,null,null,null],[null,null,null,null,null]]; }
+  function cleanCell(c){
+    if(!Array.isArray(c) || c.length<5) return null;
+    var v=[]; for(var i=0;i<4;i++) v.push(clamp(Math.round(+c[i]||0),0,99));
+    v.push(clamp(Math.round(+c[4]||3),1,5));
+    return v;
+  }
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(!raw) return;
+      var d = JSON.parse(raw);
+      if(!d || typeof d!=="object") return;
+      state.sample = d.sample!==false;
+      state.tip = d.tip ? 1 : 0;
+      state.seq = +d.seq || 1;
+      if(Array.isArray(d.shops)){
+        state.shops = d.shops.filter(function(s){ return s && typeof s.name==="string"; }).map(function(s){
+          var cells = emptyCells();
+          if(Array.isArray(s.cells)){
+            for(var a=0;a<2;a++) for(var b=0;b<5;b++){
+              if(s.cells[a] && s.cells[a][b]) cells[a][b] = cleanCell(s.cells[a][b]);
+            }
+          }
+          return {id:String(s.id), kind:String(s.name).slice(0,30), name:"", cells:cells};
+        });
+      }
+      if(typeof d.shopId==="string") state.shopId = d.shopId;
+    }catch(e){}
+  }
+  function save(){
+    try{
+      localStorage.setItem(KEY, JSON.stringify({
+        sample:state.sample, shopId:state.shopId, tip:state.tip, seq:state.seq,
+        shops: state.shops.map(function(s){ return {id:s.id, name:s.kind, cells:s.cells}; })
+      }));
+    }catch(e){}
+  }
+  function snapshot(){ return JSON.stringify({sample:state.sample, shops:state.shops, shopId:state.shopId, seq:state.seq}); }
+  function restore(snap){
+    try{
+      var d = JSON.parse(snap);
+      state.sample = d.sample; state.shops = d.shops; state.shopId = d.shopId; state.seq = d.seq;
+    }catch(e){}
+  }
+
+  /* ---------- データ ---------- */
+  function shops(){ return state.sample ? SAMPLE : state.shops; }
+  function shop(){
+    var list = shops();
+    for(var i=0;i<list.length;i++) if(list[i].id===state.shopId) return list[i];
+    return list[0] || null;
+  }
+  // 組数 → 割合（合計100になるよう最大剰余法で丸める）
+  function share(counts, total){
+    var sum=0, i; for(i=0;i<counts.length;i++) sum+=counts[i];
+    if(!sum) return null;
+    var raw=counts.map(function(c){ return c*total/sum; });
+    var out=raw.map(Math.floor), left=total, order=[];
+    for(i=0;i<out.length;i++){ left-=out[i]; order.push(i); }
+    order.sort(function(a,b){ return (raw[b]-out[b])-(raw[a]-out[a]) || a-b; });
+    for(i=0;i<left;i++) out[order[i%order.length]]++;
+    return out;
+  }
+  function cellData(s, d, t){
+    if(!s) return null;
+    var c = s.cells[d] && s.cells[d][t];
+    if(!c) return null;
+    var p = share(c.slice(0,4), 100);
+    if(!p) return null;
+    return {p:p, q:c[4], n:c[0]+c[1]+c[2]+c[3]};
+  }
+  function weather(cd){
+    if(!cd) return {k:"none", n:"データなし"};
+    var p=cd.p;
+    if(p[0]>=60) return {k:"sun", n:"晴れ"};
+    if(p[2]+p[3]>=40) return {k:"rain", n:"雨"};
+    if(p[1]>=35) return {k:"cloud", n:"くもり"};
+    return {k:"partly", n:"晴れときどきくもり"};
+  }
+  function slotLabel(d,t){ return DAYS[d]+" "+SLOTS[t]; }
+  function shopLabel(s){ return s ? s.kind + (s.name ? "（"+s.name+"・架空）" : "") : ""; }
+
+  /* ---------- 天気マーク ---------- */
+  function cloudPath(dx, dy, k){
+    k = k || 1;
+    function c(x,y,r){ return '<circle class="w-cloud" cx="'+(dx+x*k)+'" cy="'+(dy+y*k)+'" r="'+(r*k)+'"/>'; }
+    return '<g>'+c(0,3,4.6)+c(6.5,-0.5,5.8)+c(12.5,3.4,4.2)+'<rect class="w-cloud" x="'+dx+'" y="'+(dy+2.6*k)+'" width="'+(12.5*k)+'" height="'+(5*k)+'" rx="'+(2*k)+'"/></g>';
+  }
+  function sun(cx, cy, r){
+    var h='<circle class="w-sun" cx="'+cx+'" cy="'+cy+'" r="'+r+'"/>', i, a;
+    for(i=0;i<8;i++){
+      a=i*Math.PI/4;
+      h+='<line class="w-ray" x1="'+(cx+Math.cos(a)*(r+2)).toFixed(1)+'" y1="'+(cy+Math.sin(a)*(r+2)).toFixed(1)+'" x2="'+(cx+Math.cos(a)*(r+4.2)).toFixed(1)+'" y2="'+(cy+Math.sin(a)*(r+4.2)).toFixed(1)+'"/>';
+    }
+    return h;
+  }
+  function icon(k){
+    var h='<svg viewBox="0 0 32 24" aria-hidden="true">';
+    if(k==="sun") h+=sun(16,12,5);
+    else if(k==="partly"){
+      h+=sun(11,9,4);
+      h+='<g class="w-cloud-edge">'+cloudPath(13,11,1)+'</g>';
+    }
+    else if(k==="cloud") h+=cloudPath(9,8,1.1);
+    else if(k==="rain"){
+      h+=cloudPath(9,4,1.1);
+      h+='<line class="w-rain" x1="12" y1="17" x2="10.5" y2="21"/><line class="w-rain" x1="17" y1="17" x2="15.5" y2="21"/><line class="w-rain" x1="22" y1="17" x2="20.5" y2="21"/>';
+    }
+    return h+'</svg>';
+  }
+
+  /* ---------- 発車標の数字 ---------- */
+  function flap(el, text){
+    if(!el) return;
+    var prev = el.getAttribute("data-v") || "";
+    if(prev===text && el.innerHTML) return;
+    var h="", i, c;
+    for(i=0;i<text.length;i++){
+      c=text.charAt(i);
+      h+='<span class="fc'+(c!==prev.charAt(i)?' go':'')+'">'+esc(c)+'</span>';
+    }
+    el.innerHTML=h;
+    el.setAttribute("data-v",text);
+  }
+
+  /* ---------- 店の選択 ---------- */
+  function renderShops(){
+    var list=shops(), s=shop(), h="", i;
+    if(!list.length){ $("shops").innerHTML='<div class="none">店はまだありません。下の「店を足す」から入れられます。</div>'; return; }
+    for(i=0;i<list.length;i++){
+      h+='<button type="button" id="shop-'+esc(list[i].id)+'" data-shop="'+esc(list[i].id)+'" aria-pressed="'+(s&&list[i].id===s.id)+'">'
+        +'<span class="k">'+esc(list[i].kind)+'</span>'
+        +(list[i].name ? '<span class="nm">'+esc(list[i].name)+'（架空）</span>' : '<span class="nm">自分で足した店</span>')
+        +'</button>';
+    }
+    $("shops").innerHTML=h;
+  }
+
+  /* ---------- 場面（列の絵） ---------- */
+  function seeded(str){
+    var h=2166136261, i;
+    for(i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=(h*16777619)>>>0; }
+    return function(){ h=(h*1103515245+12345)>>>0; return (h>>>8)/16777216; };
+  }
+  // 割合どおりに8組を並べる。自分のすぐ後ろには一番多い客層を置く
+  function compose(cd, seedStr){
+    var counts=share(cd.p, 8), list=[], i, j, t;
+    for(i=0;i<4;i++) for(j=0;j<counts[i];j++) list.push(i);
+    var rnd=seeded(seedStr);
+    for(i=list.length-1;i>0;i--){ j=Math.floor(rnd()*(i+1)); t=list[i]; list[i]=list[j]; list[j]=t; }
+    var top=0; for(i=1;i<4;i++) if(cd.p[i]>cd.p[top]) top=i;
+    var at=-1; for(i=3;i<list.length;i++) if(list[i]===top){ at=i; break; }
+    if(at<0) for(i=0;i<3;i++) if(list[i]===top){ at=i; break; }
+    if(at>=0){ t=list[3]; list[3]=list[at]; list[at]=t; }
+    return list;
+  }
+  function person(x, cls, small){
+    var r=small?3.2:4.5, w=small?6.4:9, bh=small?9:15, top=small?-9:-15;
+    return '<circle class="'+cls+'" cx="'+(x+w/2)+'" cy="'+(top-r-1.5)+'" r="'+r+'"/>'
+      +'<rect class="'+cls+'" x="'+x+'" y="'+top+'" width="'+w+'" height="'+bh+'" rx="'+(small?3:4)+'"/>';
+  }
+  var STEP=10.5;
+  function partyWidth(type, gsize){
+    if(type===0) return 9;
+    if(type===1) return STEP+9;
+    if(type===2) return (gsize-1)*STEP+9;
+    return STEP*2+9 - 1.5;
+  }
+  function drawParty(x, type, gsize, quiet){
+    var h="", i;
+    if(type===0) h+=person(x,"p-solo");
+    else if(type===1){ h+=person(x,"p-couple")+person(x+STEP,"p-couple")+'<line class="p-tie" x1="'+(x+8)+'" y1="-8" x2="'+(x+STEP+1)+'" y2="-8"/>'; }
+    else if(type===2){ for(i=0;i<gsize;i++) h+=person(x+i*STEP,"p-group"); }
+    else { h+=person(x,"p-family")+person(x+STEP+0.8,"p-family",true)+person(x+STEP*2-1.5,"p-family"); }
+    if(type!==0 && quiet<=2){
+      var w=partyWidth(type,gsize), cx=x+w/2, hot=quiet<=1?' hot':'';
+      h+='<path class="sc-buzz'+hot+'" d="M'+(cx-6)+' -30 q3 -4 6 0"/><path class="sc-buzz'+hot+'" d="M'+(cx+1)+' -33 q3 -4 6 0"/>';
+    }
+    return h;
+  }
+  function renderSceneStatic(s){
+    var nm = s ? (s.name || s.kind) : "";
+    if(nm.length>6) nm = nm.slice(0,6)+"…";
+    var h='';
+    h+='<line class="sc-ground" x1="0" y1="112" x2="360" y2="112"/>';
+    h+='<rect class="sc-bld" x="6" y="44" width="56" height="68"/>';
+    h+='<rect class="sc-roof" x="2" y="38" width="64" height="8" rx="2"/>';
+    h+='<rect class="sc-signbg" x="8" y="50" width="52" height="15" rx="2"/>';
+    h+='<text class="sc-signtx" x="34" y="57.5">'+esc(nm || "店")+'</text>';
+    h+='<rect class="sc-win" x="10" y="72" width="12" height="12"/>';
+    h+='<rect class="sc-door" x="30" y="76" width="22" height="36" rx="1"/>';
+    $("sceneStatic").innerHTML=h;
+  }
+  function renderQueue(s, cd){
+    var layer=$("qlayer");
+    var g=document.createElementNS(NS,"g");
+    var h='';
+    if(!cd){
+      h+=person(116,"p-me")+'<text class="sc-lab b" x="120.5" y="124">自分</text>';
+      h+='<text class="sc-empty" x="140" y="96">'+(s ? 'この時間帯の数字はまだありません' : '店を足すと、ここに列が並びます')+'</text>';
+    } else {
+      var list=compose(cd, (s?s.id:"")+"-"+state.day+"-"+state.slot);
+      var x=0, gap=8, gcount=0, parts=[], i, w, gs, meX=0, behindX=0, behindW=0;
+      for(i=0;i<list.length;i++){
+        if(i===3){ meX=x; x+=9+gap+2; }
+        gs = list[i]===2 ? (gcount++%2===0?3:4) : 0;
+        w = partyWidth(list[i], gs);
+        if(i===3){ behindX=x; behindW=w; }
+        parts.push(drawParty(x, list[i], gs, cd.q));
+        x += w + gap;
+      }
+      var total=x-gap, avail=280, k=Math.min(1, avail/total);
+      var inner='<path class="sc-behind" d="M'+(behindX-4)+' -42 h'+(behindW+8)+' a3 3 0 0 1 3 3 v41 a3 3 0 0 1 -3 3 h-'+(behindW+8)+' a3 3 0 0 1 -3 -3 v-41 a3 3 0 0 1 3 -3z"/>';
+      inner+=parts.join("")+person(meX,"p-me");
+      h+='<g transform="translate(70 112) scale('+k.toFixed(3)+')">'+inner+'</g>';
+      var lx=70+(meX+4.5)*k, bx=70+(behindX+behindW/2)*k;
+      h+='<text class="sc-lab b" x="'+lx.toFixed(1)+'" y="125">自分</text>';
+      var top=0; for(i=1;i<4;i++) if(cd.p[i]>cd.p[top]) top=i;
+      h+='<text class="sc-lab b" x="'+clamp(bx,64,296).toFixed(1)+'" y="'+(112-46*k-4).toFixed(1)+'">後ろの見込み：'+TYPES[top].n+' '+cd.p[top]+'%</text>';
+      h+='<text class="sc-lab" x="'+(70+1.5*k*30).toFixed(1)+'" y="125">前の3組</text>';
+    }
+    g.innerHTML=h;
+    var id="q"+(++qseq);
+    g.setAttribute("id",id);
+    var olds=[], c=layer.firstChild;
+    while(c){ olds.push(c); c=c.nextSibling; }
+    if(reduced() || !olds.length){
+      for(var j=0;j<olds.length;j++) layer.removeChild(olds[j]);
+      g.setAttribute("class","qset");
+      layer.appendChild(g);
+      return;
+    }
+    g.setAttribute("class","qset entering");
+    layer.appendChild(g);
+    olds.forEach(function(o){
+      o.setAttribute("class","qset leaving");
+      setTimeout(function(){ if(o.parentNode===layer) layer.removeChild(o); }, 320);
+    });
+    raf(function(){ raf(function(){ g.setAttribute("class","qset"); }); });
+  }
+  function renderScene(){
+    var s=shop(), cd=cellData(s, state.day, state.slot);
+    renderSceneStatic(s);
+    renderQueue(s, cd);
+    var cap="";
+    if(!s) cap="店を足すと、選んだ時間帯の列の見込みがここに出ます。";
+    else if(!cd) cap="<b>"+esc(slotLabel(state.day,state.slot))+"</b>の数字はまだありません。";
+    else {
+      var cnt=share(cd.p,8), parts=[];
+      for(var i=0;i<4;i++) if(cnt[i]) parts.push(TYPES[i].n+" "+cnt[i]+"組");
+      cap="<b>"+esc(slotLabel(state.day,state.slot))+"</b>・"+esc(s.name||s.kind)+"：並ぶ8組を客層の割合どおりに描いた見込み（"+parts.join("・")+"）。点線の枠が自分のすぐ後ろ。"+(cd.q<=2?"頭の上の線は話し声が多めの組。":"");
+    }
+    $("sceneCap").innerHTML=cap;
+  }
+
+  /* ---------- ボード ---------- */
+  function renderBoard(){
+    var s=shop(), cd=cellData(s, state.day, state.slot);
+    $("bCap").textContent = s ? (slotLabel(state.day,state.slot)+"・"+(s.name||s.kind)+"　次に並ぶ1組の見込み") : "店を足すと見込みが出ます";
+    if(!cd){
+      flap($("bSolo"),"--"); flap($("bCouple"),"--");
+      $("bDiff").textContent = s ? "この時間帯の数字はまだありません。" : "";
+      $("bLive").textContent = "データなし";
+      return;
+    }
+    flap($("bSolo"), String(cd.p[0])); flap($("bCouple"), String(cd.p[1]));
+    $("bDiff").innerHTML = 'グループ <span class="mono">'+cd.p[2]+'%</span>　家族 <span class="mono">'+cd.p[3]+'%</span>　静かさ <span class="mono">'+cd.q+'/5</span>';
+    $("bLive").textContent = slotLabel(state.day,state.slot)+"。後ろに一人客が来る確率 "+cd.p[0]+"パーセント、カップルが来る確率 "+cd.p[1]+"パーセント";
+  }
+
+  /* ---------- 予報の表 ---------- */
+  function renderGrid(){
+    var s=shop(), h='', d, t, cd, w, q, i;
+    if(!s){
+      $("fgrid").innerHTML='';
+      $("fgrid").style.display="none";
+      $("legend").innerHTML=emptyHtml();
+      return;
+    }
+    $("fgrid").style.display="";
+    h+='<div></div>';
+    for(t=0;t<5;t++) h+='<div class="th">'+SLOTS[t].replace("時台","時")+'</div>';
+    for(d=0;d<2;d++){
+      h+='<div class="rh">'+DAYS[d]+'</div>';
+      for(t=0;t<5;t++){
+        cd=cellData(s,d,t); w=weather(cd);
+        var sel=(d===state.day && t===state.slot);
+        var lab=slotLabel(d,t)+"、"+w.n+(cd?"、一人客"+cd.p[0]+"パーセント、カップル"+cd.p[1]+"パーセント、静かさ"+cd.q:"");
+        h+='<button type="button" class="cell" id="cell-'+d+'-'+t+'" data-d="'+d+'" data-t="'+t+'" aria-pressed="'+sel+'" aria-label="'+esc(lab)+'">';
+        if(cd){
+          q=''; for(i=1;i<=5;i++) q+='<i'+(i<=cd.q?' class="on"':'')+'></i>';
+          h+=icon(w.k)+'<span class="pc">'+cd.p[0]+'<small>%</small></span><span class="qd">'+q+'</span>';
+        } else h+='<span class="na">--</span>';
+        h+='</button>';
+      }
+    }
+    $("fgrid").innerHTML=h;
+    $("legend").innerHTML =
+      icon("sun")+'<span>晴れ＝一人客が6割以上（数字は一人客の割合）</span>'
+      +icon("partly")+'<span>晴れときどきくもり＝一人客が中心で、ほかも混ざる</span>'
+      +icon("cloud")+'<span>くもり＝カップルが35%以上</span>'
+      +icon("rain")+'<span>雨＝グループと家族で4割以上</span>'
+      +'<span class="qd" style="justify-self:center"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span>静かさ（5段階・多いほど話し声が少ない）</span>';
+  }
+  function emptyHtml(){
+    return '<div class="empty" style="grid-column:1/-1">'
+      +'<svg viewBox="0 0 170 90" aria-hidden="true">'
+      +'<line class="sc-ground" x1="0" y1="78" x2="170" y2="78"/>'
+      +'<rect class="sc-bld" x="6" y="22" width="44" height="56"/><rect class="sc-roof" x="2" y="16" width="52" height="8" rx="2"/>'
+      +'<rect class="sc-door" x="20" y="48" width="16" height="30"/>'
+      +'<g transform="translate(66 78)">'+person(0,"p-me")+'</g>'
+      +'<rect x="84" y="40" width="70" height="38" rx="6" class="sc-behind"/>'
+      +'<text class="sc-empty" x="119" y="63" text-anchor="middle">後ろは？</text>'
+      +'</svg>'
+      +'<p><b>店の名前</b>を足して、曜日×時間帯ごとに<b>見かけた組の数</b>（一人客・カップル・グループ・家族）と<b>静かさ</b>を入れると、後ろに来る確率と客層の予報がここに出ます。</p>'
+      +'</div>';
+  }
+
+  /* ---------- 結果 ---------- */
+  function renderResult(){
+    var s=shop(), cd=cellData(s,state.day,state.slot), d, t, c, best=null, quietBest=-1, quietCells=[];
+    if(s){
+      for(d=0;d<2;d++) for(t=0;t<5;t++){
+        c=cellData(s,d,t); if(!c) continue;
+        if(!best || c.p[0]>best.v) best={d:d,t:t,v:c.p[0]};
+        if(c.q>quietBest){ quietBest=c.q; quietCells=[[d,t]]; }
+        else if(c.q===quietBest) quietCells.push([d,t]);
+      }
+    }
+    if(!best){
+      $("fact").textContent = s ? "この店の数字はまだありません。" : "店を足すと、一人客が一番多い時間帯がここに出ます。";
+      $("fact2").textContent = "";
+    } else {
+      $("fact").innerHTML = "この店で一人客の割合が一番高いのは "+esc(slotLabel(best.d,best.t))+'（<span class="mono">'+best.v+'%</span>）';
+      var ql=quietCells.slice(0,2).map(function(x){ return slotLabel(x[0],x[1]); }).join("・");
+      $("fact2").innerHTML = "静かさが一番高いのは "+esc(ql)+(quietCells.length>2?" ほか"+(quietCells.length-2)+"枠":"")+'（<span class="mono">'+quietBest+'/5</span>）'
+        +(cd ? "。選んだ "+esc(slotLabel(state.day,state.slot))+' は一人客 <span class="mono">'+cd.p[0]+'%</span>・カップル <span class="mono">'+cd.p[1]+'%</span>' : "");
+    }
+    $("barsCap").textContent = cd ? slotLabel(state.day,state.slot)+"の客層の内訳（"+(state.sample?"割合":"入れた組数 "+cd.n+"組から")+"）" : "客層の内訳";
+    var h='', i;
+    for(i=0;i<4;i++){
+      var v = cd ? cd.p[i] : 0;
+      h+='<div class="bl">'+TYPES[i].n+'</div><div class="track"><div class="fill '+TYPES[i].k+'" data-w="'+v+'"></div></div><div class="bv">'+(cd?v+"%":"--")+'</div>';
+    }
+    h+='<div></div><div class="ticks"><span>0</span><span>50</span><span>100%</span></div><div></div>';
+    $("bars").innerHTML=h;
+    raf(function(){ raf(function(){
+      var f=$("bars").querySelectorAll(".fill");
+      for(var j=0;j<f.length;j++) f[j].style.width=(+f[j].getAttribute("data-w"))+"%";
+    }); });
+    var m=''; for(i=1;i<=5;i++) m+='<i'+(cd&&i<=cd.q?' class="on"':'')+'></i>';
+    $("qmeter").innerHTML=m;
+    $("qmeter").setAttribute("class","qmeter"+(cd&&cd.q<=2?" lo":""));
+    $("qval").textContent = cd ? cd.q+"/5" : "--";
+    $("qtx").textContent = cd ? QUIET_TX[cd.q]+(cd.p[1]>=30 && cd.q>=4 ? "。カップルは多いが話し声は少ない時間帯" : "") : "";
+  }
+
+  /* ---------- 自分で使う時の入力 ---------- */
+  function renderEditor(){
+    var sec=$("editorSec");
+    if(state.sample){ sec.innerHTML=''; return; }
+    var s=shop(), c = s ? s.cells[state.day][state.slot] : null, h='';
+    h+='<h2><span class="step">3</span>自分で数字を入れる</h2><div class="editor">';
+    if(s){
+      h+='<p class="hd">'+esc(s.kind)+'・'+esc(slotLabel(state.day,state.slot))+'</p>';
+      h+='<p class="hint">Googleマップの写真や口コミ、通りがかりに見た列から、見かけた組の数を入れます。割合はこの数から計算します。</p>';
+      h+='<div class="nums">';
+      for(var i=0;i<4;i++){
+        h+='<div class="field"><label for="in-'+TYPES[i].k+'">'+TYPES[i].n+'（組）</label><input type="number" inputmode="numeric" min="0" max="99" id="in-'+TYPES[i].k+'" value="'+(c?c[i]:0)+'"></div>';
+      }
+      h+='</div><div class="field"><label for="in-quiet">静かさ（話し声の少なさ）</label><select id="in-quiet">';
+      for(i=5;i>=1;i--) h+='<option value="'+i+'"'+((c?c[4]:3)===i?' selected':'')+'>'+i+'　'+QUIET_TX[i]+'</option>';
+      h+='</select></div><div class="field"><button class="btn main" id="btnApply" type="button">'+esc(slotLabel(state.day,state.slot))+'に反映する</button></div><hr>';
+    }
+    h+='<div class="field" style="margin-top:0"><label for="in-name">店を足す（店名でなく「好きな個人のラーメン店」のような呼び方でも）</label><input type="text" id="in-name" maxlength="30" autocomplete="off"></div>';
+    h+='<div class="field"><button class="btn" id="btnAdd" type="button">この店を一覧に足す</button></div></div>';
+    sec.innerHTML=h;
+  }
+
+  /* ---------- 吹き出し・サンプル表示・下部バー ---------- */
+  function renderTip(){
+    if(state.tip || !shop()){ $("tip").innerHTML=''; return; }
+    $("tip").innerHTML='<div class="tip">ここのマスを押すと、列の絵とボードの確率が切りかわります。<button type="button" class="xbtn" id="tipClose" aria-label="吹き出しを閉じる">×</button></div>';
+  }
+  function renderSampleBar(){
+    $("sampleTag").textContent = state.sample ? "サンプルデータ（表示中・架空の5軒）" : "自分のデータ（"+state.shops.length+"軒）";
+    $("btnClear").disabled = !state.sample;
+    $("btnSample").disabled = state.sample;
+  }
+  function renderBar(){
+    var s=shop(), cd=cellData(s,state.day,state.slot);
+    $("barTx").innerHTML = '<b>'+esc(slotLabel(state.day,state.slot))+'</b>　'+(cd ? "一人客 "+cd.p[0]+"%・カップル "+cd.p[1]+"%" : "データなし");
+  }
+
+  function renderAll(){
+    renderSampleBar(); renderShops(); renderScene(); renderBoard(); renderGrid(); renderResult(); renderEditor(); renderTip(); renderBar();
+  }
+  function renderSlot(){
+    renderScene(); renderBoard(); renderGrid(); renderResult(); renderEditor(); renderBar();
+    var el=$("cell-"+state.day+"-"+state.slot);
+    if(el && !reduced()){ el.classList.add("ping"); }
+  }
+
+  /* ---------- 操作 ---------- */
+  function selectSlot(d,t){ state.day=d; state.slot=t; renderSlot(); }
+  function step(delta){
+    var i=(state.day*5+state.slot+delta+10)%10;
+    selectSlot(Math.floor(i/5), i%5);
+  }
+  var toastTimer=null, toastSnap=null;
+  function toast(msg, snap){
+    toastSnap=snap;
+    $("toastMsg").textContent=msg;
+    $("toast").hidden=false;
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer=setTimeout(hideToast, 6000);
+  }
+  function hideToast(){ $("toast").hidden=true; toastSnap=null; toastTimer=null; }
+  function undo(){
+    if(!toastSnap) return;
+    restore(toastSnap);
+    if(toastTimer) clearTimeout(toastTimer);
+    hideToast(); save(); renderAll();
+  }
+  function selectShop(id){
+    if(state.shopId===id) return;
+    var snap=snapshot(), s;
+    state.shopId=id; save(); renderAll();
+    s=shop();
+    toast((s?s.kind:"店")+"に切りかえました", snap);
+  }
+  function confirmBox(text, okLabel, onOk){
+    $("notice").innerHTML='<div class="notice"><div>'+esc(text)+'</div><div class="acts"><button class="btn main" type="button" id="nOk">'+esc(okLabel)+'</button><button class="btn" type="button" id="nNo">やめる</button></div></div>';
+    $("nOk").addEventListener("click", function(){ $("notice").innerHTML=''; onOk(); });
+    $("nNo").addEventListener("click", function(){ $("notice").innerHTML=''; });
+  }
+  function clearSample(){
+    confirmBox("サンプルの5軒を消して、空の状態から自分の店を足して使います。", "サンプルを消す", function(){
+      var snap=snapshot();
+      state.sample=false; state.shops=[]; state.shopId="";
+      save(); renderAll();
+      toast("サンプルを消しました", snap);
+    });
+  }
+  function backToSample(){
+    var go=function(){
+      var snap=snapshot();
+      state.sample=true; state.shops=[]; state.shopId=SAMPLE[0].id;
+      save(); renderAll();
+      toast("サンプルに戻しました", snap);
+    };
+    if(state.shops.length) confirmBox("自分で足した店（"+state.shops.length+"軒）は消えます。", "サンプルに戻す", go);
+    else go();
+  }
+  function addShop(){
+    var el=$("in-name"); if(!el) return;
+    var name=String(el.value||"").trim().slice(0,30);
+    if(!name){ el.focus(); return; }
+    var snap=snapshot();
+    var id="u"+(state.seq++);
+    state.shops.push({id:id, kind:name, name:"", cells:emptyCells()});
+    state.shopId=id; save(); renderAll();
+    toast("「"+name+"」を足しました", snap);
+  }
+  function applyCell(){
+    var s=shop(); if(!s) return;
+    var v=[], i;
+    for(i=0;i<4;i++){ var el=$("in-"+TYPES[i].k); v.push(clamp(Math.round(+(el&&el.value)||0),0,99)); }
+    var q=$("in-quiet"); v.push(clamp(+(q&&q.value)||3,1,5));
+    var snap=snapshot();
+    s.cells[state.day][state.slot] = (v[0]+v[1]+v[2]+v[3]) ? v : null;
+    save(); renderAll();
+    toast(slotLabel(state.day,state.slot)+"に反映しました", snap);
+  }
+
+  function bind(){
+    $("shops").addEventListener("click", function(e){
+      var b=e.target && e.target.closest ? e.target.closest("[data-shop]") : null;
+      if(b) selectShop(b.getAttribute("data-shop"));
+    });
+    $("fgrid").addEventListener("click", function(e){
+      var b=e.target && e.target.closest ? e.target.closest(".cell") : null;
+      if(b) selectSlot(+b.getAttribute("data-d"), +b.getAttribute("data-t"));
+    });
+    $("tip").addEventListener("click", function(e){
+      if(e.target && e.target.id==="tipClose"){ state.tip=1; save(); renderTip(); }
+    });
+    $("editorSec").addEventListener("click", function(e){
+      var id=e.target && e.target.id;
+      if(id==="btnAdd") addShop();
+      if(id==="btnApply") applyCell();
+    });
+    $("editorSec").addEventListener("keydown", function(e){
+      if(e.target && e.target.id==="in-name" && e.key==="Enter") addShop();
+    });
+    $("navPrev").addEventListener("click", function(){ step(-1); });
+    $("navNext").addEventListener("click", function(){ step(1); });
+    $("barPrev").addEventListener("click", function(){ step(-1); });
+    $("barNext").addEventListener("click", function(){ step(1); });
+    $("btnClear").addEventListener("click", clearSample);
+    $("btnSample").addEventListener("click", backToSample);
+    $("toastUndo").addEventListener("click", undo);
+  }
+
+  function initSlot(){
+    try{
+      var now=new Date(), wd=now.getDay(), hr=now.getHours(), best=0, i;
+      state.day = (wd===0||wd===6) ? 1 : 0;
+      for(i=1;i<5;i++) if(Math.abs(SLOT_H[i]-hr)<Math.abs(SLOT_H[best]-hr)) best=i;
+      state.slot=best;
+    }catch(e){}
+  }
+
+  load();
+  if(!shop() && shops().length) state.shopId=shops()[0].id;
+  initSlot();
+  bind();
+  renderAll();
+  if(typeof window!=="undefined") window.__ik3 = {state:state, selectSlot:selectSlot, selectShop:selectShop, step:step, cellData:cellData, compose:compose, share:share, addShop:addShop, applyCell:applyCell, undo:undo, backToSample:backToSample, clearSample:clearSample, shop:shop};
+})();
+</script>
+</body>
+</html>

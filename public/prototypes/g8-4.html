@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>イヤノヘンセン</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+body{font-size:15px;line-height:1.65}
+.wrap{max-width:560px;margin:0 auto;padding-top:12px;padding-bottom:48px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a{color:var(--ink)}
+.back{display:inline-block;font-size:13px;margin-bottom:8px;padding:4px 0}
+h1{font-family:var(--font-display);font-size:24px;margin:4px 0 6px;line-height:1.3}
+h2{font-family:var(--font-display);font-size:17px;margin:26px 0 8px}
+.lead{color:var(--muted);font-size:13px;margin:0 0 12px}
+.hyp{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.55;margin-bottom:12px}
+.hyp dl{margin:0;display:grid;grid-template-columns:5.2em 1fr;gap:2px 8px}
+.hyp dt{color:var(--muted)}
+.hyp dd{margin:0}
+.hyp .ok{color:var(--ok);font-weight:700}
+.hyp .ng{color:var(--ng);font-weight:700}
+.samplebar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:12px;color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:6px 10px;margin-bottom:12px}
+.samplebar #sampleLabel{margin-right:auto}
+.confirm{border:2px solid var(--signal);background:var(--surface);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+.confirm p{margin:0 0 8px}
+.confirm[hidden]{display:none}
+.btn{font:inherit;font-size:14px;min-height:44px;padding:6px 14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;cursor:pointer}
+.btn.small{min-height:36px;font-size:12px;padding:4px 10px}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+.btn:disabled{opacity:.45;cursor:default}
+.btn[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.btn:focus-visible,input:focus-visible,summary:focus-visible,[tabindex]:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:12px 14px;margin:12px 0}
+.board .cap{font-size:12px;opacity:.85;margin:0 0 2px}
+.board .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:34px;line-height:1.2}
+.board .num small{font-size:14px;margin-left:4px}
+.board .row{display:flex;flex-wrap:wrap;gap:4px 18px;align-items:flex-end}
+.note{font-size:12px;color:var(--muted);margin:6px 0}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.counts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.axis8{display:grid;grid-template-columns:repeat(8,1fr);font-family:var(--font-mono);font-size:9px;color:var(--muted);text-align:center;margin:4px 0 0}
+.grp{margin-top:18px}
+.grp h2{margin:0 0 2px;display:flex;align-items:baseline;gap:8px}
+.grp h2 .c{font-family:var(--font-mono);font-size:13px;color:var(--muted);font-weight:500}
+.grp .why{font-size:12px;color:var(--muted);margin:0 0 4px}
+.item{padding:8px 0;border-top:1px solid var(--line)}
+.item .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px}
+.item .hd .v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);white-space:nowrap}
+.item svg{display:block;width:100%;height:auto}
+details{margin-top:22px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 12px}
+summary{cursor:pointer;min-height:36px;display:flex;align-items:center;font-size:14px}
+.edit .nm{font-size:13px;margin:10px 0 2px}
+.edit .g8{display:grid;grid-template-columns:repeat(8,1fr);gap:3px}
+.edit input{width:100%;min-width:0;font-family:var(--font-mono);font-size:12px;padding:6px 2px;text-align:center;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.edit .ph{font-family:var(--font-mono);font-size:9px;color:var(--muted);text-align:center}
+.verdict{font-size:14px;margin:8px 0}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<h1>イヤノヘンセン</h1>
+<p class="lead">嫌なことの割合が、時期ごとにどう動いたか。</p>
+<div class="hyp" aria-label="仮説カード"><dl>
+<dt>視点</dt><dd>自己理解（自分の境界と、制御できる／できないを知る）</dd>
+<dt>具体／抽象</dt><dd>抽象</dd>
+<dt>仮説</dt><dd>時間がたつと消える嫌と、ずっと残る嫌がある。残る方が本丸。</dd>
+<dt>確かめること</dt><dd><span class="ok">当たり</span>＝消えたもの・増えたものがはっきり分かれる<br><span class="ng">外れ</span>＝ずっと同じ割合</dd>
+</dl></div>
+<div class="samplebar"><span id="sampleLabel">サンプルデータで表示中</span><button class="btn small" id="btnClear" type="button">サンプルを消して自分で使う</button><button class="btn small" id="btnReset" type="button">サンプルに戻す</button></div>
+<div class="confirm" id="confirmBox" hidden role="alertdialog" aria-labelledby="confirmText"><p id="confirmText"></p><button class="btn small primary" id="confirmYes" type="button">はい、実行する</button> <button class="btn small" id="confirmNo" type="button">やめる</button></div>
+
+<h2>全体の動き</h2>
+<p class="note">各時期の「その嫌の件数 ÷ その時期の全件数」。日記4年分。</p>
+<div class="board" aria-live="polite">
+  <p class="cap">時期ごとの割合で、前の3期と後ろの3期を比べた</p>
+  <div class="counts">
+    <div><p class="cap">減った</p><div class="num" id="nDown">--</div></div>
+    <div><p class="cap">ずっとある</p><div class="num" id="nSame">--</div></div>
+    <div><p class="cap">増えた</p><div class="num" id="nUp">--</div></div>
+  </div>
+</div>
+<p class="verdict" id="verdict"></p>
+<div class="axis8" id="axis" aria-hidden="true"></div>
+<div id="groups"></div>
+<p class="note">分け方: 〜2023後半の平均と、2025前半〜2026の平均を比べる。後ろが前の0.6倍以下（1.5ポイント以上の減り）で「減った」、1.5倍以上（1.5ポイント以上の増え）で「増えた」、それ以外は「ずっとある」。</p>
+
+<details id="det">
+  <summary>数字を見る・直す（件数）</summary>
+  <div class="edit" id="edit"></div>
+</details>
+
+<script>
+const KEY='hack3-g8-4-v1';
+const PER=['〜22','23前','23後','24前','24後','25前','25後','26'];
+const TOT=[411,242,307,410,280,691,556,870];
+const DATA=[['自分へのがっかり',[23,8,10,19,7,15,91,121]],['仕事が進まない',[11,13,22,26,10,23,41,108]],['先延ばし',[9,6,8,7,3,54,66,79]],['友人関係',[49,29,14,21,10,10,3,40]],['親しい人との関係',[15,1,33,26,21,13,13,27]],['移動・環境',[3,3,5,3,11,48,24,44]],['職場の人間関係',[32,11,3,11,5,31,5,15]],['お金',[2,8,5,25,7,16,22,21]],['予定の詰め込み',[9,6,6,12,14,18,9,22]],['将来',[8,8,3,14,15,27,8,2]],['ひとり',[10,8,6,2,2,22,7,20]]];
+function sampleState(){return {sample:true,totals:TOT.slice(),items:DATA.map(d=>({name:d[0],c:d[1].slice()}))}}
+function emptyState(){return {sample:false,totals:TOT.map(()=>0),items:DATA.map(d=>({name:d[0],c:TOT.map(()=>0)}))}}
+let state=(function(){try{const r=localStorage.getItem(KEY);const o=r?JSON.parse(r):null;return o&&o.items&&o.items.length===DATA.length&&o.totals&&o.totals.length===8?o:null}catch(e){return null}})();
+if(!state){state=sampleState()}
+const $=id=>document.getElementById(id);
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function loadState(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null}catch(e){return null}}
+function saveState(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+let pendingYes=null;
+function askConfirm(text,fn){$('confirmText').textContent=text;$('confirmBox').hidden=false;pendingYes=fn;$('confirmYes').focus()}
+function wireSample(onClear,onReset){
+  $('btnClear').addEventListener('click',()=>askConfirm('サンプルを消して、空の状態から始めます。',onClear));
+  $('btnReset').addEventListener('click',()=>askConfirm('サンプルの状態に戻します。いまの内容は消えます。',onReset));
+  $('confirmYes').addEventListener('click',()=>{$('confirmBox').hidden=true;const f=pendingYes;pendingYes=null;if(f)f()});
+  $('confirmNo').addEventListener('click',()=>{$('confirmBox').hidden=true;pendingYes=null});
+}
+function setSampleLabel(is){$('sampleLabel').textContent=is?'サンプルデータで表示中':'自分のデータ（空から開始）'}
+
+const W=320,H=60,PADT=8,PADB=6;
+function rates(it){return it.c.map((c,i)=>state.totals[i]>0?c/state.totals[i]*100:0)}
+function mean(a){return a.reduce((s,x)=>s+x,0)/a.length}
+function classify(r){
+  const e=mean([r[0],r[1],r[2]]),l=mean([r[5],r[6],r[7]]),diff=l-e;
+  let g='same';
+  if(diff<=-1.5&&(e>0&&l/e<=0.6))g='down';
+  else if(diff>=1.5&&(e===0||l/e>=1.5))g='up';
+  return {g:g,e:e,l:l};
+}
+function chart(r,max,color){
+  const x=i=>20+i*40,y=v=>H-PADB-(v/max)*(H-PADT-PADB);
+  const pts=r.map((v,i)=>x(i).toFixed(1)+','+y(v).toFixed(1)).join(' ');
+  const area='20,'+(H-PADB)+' '+pts+' '+x(7)+','+(H-PADB);
+  let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="割合の推移"><line x1="0" y1="'+(H-PADB)+'" x2="'+W+'" y2="'+(H-PADB)+'" stroke="var(--line)"></line>';
+  s+='<polygon points="'+area+'" fill="'+color+'" fill-opacity=".14"></polygon><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round"></polyline>';
+  r.forEach((v,i)=>{
+    s+='<circle cx="'+x(i)+'" cy="'+y(v).toFixed(1)+'" r="2.6" fill="'+color+'"></circle>';
+    s+='<text x="'+x(i)+'" y="'+Math.max(9,y(v)-5).toFixed(1)+'" text-anchor="middle" font-size="9" font-family="IBM Plex Mono, monospace" fill="var(--ink)">'+v.toFixed(1)+'</text>';
+  });
+  return s+'</svg>';
+}
+const GL={down:{t:'減ったもの',c:'var(--ok)',w:'時間がたつと、割合が下がった。'},same:{t:'ずっとあるもの',c:'var(--ink)',w:'前も後ろも同じくらいの割合。'},up:{t:'増えたもの',c:'var(--ng)',w:'後ろの時期ほど、割合が上がった。'}};
+function renderCharts(){
+  setSampleLabel(state.sample);
+  const all=state.items.map(it=>({it:it,r:rates(it)}));
+  all.forEach(a=>Object.assign(a,classify(a.r)));
+  const anyData=state.totals.some(t=>t>0);
+  const max=Math.max(5,Math.ceil(Math.max.apply(null,all.map(a=>Math.max.apply(null,a.r)))));
+  const cnt={down:0,same:0,up:0};all.forEach(a=>cnt[a.g]++);
+  $('nDown').textContent=anyData?cnt.down:'--';$('nSame').textContent=anyData?cnt.same:'--';$('nUp').textContent=anyData?cnt.up:'--';
+  const v=$('verdict');
+  if(!anyData){v.textContent='件数を入れると、ここに分かれて出る（「数字を見る・直す」から）。'}
+  else{
+    const moved=(cnt.down+cnt.up)/all.length,hit=moved>=0.5;
+    v.innerHTML='全'+all.length+'項目のうち、減った・増えたが '+(cnt.down+cnt.up)+'項目（'+Math.round(moved*100)+'%）。 <span style="color:var(--'+(hit?'ok':'ng')+');font-weight:700">'+(hit?'はっきり分かれた（仮説は当たり側）':'ずっと同じ割合が多い（仮説は外れ側）')+'</span>';
+  }
+  $('axis').innerHTML=PER.map(p=>'<span>'+p+'</span>').join('');
+  let h='';
+  ['down','same','up'].forEach(g=>{
+    const list=all.filter(a=>a.g===g).sort((a,b)=>b.l-a.l);
+    h+='<section class="grp"><h2>'+GL[g].t+'<span class="c">'+list.length+'項目</span></h2><p class="why">'+GL[g].w+(g==='same'?' 残る方が本丸、という見方。':'')+'</p>';
+    if(!list.length)h+='<p class="note">なし</p>';
+    list.forEach(a=>{
+      h+='<div class="item"><div class="hd"><span>'+esc(a.it.name)+'</span><span class="v">前3期 '+a.e.toFixed(1)+'% → 後3期 '+a.l.toFixed(1)+'%</span></div>'+chart(a.r,max,GL[g].c)+'</div>';
+    });
+    h+='</section>';
+  });
+  $('groups').innerHTML=h;
+}
+function renderEdit(){
+  let h='<p class="note">8つの欄は左から時期順（'+PER.join('・')+'）。数字を変えると上の図がそのまま変わる。</p><div class="nm">各時期の全件数</div><div class="g8">';
+  state.totals.forEach((t,i)=>{h+='<div><div class="ph">'+PER[i]+'</div><input id="tot-'+i+'" type="number" inputmode="numeric" min="0" value="'+t+'" aria-label="全件数 '+PER[i]+'" data-t="'+i+'"></div>'});
+  h+='</div>';
+  state.items.forEach((it,k)=>{
+    h+='<div class="nm">'+esc(it.name)+'</div><div class="g8">';
+    it.c.forEach((c,i)=>{h+='<input id="in-'+k+'-'+i+'" type="number" inputmode="numeric" min="0" value="'+c+'" aria-label="'+esc(it.name)+' '+PER[i]+'" data-k="'+k+'" data-i="'+i+'">'});
+    h+='</div>';
+  });
+  $('edit').innerHTML=h;
+}
+$('edit').addEventListener('input',e=>{
+  const el=e.target;if(!el||el.tagName!=='INPUT')return;
+  const n=Math.max(0,Math.floor(Number(el.value)||0));
+  if(el.hasAttribute('data-t'))state.totals[Number(el.getAttribute('data-t'))]=n;
+  else state.items[Number(el.getAttribute('data-k'))].c[Number(el.getAttribute('data-i'))]=n;
+  state.sample=false;saveState();renderCharts();
+});
+wireSample(function(){state=emptyState();saveState();renderEdit();renderCharts();$('det').open=true},
+  function(){state=sampleState();saveState();renderEdit();renderCharts()});
+renderEdit();renderCharts();
+</script>
+
+</div>
+</body>
+</html>

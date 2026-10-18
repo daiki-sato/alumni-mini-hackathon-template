@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>キリカエリスト</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{font-size:15px;line-height:1.7}
+.outer{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:12px;padding-bottom:48px}
+.wrap{max-width:560px;margin:0 auto}
+.back{display:inline-block;color:var(--muted);font-size:13px;text-decoration:none;padding:6px 0}
+.back:hover{text-decoration:underline}
+h1{font-family:var(--font-display);font-size:24px;line-height:1.3;margin:6px 0 10px}
+h2{font-family:var(--font-display);font-size:16px;margin:24px 0 8px}
+p{margin:0 0 8px}
+.hyp{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);font-size:12.5px;line-height:1.6;color:var(--muted);margin-bottom:14px}
+.hyp-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.hyp-tags span{border:1px solid var(--line);border-radius:8px;padding:0 8px;font-size:11.5px;color:var(--muted)}
+.hyp-h{color:var(--ink);font-weight:500;margin:0 0 6px}
+.hyp-c{margin:0 0 4px}
+.hyp-c b,.hyp-j b{display:inline-block;margin-right:6px;color:var(--ink)}
+.hyp-j{list-style:none;margin:0;padding:0}
+.hyp-j li{margin:2px 0}
+.hyp-j .ok b{color:var(--ok)}
+.hyp-j .ng b{color:var(--ng)}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:14px 16px;font-family:var(--font-mono)}
+.board .lab{font-family:var(--font-body);font-size:12px;opacity:.85;color:var(--board-ink)}
+.board .big{font-size:46px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.board .sub{font-family:var(--font-body);font-size:13px;margin-top:4px;color:var(--board-ink);opacity:.9}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.btn{font:inherit;font-weight:500;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);font-weight:700}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{min-height:36px;padding:4px 10px;font-size:13px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row.grow>.btn{flex:1 1 auto}
+.panel{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:12px 14px;margin:10px 0}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+input[type=text],textarea,select{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+textarea{resize:vertical;min-height:90px}
+input[type=range]{width:100%;accent-color:var(--ink)}
+label{display:block;font-size:13px;color:var(--muted);margin:6px 0 2px}
+.ok-t{color:var(--ok);font-weight:700}
+.ng-t{color:var(--ng);font-weight:700}
+.sample{margin-top:32px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.sample .row{margin:8px 0}
+.confirm{border:1px solid var(--ng);border-radius:8px;padding:10px 12px;background:var(--surface);color:var(--ink);margin-top:8px}
+.bar{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--ink)}
+@media (prefers-reduced-motion: no-preference){.bar>i{transition:width .25s}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+.lens{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cand{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:8px 12px;margin:8px 0}
+.cand .t{font-weight:500}
+.cand .l{font-size:12px;color:var(--muted)}
+.mine{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding:6px 0;font-size:14px}
+.res{display:grid;grid-template-columns:96px 1fr 28px;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+.res .n{font-family:var(--font-mono);text-align:right;font-variant-numeric:tabular-nums}
+.addgrid{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:480px){.addgrid{grid-template-columns:1fr 140px auto}}
+</style>
+</head>
+<body>
+<div class="outer"><div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<section class="hyp" aria-label="仮説カード">
+<div class="hyp-tags"><span>視点 行列以外の悩み</span><span>具体</span></div>
+<p class="hyp-h">予定を崩される嫌さは「急にできた空白の時間」から来る。空白を埋める候補が先にあれば切りかえられる。</p>
+<p class="hyp-c"><b>確かめること</b></p>
+<ul class="hyp-j"><li class="ok"><b>当たり</b>ドタキャンされても候補があればすぐ切りかえられる</li><li class="ng"><b>外れ</b>候補があっても崩されたこと自体が嫌</li></ul>
+</section>
+<h1>キリカエリスト</h1>
+
+<div class="board" aria-live="polite">
+  <div class="lab" id="b-lab">空いた時間</div>
+  <div class="big" id="b-big">--:--</div>
+  <div class="sub" id="b-sub">「予定がなくなった」を押すと、候補が出ます</div>
+</div>
+
+<h2>予定が崩れたとき</h2>
+<div class="row"><button class="btn primary" id="btn-gone" type="button">予定がなくなった</button></div>
+<div id="step2" hidden>
+  <p style="margin-top:12px"><b>空いた時間は？</b></p>
+  <div class="lens" id="lens" role="group" aria-label="空いた時間の長さ"></div>
+</div>
+<div id="step3" hidden>
+  <h2>前もって作っておいた候補</h2>
+  <div id="cands"></div>
+</div>
+<div class="panel" id="step4" hidden>
+  <p><b>いまの気持ちに近いのは？</b> <span class="small muted" id="picked-info"></span></p>
+  <div class="row grow">
+    <button class="btn" type="button" data-fe="quick" id="fe-quick">すぐ切りかえられた</button>
+    <button class="btn" type="button" data-fe="drag" id="fe-drag">切りかえたが引きずる</button>
+    <button class="btn" type="button" data-fe="upset" id="fe-upset">崩されたこと自体が嫌</button>
+  </div>
+</div>
+
+<h2>これまでの気持ち</h2>
+<div id="res"></div>
+<p class="small muted" id="res-note"></p>
+
+<h2>やりたいことリスト（前もって作る）</h2>
+<div id="mine"></div>
+<div class="addgrid" style="margin-top:10px">
+  <div><label for="in-text">やりたいこと</label><input type="text" id="in-text" maxlength="30" placeholder="例: 駅ビルの本屋を見る"></div>
+  <div><label for="in-len">必要な時間</label><select id="in-len"></select></div>
+  <div style="align-self:end"><button class="btn" type="button" id="btn-add">リストに加える</button></div>
+</div>
+
+<footer class="sample">
+<p id="sample-note">サンプルデータ（架空）で動いています。</p>
+<div class="row"><button class="btn sm" id="btn-clear" type="button">サンプルを消して自分で使う</button><button class="btn sm" id="btn-reset" type="button">サンプルに戻す</button></div>
+<div class="confirm" id="confirm" role="alertdialog" aria-live="polite" hidden><p id="confirm-msg"></p><div class="row"><button class="btn sm primary" id="confirm-yes" type="button">実行する</button><button class="btn sm" id="confirm-no" type="button">やめる</button></div></div>
+</footer>
+</div></div>
+<script>
+(function(){
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+var KEY='hack3-g9-5-v1';
+function loadState(){try{var s=localStorage.getItem(KEY);return s?JSON.parse(s):null}catch(e){return null}}
+function saveState(o){try{localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
+function setNote(isSample){$('sample-note').textContent=isSample?'サンプルデータ（架空）で動いています。':'あなたのデータで動いています。'}
+var confirmFn=null;
+function showConfirm(msg,fn){confirmFn=fn;$('confirm-msg').textContent=msg;$('confirm').hidden=false;$('confirm-yes').focus()}
+
+var LENS=[{k:30,label:'30分',b:'0:30'},{k:60,label:'1時間',b:'1:00'},{k:120,label:'2時間',b:'2:00'},{k:240,label:'半日',b:'4:00'}];
+function lname(k){for(var i=0;i<LENS.length;i++)if(LENS[i].k===k)return LENS[i].label;return k+'分'}
+function sampleState(){return {sample:true,list:[
+ {t:'本を10ページ読む',len:30},{t:'近所を散歩する',len:30},{t:'コーヒーを淹れて飲む',len:30},
+ {t:'ジムで軽く走る',len:60},{t:'カフェで作業する',len:60},{t:'録画を1本見る',len:60},
+ {t:'映画を1本観る',len:120},{t:'ジムでしっかり動く',len:120},{t:'買い出しに行く',len:120},
+ {t:'少し遠くの本屋まで行く',len:240},{t:'溜まった家事をまとめて片づける',len:240},{t:'美術館に行く',len:240}
+],log:['quick','quick','drag','quick','upset','quick','drag']}}
+var S;
+var cur={len:0,pick:''};
+function cands(len){
+ return S.list.filter(function(x){return x.len<=len}).sort(function(a,b){return b.len-a.len});
+}
+function renderBoard(){
+ if(!cur.len){
+  $('b-lab').textContent='空いた時間';$('b-big').textContent='--:--';
+  $('b-sub').textContent='「予定がなくなった」を押すと、候補が出ます';return;
+ }
+ var n=cands(cur.len).length;
+ var L=LENS.filter(function(x){return x.k===cur.len})[0];
+ $('b-lab').textContent='空いた時間 '+L.label;
+ $('b-big').textContent=L.b;
+ $('b-sub').textContent=cur.pick?'選んだこと: '+cur.pick:'この時間に入る候補 '+n+'件';
+}
+function renderLens(){
+ var h='';
+ LENS.forEach(function(x){h+='<button class="btn" type="button" data-len="'+x.k+'" aria-pressed="'+(cur.len===x.k)+'">'+x.label+'</button>'});
+ $('lens').innerHTML=h;
+}
+function renderCands(){
+ var arr=cands(cur.len),h='';
+ arr.forEach(function(x){
+  h+='<div class="cand"><div><div class="t">'+esc(x.t)+'</div><div class="l">'+lname(x.len)+'</div></div><button class="btn sm" type="button" data-pick="'+esc(x.t)+'">これにする</button></div>';
+ });
+ if(!arr.length)h='<p class="muted">この長さに入る候補がありません。下のリストに加えると、次から出ます。</p>';
+ $('cands').innerHTML=h;
+}
+function renderRes(){
+ var names={quick:'すぐ切りかえた',drag:'引きずった',upset:'崩されたこと自体が嫌'};
+ var c={quick:0,drag:0,upset:0};
+ S.log.forEach(function(k){if(c[k]!==undefined)c[k]++});
+ var n=S.log.length,h='';
+ Object.keys(names).forEach(function(k){
+  var p=n?Math.round(c[k]/n*100):0;
+  h+='<div class="res"><span>'+names[k]+'</span><div class="bar"><i style="width:'+p+'%"></i></div><span class="n">'+c[k]+'</span></div>';
+ });
+ $('res').innerHTML=h;
+ $('res-note').textContent=n?(n+'回の記録。すぐ切りかえられたのは '+c.quick+'回（'+Math.round(c.quick/n*100)+'%）、崩されたこと自体が嫌だったのは '+c.upset+'回（'+Math.round(c.upset/n*100)+'%）。'):'まだ記録がありません。';
+}
+function renderMine(){
+ var h='';
+ S.list.slice().sort(function(a,b){return a.len-b.len}).forEach(function(x){
+  var i=S.list.indexOf(x);
+  h+='<div class="mine"><span>'+esc(x.t)+' <span class="small muted">'+lname(x.len)+'</span></span><button class="btn sm" type="button" data-del="'+i+'" aria-label="'+esc(x.t)+'を消す">消す</button></div>';
+ });
+ $('mine').innerHTML=h||'<p class="muted">まだ入っていません。</p>';
+}
+function showSteps(){
+ $('step2').hidden=!cur.active;
+ $('step3').hidden=!(cur.active&&cur.len&&!cur.pick);
+ $('step4').hidden=!cur.pick;
+}
+function renderAll(){
+ var o='';LENS.forEach(function(x){o+='<option value="'+x.k+'">'+x.label+'</option>'});
+ $('in-len').innerHTML=o;
+ renderLens();renderBoard();renderRes();renderMine();showSteps();setNote(S.sample);
+}
+function touch(){S.sample=false;setNote(false);saveState(S)}
+function doClear(){S={sample:false,list:[],log:[]};cur={len:0,pick:'',active:false};saveState(S);renderAll()}
+function doReset(){S=sampleState();cur={len:0,pick:'',active:false};saveState(S);renderAll()}
+function init(){
+ S=loadState();
+ if(!S||!S.list||!S.log)S=sampleState();
+ cur.active=false;
+ $('btn-gone').addEventListener('click',function(){cur={len:0,pick:'',active:true};renderLens();renderBoard();showSteps();$('step2').scrollIntoView&&$('step2').scrollIntoView({block:'nearest'})});
+ $('lens').addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('[data-len]');if(!b)return;
+  cur.len=parseInt(b.getAttribute('data-len'),10);cur.pick='';
+  renderLens();renderBoard();renderCands();showSteps();
+ });
+ $('cands').addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('[data-pick]');if(!b)return;
+  cur.pick=b.getAttribute('data-pick');
+  $('picked-info').textContent='選んだこと: '+cur.pick;
+  renderBoard();showSteps();
+ });
+ $('step4').addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('[data-fe]');if(!b)return;
+  S.log.push(b.getAttribute('data-fe'));
+  if(S.log.length>60)S.log.shift();
+  touch();cur={len:0,pick:'',active:false};
+  renderLens();renderBoard();renderRes();showSteps();
+ });
+ $('mine').addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('[data-del]');if(!b)return;
+  S.list.splice(parseInt(b.getAttribute('data-del'),10),1);
+  touch();renderMine();if(cur.len)renderCands();renderBoard();
+ });
+ $('btn-add').addEventListener('click',function(){
+  var t=$('in-text').value.trim();if(!t)return;
+  S.list.push({t:t,len:parseInt($('in-len').value,10)});
+  $('in-text').value='';
+  touch();renderMine();if(cur.len&&!cur.pick)renderCands();renderBoard();
+ });
+ renderAll();
+}
+
+$('btn-clear').addEventListener('click',function(){showConfirm('サンプルを消して、空の状態から使います。',doClear)});
+$('btn-reset').addEventListener('click',function(){showConfirm('サンプルの状態に戻します。入力した内容は消えます。',doReset)});
+$('confirm-yes').addEventListener('click',function(){$('confirm').hidden=true;var f=confirmFn;confirmFn=null;if(f)f()});
+$('confirm-no').addEventListener('click',function(){$('confirm').hidden=true;confirmFn=null});
+init();
+})();
+</script>
+</body>
+</html>

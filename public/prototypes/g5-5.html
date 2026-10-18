@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>カラダトアタマ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0;font-size:15px;line-height:1.6}
+.outer{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:12px;padding-bottom:48px}
+.wrap{max-width:560px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.back{color:var(--muted);font-size:14px;text-decoration:none;padding:8px 0;display:inline-block}
+.back:hover{text-decoration:underline}
+.tag{font:500 11px var(--font-mono);border:1px solid var(--line);color:var(--muted);padding:2px 6px;border-radius:4px}
+.hyp{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.6;color:var(--muted);margin-bottom:18px}
+.hyp dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 10px}
+.hyp dt{font-weight:700;color:var(--ink);white-space:nowrap}
+.hyp dd{margin:0}
+.hyp .k-ok{color:var(--ok);font-weight:700}
+.hyp .k-ng{color:var(--ng);font-weight:700}
+h1{font-family:var(--font-display);font-size:28px;line-height:1.25;margin:0 0 4px;letter-spacing:.01em}
+h2{font-family:var(--font-display);font-size:16px;margin:24px 0 8px}
+.lead{margin:0 0 14px;color:var(--muted);font-size:14px}
+.note{color:var(--muted);font-size:12px;margin:6px 0 0}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:14px 16px;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.board .lbl{font-size:12px;color:var(--board-ink);opacity:.85;line-height:1.4}
+.board .big{font:600 46px/1.05 var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:.02em;color:var(--board-ink)}
+.board .mid{font:600 28px/1.1 var(--font-mono);font-variant-numeric:tabular-nums;color:var(--board-ink)}
+.board .unit{font:500 14px var(--font-mono);margin-left:4px}
+.btn{font:700 15px var(--font-body);min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal)}
+.btn.ghost{background:transparent}
+.btn.small{min-height:36px;font-size:13px;padding:4px 10px;font-weight:500}
+.btn[aria-pressed="true"]{background:var(--board);color:var(--board-ink);border-color:var(--board)}
+.btn:disabled{opacity:.5;cursor:default}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.numrow{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.numrow .btn{padding:4px 0;font-family:var(--font-mono);font-size:17px;font-variant-numeric:tabular-nums}
+input[type=text]{font:400 16px var(--font-body);width:100%;min-height:44px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.panel{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:12px}
+.list{list-style:none;margin:0;padding:0}
+.list li{padding:8px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:14px}
+.list li:first-child{border-top:none}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--ink)}
+.status{min-height:22px;font-size:13px;color:var(--muted);margin:8px 0 0}
+.sample-bar{margin-top:32px;border-top:1px solid var(--line);padding-top:12px;font-size:12px;color:var(--muted)}
+.sample-bar .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.confirm{margin-top:10px;border:1px solid var(--ng);border-radius:8px;padding:10px 12px;background:var(--surface);color:var(--ink);font-size:13px}
+.confirm[hidden]{display:none}
+.confirm .btns{margin-top:8px}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+
+.scene{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:12px;margin-bottom:10px}
+.scene .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.scene .nm{font-weight:700;font-size:15px}
+.scene .pc{font:500 13px var(--font-mono);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+.scene.unset .pc{color:var(--muted)}
+input[type=range]{width:100%;min-height:36px;accent-color:var(--signal);margin:0}
+.scene.unset input[type=range]{opacity:.55}
+.ends{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.stack{display:flex;height:18px;border-radius:4px;overflow:hidden;background:var(--line)}
+.stack .b{background:var(--ink);height:100%}
+.stack .h{background:var(--signal);height:100%}
+.res{margin-bottom:10px}
+.res .t{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:3px}
+.grp-h{display:flex;justify-content:space-between;align-items:baseline;margin:20px 0 8px;font-family:var(--font-display);font-size:15px;font-weight:700}
+.grp-h .n{font:500 12px var(--font-mono);color:var(--muted)}
+.key{display:flex;gap:14px;font-size:12px;color:var(--muted);margin:6px 0 0}
+.key i{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-1px;margin-right:4px}
+</style>
+</head>
+<body>
+<div class="outer"><div class="wrap">
+<div class="top"><a class="back" href="./">← 50の仮説</a><span class="tag" id="sample-tag">サンプル</span></div>
+<div class="hyp" aria-label="仮説カード"><dl>
+<dt>視点</dt><dd>認知・感情</dd>
+<dt>種類</dt><dd>抽象</dd>
+<dt>仮説</dt><dd>生理的な反応（体）は変えられないが、解釈（頭）の部分は変えられる。その割合が分かれば、どこに手を打つべきか分かる。</dd>
+<dt>確かめること</dt><dd><span class="k-ok">当たり</span>＝場面によって体と頭の割合がはっきり違う<br><span class="k-ng">外れ</span>＝ほとんどが体の反応で、頭の工夫は効かない</dd>
+</dl></div>
+<h1>カラダトアタマ</h1>
+<p class="lead">場面ごとに「考える前に無理（体）」と「考えてから嫌（頭）」の割合を、スライダーで置く。</p>
+
+<div class="board" aria-live="polite">
+  <div><div class="lbl">場面ごとの体の割合の差<br>（最大 − 最小）</div><div class="big"><span id="b-spread">–</span><span class="unit">pt</span></div></div>
+  <div><div class="lbl">頭の割合（平均）</div><div class="mid" id="b-head">–</div></div>
+</div>
+<p class="note" id="b-note"></p>
+
+<h2>場面ごとの割合</h2>
+<p class="note" style="margin:0 0 10px">右に寄せるほど体、左に寄せるほど頭。動かした場面だけが集計に入る。</p>
+<div id="scenes"></div>
+
+<h2>結果</h2>
+<div id="groups"></div>
+<div class="key"><span><i style="background:var(--ink)"></i>体（考える前に無理）</span><span><i style="background:var(--signal)"></i>頭（考えてから嫌）</span></div>
+<div class="sample-bar"><span id="sample-label"></span>
+<div class="btns"><button type="button" class="btn small ghost" id="btn-clear">サンプルを消して自分で使う</button><button type="button" class="btn small ghost" id="btn-reset">サンプルに戻す</button></div>
+<div class="confirm" id="confirm" hidden role="alertdialog" aria-live="assertive"><div id="confirm-msg"></div><div class="btns row"><button type="button" class="btn small" id="confirm-yes">はい</button><button type="button" class="btn small ghost" id="confirm-no">やめる</button></div></div>
+</div>
+</div></div>
+<script>
+(function(){
+'use strict';
+var KEY='hack3-g5-5-v1';
+var state=null;
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function loadState(){
+  try{var s=localStorage.getItem(KEY);if(s){var o=JSON.parse(s);if(o&&o.v===1)return o}}catch(e){}
+  return makeSample();
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function ask(msg,yes){
+  var box=$('confirm');
+  $('confirm-msg').textContent=msg;
+  box.hidden=false;
+  $('confirm-yes').onclick=function(){box.hidden=true;yes()};
+  $('confirm-no').onclick=function(){box.hidden=true};
+}
+function renderBar(){
+  var on=!!state.sample;
+  $('sample-tag').hidden=!on;
+  $('sample-label').textContent=on?'いま見えているのはサンプルのデータです。':'いま見えているのは自分のデータです（この端末の中だけ）。';
+  $('btn-clear').disabled=!on;
+}
+function bindCommon(){
+  $('btn-clear').addEventListener('click',function(){
+    ask('サンプルを消して、空の状態から始めます。よいですか。',function(){state=makeEmpty();save();render();renderBar()});
+  });
+  $('btn-reset').addEventListener('click',function(){
+    ask('いまのデータを消して、サンプルに戻します。よいですか。',function(){state=makeSample();save();render();renderBar()});
+  });
+}
+function boot(){
+  state=loadState();
+  bindCommon();
+  if(typeof initProduct==='function')initProduct();
+  render();
+  renderBar();
+}
+
+var SC=['後ろから詰められる','横に人が並ぶ','前に詰めないといけない','満員電車','知人が近い','接骨院で待つ','待ち合わせで待たされる'];
+function makeSample(){
+  var v=[85,70,45,60,15,20,10];
+  return {v:1,sample:true,sc:SC.map(function(n,i){return {id:i+1,name:n,body:v[i]}})};
+}
+function makeEmpty(){return {v:1,sample:false,sc:SC.map(function(n,i){return {id:i+1,name:n,body:null}})}}
+function pcText(q){return q.body==null?'未入力':'体 '+q.body+'% / 頭 '+(100-q.body)+'%'}
+function renderScenes(){
+  var h='';
+  state.sc.forEach(function(q){
+    h+='<div class="scene'+(q.body==null?' unset':'')+'" id="sc-'+q.id+'"><div class="hd"><label class="nm" for="sl-'+q.id+'">'+esc(q.name)+'</label><span class="pc" id="pc-'+q.id+'">'+pcText(q)+'</span></div>'
+      +'<input type="range" id="sl-'+q.id+'" data-id="'+q.id+'" min="0" max="100" step="5" value="'+(q.body==null?50:q.body)+'" aria-label="'+esc(q.name)+'の体の割合">'
+      +'<div class="ends"><span>頭（考えてから嫌）</span><span>体（考える前に無理）</span></div></div>';
+  });
+  $('scenes').innerHTML=h;
+}
+function updateResults(){
+  var set=state.sc.filter(function(q){return q.body!=null});
+  if(set.length){
+    var bs=set.map(function(q){return q.body});
+    $('b-spread').textContent=Math.max.apply(null,bs)-Math.min.apply(null,bs);
+    var t=0;bs.forEach(function(x){t+=100-x});
+    $('b-head').textContent=Math.round(t/bs.length)+'%';
+  }else{$('b-spread').textContent='–';$('b-head').textContent='–'}
+  $('b-note').textContent=set.length?set.length+'場面の入力から。差が大きいほど、場面で体と頭の割合が違う。':'スライダーを動かすと出る。';
+  var gs=[['体の割合が高い場面（60%以上）',function(q){return q.body>=60}],['半々の場面（41〜59%）',function(q){return q.body>40&&q.body<60}],['頭の割合が高い場面（40%以下）',function(q){return q.body<=40}]];
+  var out='';
+  gs.forEach(function(g){
+    var m=set.filter(g[1]).sort(function(a,b){return b.body-a.body});
+    out+='<div class="grp-h"><span>'+g[0]+'</span><span class="n">'+m.length+'件</span></div>';
+    if(!m.length)out+='<p class="note">なし</p>';
+    m.forEach(function(q){
+      out+='<div class="res"><div class="t"><span>'+esc(q.name)+'</span><span class="mono">体 '+q.body+' / 頭 '+(100-q.body)+'</span></div>'
+        +'<div class="stack"><span class="b" style="width:'+q.body+'%"></span><span class="h" style="width:'+(100-q.body)+'%"></span></div></div>';
+    });
+  });
+  $('groups').innerHTML=out;
+}
+function render(){renderScenes();updateResults()}
+function initProduct(){
+  $('scenes').addEventListener('input',function(e){
+    var t=e.target;
+    if(!t||!t.getAttribute||t.getAttribute('data-id')==null)return;
+    var id=parseInt(t.getAttribute('data-id'),10),v=parseInt(t.value,10);
+    state.sc.forEach(function(q){if(q.id===id)q.body=v});
+    var q=state.sc.filter(function(x){return x.id===id})[0];
+    $('pc-'+id).textContent=pcText(q);
+    $('sc-'+id).className='scene';
+    save();updateResults();
+  });
+}
+
+boot();
+})();
+</script>
+</body>
+</html>

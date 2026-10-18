@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ピークトオワリ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0;font-size:15px;line-height:1.6}
+.outer{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:12px;padding-bottom:48px}
+.wrap{max-width:560px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.back{color:var(--muted);font-size:14px;text-decoration:none;padding:8px 0;display:inline-block}
+.back:hover{text-decoration:underline}
+.tag{font:500 11px var(--font-mono);border:1px solid var(--line);color:var(--muted);padding:2px 6px;border-radius:4px}
+.hyp{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.6;color:var(--muted);margin-bottom:18px}
+.hyp dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 10px}
+.hyp dt{font-weight:700;color:var(--ink);white-space:nowrap}
+.hyp dd{margin:0}
+.hyp .k-ok{color:var(--ok);font-weight:700}
+.hyp .k-ng{color:var(--ng);font-weight:700}
+h1{font-family:var(--font-display);font-size:28px;line-height:1.25;margin:0 0 4px;letter-spacing:.01em}
+h2{font-family:var(--font-display);font-size:16px;margin:24px 0 8px}
+.lead{margin:0 0 14px;color:var(--muted);font-size:14px}
+.note{color:var(--muted);font-size:12px;margin:6px 0 0}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:14px 16px;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.board .lbl{font-size:12px;color:var(--board-ink);opacity:.85;line-height:1.4}
+.board .big{font:600 46px/1.05 var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:.02em;color:var(--board-ink)}
+.board .mid{font:600 28px/1.1 var(--font-mono);font-variant-numeric:tabular-nums;color:var(--board-ink)}
+.board .unit{font:500 14px var(--font-mono);margin-left:4px}
+.btn{font:700 15px var(--font-body);min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal)}
+.btn.ghost{background:transparent}
+.btn.small{min-height:36px;font-size:13px;padding:4px 10px;font-weight:500}
+.btn[aria-pressed="true"]{background:var(--board);color:var(--board-ink);border-color:var(--board)}
+.btn:disabled{opacity:.5;cursor:default}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.numrow{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.numrow .btn{padding:4px 0;font-family:var(--font-mono);font-size:17px;font-variant-numeric:tabular-nums}
+input[type=text]{font:400 16px var(--font-body);width:100%;min-height:44px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.panel{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:12px}
+.list{list-style:none;margin:0;padding:0}
+.list li{padding:8px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:14px}
+.list li:first-child{border-top:none}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--ink)}
+.status{min-height:22px;font-size:13px;color:var(--muted);margin:8px 0 0}
+.sample-bar{margin-top:32px;border-top:1px solid var(--line);padding-top:12px;font-size:12px;color:var(--muted)}
+.sample-bar .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.confirm{margin-top:10px;border:1px solid var(--ng);border-radius:8px;padding:10px 12px;background:var(--surface);color:var(--ink);font-size:13px}
+.confirm[hidden]{display:none}
+.confirm .btns{margin-top:8px}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+
+.chart{width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .axis{fill:var(--muted);font:500 10px var(--font-mono)}
+.chart .sep{stroke:var(--line);stroke-width:1;stroke-dasharray:3 3}
+.chart .ph{fill:var(--muted);font:500 10px var(--font-body)}
+.chart .actual{fill:none;stroke:var(--ink);stroke-width:2.5;stroke-linejoin:round}
+.chart .dot{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+.chart .peak{fill:var(--signal);stroke:var(--ink);stroke-width:2}
+.chart .rec{stroke:var(--ng);stroke-width:2;stroke-dasharray:6 4}
+.chart .rec-t{fill:var(--ng);font:600 10px var(--font-body)}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.legend i{display:inline-block;width:18px;height:0;border-top:3px solid var(--ink);vertical-align:middle;margin-right:4px}
+.legend i.r{border-top:3px dashed var(--ng)}
+.sum td,.sum th{padding:6px 4px;text-align:right;font-size:13px;border-top:1px solid var(--line)}
+.sum th{font-weight:500;color:var(--muted);font-size:11px}
+.sum td:first-child,.sum th:first-child{text-align:left}
+.sum{width:100%;border-collapse:collapse}
+</style>
+</head>
+<body>
+<div class="outer"><div class="wrap">
+<div class="top"><a class="back" href="./">← 50の仮説</a><span class="tag" id="sample-tag">サンプル</span></div>
+<div class="hyp" aria-label="仮説カード"><dl>
+<dt>視点</dt><dd>認知・感情</dd>
+<dt>種類</dt><dd>抽象</dd>
+<dt>仮説</dt><dd>列の嫌さは、実際より思い出の中で大きくなっている（ピーク・エンドの法則）。</dd>
+<dt>確かめること</dt><dd><span class="k-ok">当たり</span>＝実際の記録を見ると「嫌だったのは一瞬」と分かる<br><span class="k-ng">外れ</span>＝ずっと嫌だった</dd>
+</dl></div>
+<h1>ピークトオワリ</h1>
+<p class="lead">嫌さを、並ぶ前・並んでいる最中・食べた後に0〜10で付ける。あとで思い出した嫌さと並べる。</p>
+
+<div class="board" aria-live="polite">
+  <div><div class="lbl">思い出した嫌さは、実際の平均より<br>（回の平均）</div><div class="big" id="b-diff">–</div></div>
+  <div><div class="lbl">嫌さ7以上だった<br>記録の割合</div><div class="mid" id="b-peak">–</div></div>
+</div>
+<p class="note" id="b-note"></p>
+
+<h2>どの回</h2>
+<div class="chips" id="sess" role="group" aria-label="回の選択"></div>
+<div class="row" style="margin-top:8px"><button type="button" class="btn small ghost" id="btn-new">新しい列を始める</button></div>
+
+<h2>いまの嫌さをタップ（1回で記録）</h2>
+<div class="chips" id="phases" role="group" aria-label="いつの嫌さか"></div>
+<div class="numrow" id="num-pt" style="margin-top:8px" role="group" aria-label="嫌さ"></div>
+<p class="status" id="status" role="status"></p>
+
+<h2>この回の折れ線</h2>
+<svg class="chart" id="chart" viewBox="0 0 340 190" role="img" aria-label="嫌さの折れ線グラフ"></svg>
+<div class="legend"><span><i></i>実際の嫌さ</span><span><i class="r"></i>あとで思い出した嫌さ</span></div>
+
+<h2>あとで思い出した嫌さ</h2>
+<p class="note" style="margin:0 0 8px" id="rec-now"></p>
+<div class="numrow" id="num-rec" role="group" aria-label="思い出した嫌さ"></div>
+
+<h2>回ごとの比べ</h2>
+<table class="sum"><thead><tr><th>回</th><th>実際の平均</th><th>実際の最大</th><th>思い出</th><th>差</th></tr></thead><tbody id="sum"></tbody></table>
+<div class="sample-bar"><span id="sample-label"></span>
+<div class="btns"><button type="button" class="btn small ghost" id="btn-clear">サンプルを消して自分で使う</button><button type="button" class="btn small ghost" id="btn-reset">サンプルに戻す</button></div>
+<div class="confirm" id="confirm" hidden role="alertdialog" aria-live="assertive"><div id="confirm-msg"></div><div class="btns row"><button type="button" class="btn small" id="confirm-yes">はい</button><button type="button" class="btn small ghost" id="confirm-no">やめる</button></div></div>
+</div>
+</div></div>
+<script>
+(function(){
+'use strict';
+var KEY='hack3-g5-3-v1';
+var state=null;
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function loadState(){
+  try{var s=localStorage.getItem(KEY);if(s){var o=JSON.parse(s);if(o&&o.v===1)return o}}catch(e){}
+  return makeSample();
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function ask(msg,yes){
+  var box=$('confirm');
+  $('confirm-msg').textContent=msg;
+  box.hidden=false;
+  $('confirm-yes').onclick=function(){box.hidden=true;yes()};
+  $('confirm-no').onclick=function(){box.hidden=true};
+}
+function renderBar(){
+  var on=!!state.sample;
+  $('sample-tag').hidden=!on;
+  $('sample-label').textContent=on?'いま見えているのはサンプルのデータです。':'いま見えているのは自分のデータです（この端末の中だけ）。';
+  $('btn-clear').disabled=!on;
+}
+function bindCommon(){
+  $('btn-clear').addEventListener('click',function(){
+    ask('サンプルを消して、空の状態から始めます。よいですか。',function(){state=makeEmpty();save();render();renderBar()});
+  });
+  $('btn-reset').addEventListener('click',function(){
+    ask('いまのデータを消して、サンプルに戻します。よいですか。',function(){state=makeSample();save();render();renderBar()});
+  });
+}
+function boot(){
+  state=loadState();
+  bindCommon();
+  if(typeof initProduct==='function')initProduct();
+  render();
+  renderBar();
+}
+
+var PH=[['before','並ぶ前'],['during','並んでいる最中'],['after','食べた後']];
+var ORDER={before:0,during:1,after:2};
+var phase='during';
+var cur=null;
+function pts(ar,ph){return ar.map(function(v){return {ph:ph,v:v}})}
+function makeSample(){
+  return {v:1,sample:true,seq:4,cur:3,sess:[
+    {id:1,pts:pts([3,4],'before').concat(pts([6,8,5,4],'during'),pts([2,1],'after')),rec:8},
+    {id:2,pts:pts([2],'before').concat(pts([5,6,9,5,3],'during'),pts([1,1],'after')),rec:8},
+    {id:3,pts:pts([4,3],'before').concat(pts([7,6,6,4],'during'),pts([2],'after')),rec:7}]};
+}
+function makeEmpty(){return {v:1,sample:false,seq:2,cur:1,sess:[{id:1,pts:[],rec:null}]}}
+function sorted(s){return s.pts.map(function(p,i){return {ph:p.ph,v:p.v,i:i}}).sort(function(a,b){return ORDER[a.ph]-ORDER[b.ph]||a.i-b.i})}
+function mean(s){if(!s.pts.length)return null;var t=0;s.pts.forEach(function(p){t+=p.v});return t/s.pts.length}
+function peak(s){var m=null;s.pts.forEach(function(p){if(m===null||p.v>m)m=p.v});return m}
+function getCur(){
+  for(var i=0;i<state.sess.length;i++)if(state.sess[i].id===state.cur)return state.sess[i];
+  state.cur=state.sess[0].id;return state.sess[0];
+}
+function sgn(x){var r=Math.round(x*10)/10;return (r>0?'+':r<0?'−':'')+Math.abs(r).toFixed(1)}
+function numRow(act){var h='';for(var i=0;i<=10;i++)h+='<button type="button" class="btn" data-act="'+act+'" data-v="'+i+'">'+i+'</button>';return h}
+function drawChart(s){
+  var W=340,H=190,L=26,R=44,T=22,B=16,iw=W-L-R,ih=H-T-B;
+  var y=function(v){return T+ih-(v/10)*ih};
+  var g='';
+  [0,5,10].forEach(function(v){g+='<line class="grid" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'"/><text class="axis" x="'+(L-6)+'" y="'+(y(v)+3)+'" text-anchor="end">'+v+'</text>'});
+  var ps=sorted(s),n=ps.length;
+  if(!n){$('chart').innerHTML=g+'<text class="ph" x="'+(W/2)+'" y="'+(H/2)+'" text-anchor="middle">まだ記録がない</text>';return}
+  var x=function(i){return n===1?L+iw/2:L+iw*i/(n-1)};
+  var pk=peak(s),pkDone=false,line='',dots='',seps='',lbls='';
+  ps.forEach(function(p,i){
+    line+=(i?' ':'')+x(i).toFixed(1)+','+y(p.v).toFixed(1);
+    var isPk=p.v===pk&&!pkDone;if(isPk)pkDone=true;
+    dots+='<circle class="'+(isPk?'peak':'dot')+'" cx="'+x(i).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="'+(isPk?5:3.5)+'"/>';
+    if(i&&ps[i-1].ph!==p.ph)seps+='<line class="sep" x1="'+((x(i)+x(i-1))/2)+'" x2="'+((x(i)+x(i-1))/2)+'" y1="'+T+'" y2="'+(T+ih)+'"/>';
+  });
+  PH.forEach(function(q){
+    var ix=[];ps.forEach(function(p,i){if(p.ph===q[0])ix.push(i)});
+    if(ix.length)lbls+='<text class="ph" x="'+((x(ix[0])+x(ix[ix.length-1]))/2).toFixed(1)+'" y="12" text-anchor="middle">'+q[1]+'</text>';
+  });
+  var rec=s.rec==null?'':'<line class="rec" x1="'+L+'" x2="'+(W-R+6)+'" y1="'+y(s.rec)+'" y2="'+y(s.rec)+'"/><text class="rec-t" x="'+(W-R+9)+'" y="'+(y(s.rec)+3)+'">思い出</text>';
+  $('chart').innerHTML=g+seps+lbls+rec+'<polyline class="actual" points="'+line+'"/>'+dots;
+}
+function render(){
+  var s=getCur();
+  var cs='';
+  state.sess.forEach(function(q,i){cs+='<button type="button" class="btn" data-act="sess" data-id="'+q.id+'" aria-pressed="'+(q.id===s.id)+'">'+(i+1)+'回目</button>'});
+  $('sess').innerHTML=cs;
+  var ph='';
+  PH.forEach(function(q){ph+='<button type="button" class="btn" data-act="phase" data-ph="'+q[0]+'" aria-pressed="'+(phase===q[0])+'">'+q[1]+'</button>'});
+  $('phases').innerHTML=ph;
+  $('num-pt').innerHTML=numRow('pt');
+  $('num-rec').innerHTML=numRow('rec');
+  $('rec-now').textContent=s.rec==null?'この回は、まだ思い出した嫌さを付けていない。':'この回で思い出した嫌さ: '+s.rec;
+  drawChart(s);
+  var rows='',diffs=[],hi=0,all=0;
+  state.sess.forEach(function(q,i){
+    var m=mean(q);
+    q.pts.forEach(function(p){all++;if(p.v>=7)hi++});
+    var d=(m!==null&&q.rec!=null)?q.rec-m:null;
+    if(d!==null)diffs.push(d);
+    rows+='<tr><td>'+(i+1)+'回目</td><td class="mono">'+(m===null?'–':m.toFixed(1))+'</td><td class="mono">'+(peak(q)===null?'–':peak(q))+'</td><td class="mono">'+(q.rec==null?'–':q.rec)+'</td><td class="mono">'+(d===null?'–':sgn(d))+'</td></tr>';
+  });
+  $('sum').innerHTML=rows;
+  var a=0;diffs.forEach(function(d){a+=d});
+  $('b-diff').textContent=diffs.length?sgn(a/diffs.length):'–';
+  $('b-peak').textContent=all?Math.round(hi/all*100)+'%':'–';
+  $('b-note').textContent=diffs.length?diffs.length+'回分の平均。「思い出」が実際の平均より高いほど、記憶の中で嫌さが膨らんでいる。':'実際の記録と思い出の両方がそろうと出る。';
+}
+function initProduct(){
+  document.addEventListener('click',function(e){
+    var t=e.target&&e.target.closest?e.target.closest('[data-act]'):null;
+    if(!t)return;
+    var a=t.getAttribute('data-act'),s=getCur();
+    if(a==='sess'){state.cur=parseInt(t.getAttribute('data-id'),10);save();render()}
+    else if(a==='phase'){phase=t.getAttribute('data-ph');render()}
+    else if(a==='pt'){
+      var v=parseInt(t.getAttribute('data-v'),10);
+      s.pts.push({ph:phase,v:v});
+      $('status').textContent='記録した: '+PH.filter(function(q){return q[0]===phase})[0][1]+'　'+v;
+      save();render();
+    }else if(a==='rec'){s.rec=parseInt(t.getAttribute('data-v'),10);save();render()}
+  });
+  $('btn-new').addEventListener('click',function(){
+    var id=state.seq++;
+    state.sess.push({id:id,pts:[],rec:null});state.cur=id;phase='before';save();render();
+  });
+}
+
+boot();
+})();
+</script>
+</body>
+</html>

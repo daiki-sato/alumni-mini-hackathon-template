@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ヒトコトダケ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0;line-height:1.6;font-size:15px}
+.wrap{max-width:560px;margin:0 auto;padding:12px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px))}
+a{color:var(--ink)}
+.back{display:inline-block;font-size:13px;color:var(--muted);text-decoration:none;padding:6px 0}
+.back:hover{text-decoration:underline}
+h1{font-family:var(--font-display);font-size:24px;margin:10px 0 12px;letter-spacing:.02em}
+h2{font-family:var(--font-display);font-size:16px;margin:22px 0 8px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.hyp{border:1px solid var(--line);border-left:4px solid var(--signal);border-radius:8px;background:var(--surface);padding:8px 12px;font-size:12px;color:var(--muted)}
+.hyp dl{margin:0}
+.hyp .row{display:flex;gap:8px;margin:3px 0}
+.hyp dt{flex:0 0 5.2em;font-weight:700;color:var(--ink)}
+.hyp dd{margin:0;flex:1}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:0 6px;border-radius:4px;color:var(--surface);margin-right:4px}
+.tag.ok{background:var(--ok)}.tag.ng{background:var(--ng)}
+.samplebar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:10px 0;font-size:12px;color:var(--muted)}
+.samplebar .note{flex:1 1 100%}
+.btn{border:1px solid var(--ink);background:var(--surface);border-radius:8px;padding:8px 12px;min-height:40px;font-size:14px}
+.btn.small{min-height:32px;padding:4px 10px;font-size:12px;border-color:var(--line);color:var(--muted)}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal-ink);font-weight:700}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.btn.primary[aria-pressed="true"]{background:var(--signal);color:var(--signal-ink);box-shadow:inset 0 0 0 2px var(--signal-ink)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.confirm{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid var(--ng);border-radius:8px;padding:8px 10px;background:var(--surface);color:var(--ink);flex:1 1 100%}
+.confirm[hidden]{display:none}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:12px 16px;margin:14px 0}
+.board .lbl{font-size:12px;opacity:.85}
+.board .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:44px;line-height:1.15;letter-spacing:.02em}
+.board .num small{font-size:18px;margin-left:4px}
+.board .sub{font-size:12px;opacity:.85;font-family:var(--font-body)}
+.panel{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:12px}
+.fact{font-size:13px;color:var(--muted);margin:8px 0}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.judge{margin-top:26px;border-top:2px solid var(--ink);padding-top:10px}
+.judge h2{margin-top:4px}
+.judge .btns .btn{flex:1 1 140px;text-align:left;line-height:1.4}
+.tally{display:flex;height:10px;border-radius:4px;overflow:hidden;margin-top:10px;background:var(--line)}
+.tally i{display:block;height:100%}
+.tally .h{background:var(--ok)}.tally .m{background:var(--ng)}
+.tallytxt{font-size:12px;color:var(--muted);margin-top:4px}
+.foot{font-size:11px;color:var(--muted);margin-top:18px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.phrases{display:grid;gap:8px}
+.phrase{text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:15px}
+.phrase[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 4px 0 0 var(--signal)}
+.sl{display:flex;align-items:center;gap:10px;margin:8px 0}
+.sl label{flex:0 0 6.5em;font-size:13px}
+.sl input[type=range]{flex:1;accent-color:var(--ink);min-height:32px}
+.sl .v{flex:0 0 2em;text-align:right;font-family:var(--font-mono);font-weight:600}
+.recs{list-style:none;margin:0;padding:0}
+.recs li{display:grid;grid-template-columns:3.2em 1fr 3.2em;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px}
+.recs .bars{display:grid;gap:3px}
+.recs .bar{height:7px;border-radius:3px}
+.bar.b{background:var(--muted)}
+.bar.a-dn{background:var(--ok)}
+.bar.a-up{background:var(--ng)}
+.recs .d{text-align:right;font-family:var(--font-mono);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<section class="hyp" aria-label="仮説カード"><dl>
+<div class="row"><dt>視点</dt><dd>関係・自他境界 ／ 具体</dd></div>
+<div class="row"><dt>仮説</dt><dd>一言だけでも話すと相手は自分側になり、近さが平気になる。</dd></div>
+<div class="row"><dt>確かめること</dt><dd><span class="tag ok">当たり</span>話した後の気になり度が下がる<br><span class="tag ng">外れ</span>話しても変わらない、または話す方がつらい</dd></div>
+</dl></section>
+<h1>ヒトコトダケ</h1>
+<div class="samplebar"><span class="note" id="sample-note"></span><button type="button" class="btn small" id="btn-empty">サンプルを消して自分で使う</button><button type="button" class="btn small" id="btn-sample">サンプルに戻す</button>
+<div class="confirm" id="confirm" hidden><span id="confirm-text"></span><button type="button" class="btn small" id="confirm-yes">実行する</button><button type="button" class="btn small" id="confirm-no">やめる</button></div></div>
+<main>
+<h2>列で使える最初の一言</h2>
+<p class="fact">表示するだけ。話すかどうかは本人が決める。</p>
+<div class="phrases" id="phrases"></div>
+<h2>近さの気になり度（0〜10）</h2>
+<div class="panel">
+  <div class="sl"><label for="before-r">話す前</label><input type="range" id="before-r" min="0" max="10" step="1" value="6"><span class="v" id="before-v">6</span></div>
+  <div class="sl"><label for="after-r">話した後</label><input type="range" id="after-r" min="0" max="10" step="1" value="3"><span class="v" id="after-v">3</span></div>
+  <div class="btns"><button type="button" class="btn primary" id="add">この2つを記録に加える</button></div>
+</div>
+<div class="board"><div class="lbl">気になり度の変化（平均・話す前→話した後）</div><div class="num" id="board-num">0.0</div><div class="sub" id="board-sub"></div></div>
+<h2>これまでの記録</h2>
+<ul class="recs" id="recs"></ul>
+<p class="fact" id="fact"></p>
+</main>
+<section class="judge" aria-label="触ってみた判断"><h2>触ってみて、どちらに近いか</h2><div class="btns"><button type="button" class="btn" id="judge-hit" aria-pressed="false"><b>当たり側</b><br>話した後の方が、近さが気にならなくなりそう</button><button type="button" class="btn" id="judge-miss" aria-pressed="false"><b>外れ側</b><br>話しても変わらない、または話す方がつらそう</button></div><div class="tally"><i class="h" id="tally-h"></i><i class="m" id="tally-m"></i></div><div class="tallytxt" id="tally-txt"></div></section>
+<p class="foot">このページの内容はこの端末の中だけに保存されます。名前や位置は扱いません。</p>
+</div>
+<script>
+var FILE="g3-3";
+var KEY='hack3-'+FILE+'-v1';
+var state=null,pendingKind=null;
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function loadState(){try{var s=localStorage.getItem(KEY);if(s){var o=JSON.parse(s);if(o&&typeof o==='object')return o}}catch(e){}return null}
+function saveState(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function newSample(){var s=makeSample();s.sample=true;s.judge={hit:4,miss:2,mine:null};return s}
+function newEmpty(){var s=makeEmpty();s.sample=false;s.judge={hit:0,miss:0,mine:null};return s}
+function update(){saveState();render()}
+function vote(k){var j=state.judge;if(j.mine===k){j[k]--;j.mine=null}else{if(j.mine){j[j.mine]--}j[k]++;j.mine=k}update()}
+function renderBase(){
+  $('sample-note').textContent=state.sample?'サンプルのデータで動いています（実際の記録ではありません）':'自分のデータで使っています';
+  var c=$('confirm');
+  if(pendingKind){c.hidden=false;$('confirm-text').textContent=pendingKind==='empty'?'サンプルを消して、空の状態から始めます。':'今の内容を消して、サンプルに戻します。'}else{c.hidden=true}
+  var j=state.judge,t=j.hit+j.miss;
+  $('judge-hit').setAttribute('aria-pressed',j.mine==='hit'?'true':'false');
+  $('judge-miss').setAttribute('aria-pressed',j.mine==='miss'?'true':'false');
+  $('tally-h').style.width=(t?j.hit/t*100:0)+'%';
+  $('tally-m').style.width=(t?j.miss/t*100:0)+'%';
+  $('tally-txt').textContent='当たり側 '+j.hit+' 人 / 外れ側 '+j.miss+' 人'+(state.sample?'（サンプルを含む）':'');
+}
+function baseInit(){
+  state=loadState();
+  if(!state||!state.judge){state=newSample()}
+  $('btn-empty').addEventListener('click',function(){pendingKind='empty';renderBase();$('confirm-yes').focus()});
+  $('btn-sample').addEventListener('click',function(){pendingKind='sample';renderBase();$('confirm-yes').focus()});
+  $('confirm-no').addEventListener('click',function(){pendingKind=null;renderBase()});
+  $('confirm-yes').addEventListener('click',function(){state=pendingKind==='empty'?newEmpty():newSample();pendingKind=null;update()});
+  $('judge-hit').addEventListener('click',function(){vote('hit')});
+  $('judge-miss').addEventListener('click',function(){vote('miss')});
+  if(typeof setup==='function')setup();
+  render();
+}
+
+var PH=['ここ何回目ですか？','おすすめありますか？','今日は暑い（寒い）ですね','何時から並んでますか？','ここ、いつも混みますよね'];
+function makeSample(){return {phrase:0,b:6,a:3,recs:[
+  {b:7,a:3,s:1},{b:8,a:5,s:1},{b:6,a:6,s:1},{b:5,a:2,s:1},{b:7,a:8,s:1},{b:9,a:4,s:1}]}}
+function makeEmpty(){return {phrase:0,b:6,a:3,recs:[]}}
+function setup(){
+  var h='';PH.forEach(function(p,i){h+='<button type="button" class="phrase" id="phrase-'+i+'" aria-pressed="false">'+esc(p)+'</button>'});
+  $('phrases').innerHTML=h;
+  PH.forEach(function(p,i){$('phrase-'+i).addEventListener('click',function(){state.phrase=i;update()})});
+  $('before-r').addEventListener('input',function(){state.b=+$('before-r').value;update()});
+  $('after-r').addEventListener('input',function(){state.a=+$('after-r').value;update()});
+  $('add').addEventListener('click',function(){state.recs.push({b:state.b,a:state.a,s:0});update()});
+}
+function fmt(n){var r=Math.round(n*10)/10;return (r>0?'+':r<0?'−':'')+Math.abs(r).toFixed(1)}
+function render(){
+  renderBase();
+  PH.forEach(function(p,i){$('phrase-'+i).setAttribute('aria-pressed',i===state.phrase?'true':'false')});
+  $('before-r').value=state.b;$('after-r').value=state.a;
+  $('before-v').textContent=state.b;$('after-v').textContent=state.a;
+  var rs=state.recs,n=rs.length,sum=0,up=0,h='';
+  rs.forEach(function(r){var d=r.a-r.b;sum+=d;if(d>0)up++});
+  for(var i=0;i<n;i++){var r=rs[i],d=r.a-r.b;
+    h+='<li><span>'+(r.s?'サンプル':'自分')+'</span><span class="bars"><i class="bar b" style="width:'+(r.b*10)+'%"></i><i class="bar '+(d>0?'a-up':'a-dn')+'" style="width:'+(r.a*10)+'%"></i></span><span class="d">'+r.b+'→'+r.a+'</span></li>'}
+  $('recs').innerHTML=h||'<li><span></span><span>まだ記録がありません</span><span></span></li>';
+  $('board-num').textContent=n?fmt(sum/n):'—';
+  $('board-sub').textContent=n?n+' 件の記録。マイナスなら、話した後の方が気にならない。':'記録が入ると平均が出ます';
+  $('fact').textContent=n?('話した後の方が高かった（話す方がつらかった）のは '+n+' 件中 '+up+' 件。'):'';
+}
+
+baseInit();
+</script>
+</body>
+</html>

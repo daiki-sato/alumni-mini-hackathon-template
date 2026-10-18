@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>レツノカタチ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0;line-height:1.6;font-size:15px}
+.wrap{max-width:560px;margin:0 auto;padding:12px 16px 56px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.back{display:inline-block;color:var(--muted);font-size:13px;text-decoration:none;padding:6px 0}
+.back:hover{color:var(--ink);text-decoration:underline}
+h1{font-family:var(--font-display);font-size:24px;margin:4px 0 10px;line-height:1.3}
+h2{font-family:var(--font-display);font-size:16px;margin:22px 0 8px}
+p{margin:6px 0}
+.hyp{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-bottom:14px}
+.hyp dl{margin:0;display:grid;gap:3px}
+.hyp dl div{display:grid;grid-template-columns:4.6em 1fr;gap:6px}
+.hyp dt{font-weight:700;color:var(--ink)}
+.hyp dd{margin:0}
+.hyp b.ok{color:var(--ok)} .hyp b.ng{color:var(--ng)}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:12px 14px;margin:12px 0}
+.board .cap{font-size:12px;opacity:.85;margin:0 0 6px}
+.board .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+.board .cell{min-width:0}
+.board .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:34px;line-height:1.1}
+.board .num small{font-size:14px;margin-left:2px}
+.board .lbl{font-size:11.5px;opacity:.85}
+.btn{font:inherit;font-weight:700;font-size:14px;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal)}
+.btn.ghost{background:transparent;font-weight:500;font-size:13px;min-height:40px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.seg button{font:inherit;font-size:14px;font-weight:500;min-height:44px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;flex:1 1 auto}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.board :focus-visible{outline-color:var(--board-ink)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:10px 0}
+svg{display:block;width:100%;height:auto}
+.note{font-size:12.5px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-weight:700;font-size:12.5px;color:var(--muted)}
+td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600}
+.good{color:var(--ok);font-weight:700}.bad{color:var(--ng);font-weight:700}
+label{font-size:13.5px;font-weight:500}
+input[type=range]{width:100%;min-height:32px;accent-color:var(--ink)}
+.samplebar{margin-top:26px;border-top:1px dashed var(--line);padding-top:12px;font-size:12.5px;color:var(--muted)}
+.confirm{background:var(--surface);border:1px solid var(--ink);border-radius:8px;padding:10px 12px;margin-top:8px;color:var(--ink)}
+.tally{display:flex;gap:8px;flex-wrap:wrap}
+.tally .btn{flex:1 1 140px;text-align:left}
+.tally .btn span{display:block;font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--muted)}
+.s-line{stroke:var(--line);fill:none}
+.s-person{fill:var(--muted)}
+.s-me{fill:var(--signal);stroke:var(--ink);stroke-width:2}
+.s-ring{fill:none;stroke:var(--ng);stroke-dasharray:4 3;stroke-width:1.5}
+.s-wall{fill:var(--ink)}
+.s-txt{fill:var(--muted);font-size:11px;font-family:var(--font-body)}
+.s-ng{fill:var(--ng)}.s-ok{fill:var(--ok)}
+.s-obj{fill:var(--ok);stroke:var(--ink)}
+.sr{position:absolute;left:-9999px}
+
+.tcell{white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<h1>レツノカタチ</h1>
+<section class="hyp" aria-label="仮説カード"><dl>
+<div><dt>視点</dt><dd>空間設計 ／ 具体 ／ 方向: 後ろ・横・前</dd></div>
+<div><dt>仮説</dt><dd>列の形を変えるだけで、3方向の近さが変わる。</dd></div>
+<div><dt>確かめること</dt><dd><b class="ok">当たり</b>＝形によって「これなら並べる」が出てくる<br><b class="ng">外れ</b>＝どの形でも嫌さは同じ</dd></div>
+</dl></section>
+
+<div class="seg" id="shapes" role="group" aria-label="列の形"></div>
+<div class="panel">
+<svg id="map" role="img" aria-label="列を上から見た図"></svg>
+<p class="note">上から見た図。黄色が自分で、人をタップすると自分の位置を変えられます。破線の円は 0.45m の目安です。</p>
+</div>
+<label for="gap">同じ列の前後の間隔: <b id="gapv"></b></label>
+<input type="range" id="gap" min="30" max="120" step="5">
+<div class="board" aria-live="polite">
+<p class="cap" id="bcap"></p>
+<div class="row">
+<div class="cell"><div class="num" id="b-front">-</div><div class="lbl">前の人まで</div></div>
+<div class="cell"><div class="num" id="b-side">-</div><div class="lbl">横の人まで</div></div>
+<div class="cell"><div class="num" id="b-back">-</div><div class="lbl">後ろの人まで</div></div>
+<div class="cell"><div class="num" id="b-risk">-</div><div class="lbl">横から割り込まれやすさ</div></div>
+</div>
+</div>
+<h2>4つの形をくらべる</h2>
+<div class="panel"><table>
+<thead><tr><th>形</th><th>前</th><th>横</th><th>後</th><th>割込</th></tr></thead>
+<tbody id="cmp"></tbody></table>
+<p class="note">数字はこの試作の仮の計算です（人の間隔は上のスライダー、位置は黄色の人）。実測ではありません。</p></div>
+<h2>これなら並べる、と感じた形</h2>
+<div class="tally" id="oks"></div>
+<p class="note" id="oksum"></p>
+
+<div class="samplebar">
+<p id="sample-msg"></p>
+<div class="btns"><button class="btn ghost" type="button" id="btn-blank">サンプルを消して自分で使う</button><button class="btn ghost" type="button" id="btn-sample">サンプルに戻す</button></div>
+<div class="confirm" id="confirm" hidden></div>
+</div>
+</div>
+<script>
+const KEY='hack3-g2-1.html-v1';
+const $=s=>document.querySelector(s);
+const REDUCE=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+const NS='http://www.w3.org/2000/svg';
+function load(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null}catch(e){return null}}
+function save(o){try{localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
+function el(tag,attrs,text){const e=document.createElementNS(NS,tag);for(const k in (attrs||{}))e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;return e}
+function h(tag,attrs,text){const e=document.createElement(tag);for(const k in (attrs||{}))e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;return e}
+function initSample(o){
+  function msg(){$('#sample-msg').textContent=o.isSample()?'いま表示しているのはサンプルの設定です。':'いま表示しているのは自分用の設定です（サンプルは消してあります）。'}
+  function ask(text,yes){
+    const c=$('#confirm');c.hidden=false;c.textContent='';
+    c.appendChild(h('p',{},text));
+    const row=h('div',{class:'btns'});
+    const y=h('button',{class:'btn primary',type:'button',id:'confirm-yes'},'はい、実行する');
+    const n=h('button',{class:'btn',type:'button',id:'confirm-no'},'やめる');
+    y.onclick=()=>{c.hidden=true;yes();msg()};n.onclick=()=>{c.hidden=true};
+    row.appendChild(y);row.appendChild(n);c.appendChild(row);y.focus();
+  }
+  $('#btn-blank').onclick=()=>ask('サンプルを消して、初期値から自分で使いますか。',()=>o.reset(o.blank()));
+  $('#btn-sample').onclick=()=>ask('サンプルの設定に戻しますか。いまの設定は消えます。',()=>o.reset(o.sample()));
+  msg();
+}
+
+
+const SHAPES=[{id:'line',name:'直線',open:2},{id:'snake',name:'蛇行',open:1},{id:'wall',name:'壁ぞい',open:1},{id:'double',name:'2列',open:2}];
+const N=9;
+let S=load()||sample();
+function sample(){return {isSample:true,shape:'line',gap:50,me:4,ok:{wall:true,snake:true}}}
+function blank(){return {isSample:false,shape:'line',gap:50,me:4,ok:{}}}
+function pos(shape,g){
+  const P=[];
+  for(let i=0;i<N;i++){
+    if(shape==='line')P.push({x:i*g,y:0});
+    else if(shape==='wall')P.push({x:i*g,y:0.3});
+    else if(shape==='snake'){const r=Math.floor(i/3),c=i%3;P.push({x:(r%2?2-c:c)*g,y:r*1.0});}
+    else P.push({x:i*g/2,y:(i%2)*0.5});
+  }
+  return P;
+}
+function metrics(shape,gapCm,me){
+  const P=pos(shape,gapCm/100),m=P[me];
+  const d=j=>Math.hypot(P[j].x-m.x,P[j].y-m.y);
+  const front=me>0?d(me-1):null,back=me<N-1?d(me+1):null;
+  let side=null;
+  for(let j=0;j<N;j++){if(j===me)continue;if(Math.abs(P[j].y-m.y)>=0.3){const v=d(j);if(side===null||v<side)side=v;}}
+  const sh=SHAPES.find(s=>s.id===shape);
+  const risk=sh.open*35+(side!==null&&side<0.7?15:0);
+  return {front:front,back:back,side:side,risk:risk,P:P};
+}
+const f2=v=>v==null?'—':v.toFixed(2);
+const fside=v=>v==null?'なし':v.toFixed(2);
+const rl=r=>r<=30?'低':(r<=60?'中':'高');
+function draw(){
+  const svg=$('#map');svg.textContent='';
+  const m=metrics(S.shape,S.gap,S.me),P=m.P,sc=60;
+  const xs=P.map(p=>p.x),ys=P.map(p=>p.y);
+  const x0=Math.min.apply(null,xs)-0.9,x1=Math.max.apply(null,xs)+0.6;
+  let y0=Math.min.apply(null,ys)-0.8,y1=Math.max.apply(null,ys)+0.8;
+  if(y1-y0<2.6){const c=(y0+y1)/2;y0=c-1.3;y1=c+1.3;}
+  svg.setAttribute('viewBox',(x0*sc)+' '+(y0*sc)+' '+((x1-x0)*sc)+' '+((y1-y0)*sc));
+  if(S.shape==='wall')svg.appendChild(el('rect',{class:'s-wall',x:x0*sc,y:-0.2*sc,width:(x1-x0)*sc,height:0.2*sc}));
+  svg.appendChild(el('polyline',{class:'s-line','stroke-width':2,points:P.map(p=>(p.x*sc)+','+(p.y*sc)).join(' ')}));
+  svg.appendChild(el('text',{class:'s-txt',x:(P[0].x-0.75)*sc,y:(P[0].y)*sc+4},'店'));
+  P.forEach((p,i)=>{
+    const g=el('circle',{class:i===S.me?'s-me':'s-person',cx:p.x*sc,cy:p.y*sc,r:0.2*sc,tabindex:0,role:'button','aria-label':(i+1)+'人目'+(i===S.me?'（自分）':'。タップで自分にする')});
+    g.style.cursor='pointer';
+    const pick=()=>{S.me=i;S.isSample=S.isSample;save(S);render();};
+    g.addEventListener('click',pick);
+    g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}});
+    svg.appendChild(g);
+  });
+  const me=P[S.me];
+  svg.appendChild(el('circle',{class:'s-ring',cx:me.x*sc,cy:me.y*sc,r:0.45*sc}));
+}
+function render(){
+  const sh=SHAPES.find(s=>s.id===S.shape);
+  document.querySelectorAll('#shapes button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.id===S.shape?'true':'false'));
+  $('#gap').value=S.gap;$('#gapv').textContent=(S.gap/100).toFixed(2)+' m';
+  const m=metrics(S.shape,S.gap,S.me);
+  $('#bcap').textContent='形: '+sh.name+'　／　自分は前から '+(S.me+1)+' 人目（単位 m）';
+  $('#b-front').textContent=f2(m.front);$('#b-side').textContent=fside(m.side);$('#b-back').textContent=f2(m.back);
+  $('#b-risk').textContent=rl(m.risk);
+  const tb=$('#cmp');tb.textContent='';
+  SHAPES.forEach(s=>{
+    const q=metrics(s.id,S.gap,S.me);
+    const tr=h('tr');
+    tr.appendChild(h('td',{class:'tcell'},s.name));
+    tr.appendChild(h('td',{class:'n'},f2(q.front)));
+    tr.appendChild(h('td',{class:'n'},fside(q.side)));
+    tr.appendChild(h('td',{class:'n'},f2(q.back)));
+    tr.appendChild(h('td',{class:'n '+(q.risk>60?'bad':(q.risk<=30?'good':''))},rl(q.risk)));
+    tb.appendChild(tr);
+  });
+  const ok=$('#oks');ok.textContent='';
+  SHAPES.forEach(s=>{
+    const on=!!S.ok[s.id];
+    const b=h('button',{class:'btn'+(on?' primary':''),type:'button',id:'ok-'+s.id,'aria-pressed':on?'true':'false'},s.name+(on?'：並べる':'：変わらない'));
+    b.onclick=()=>{S.ok[s.id]=!S.ok[s.id];save(S);render();};
+    ok.appendChild(b);
+  });
+  const n=SHAPES.filter(s=>S.ok[s.id]).length;
+  $('#oksum').textContent='「これなら並べる」と感じた形: '+n+' / 4。ボタンは触るたびに切りかわります。';
+  draw();
+  initSampleMsg();
+}
+function initSampleMsg(){const m=$('#sample-msg');if(m)m.textContent=S.isSample?'いま表示しているのはサンプルの設定です。':'いま表示しているのは自分用の設定です（サンプルは消してあります）。';}
+(function(){
+  const box=$('#shapes');
+  SHAPES.forEach(s=>{
+    const b=h('button',{type:'button','data-id':s.id,id:'shape-'+s.id},s.name);
+    b.onclick=()=>{S.shape=s.id;save(S);render();};
+    box.appendChild(b);
+  });
+  $('#gap').addEventListener('input',e=>{S.gap=parseInt(e.target.value,10);save(S);render();});
+  initSample({isSample:()=>S.isSample,sample:sample,blank:blank,reset:n=>{S=n;save(S);render();}});
+  render();
+})();
+</script>
+</body>
+</html>
