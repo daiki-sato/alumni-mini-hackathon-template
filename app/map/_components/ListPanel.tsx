@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { DEMO_TOWNS } from "@/lib/jibunmap/demo";
-import { placeName } from "@/lib/jibunmap/place";
+import { OPEN_LABEL, openStatus } from "@/lib/jibunmap/hours";
+import { type Place, placeName } from "@/lib/jibunmap/place";
 import {
   band,
   constraintTags,
@@ -35,6 +36,25 @@ export function ScoreBadge({ v, size = "md" }: { v: number; size?: "md" | "lg" }
 }
 
 /* ---------- 店のカード ---------- */
+
+const OPEN_TONE = {
+  open: "bg-hi-soft text-hi",
+  closing: "bg-mid-soft text-mid",
+  closed: "bg-surface-2 text-muted",
+} as const;
+
+/** 営業中・もうすぐ閉店・営業時間外のバッジ。取ってある営業時間から手元で計算する（分からなければ出さない） */
+export function OpenBadge({ place, className = "" }: { place: Place; className?: string }) {
+  const st = openStatus(place.regularOpeningHours?.periods, new Date());
+  if (!st) return null;
+  return (
+    <span
+      className={`inline-block shrink-0 rounded-full px-1.5 py-px font-bold text-[11px] ${OPEN_TONE[st]} ${className}`}
+    >
+      {OPEN_LABEL[st]}
+    </span>
+  );
+}
 
 /** Google の並び順。デモのデータ（順番がない）では出さない */
 export function GoogleRankBadge({ rank }: { rank?: number }) {
@@ -103,9 +123,10 @@ function TopCard({
           <span className="block truncate font-bold group-hover:underline">
             {placeName(s.place)}
           </span>
-          <span className="mt-0.5 block truncate text-muted text-xs">
-            {s.place.primaryTypeDisplayName?.text ?? "飲食店"}
-            {s.place.formattedAddress ? `・${s.place.formattedAddress}` : ""}
+          {/* 住所は詳細だけに出す。カードはジャンルと営業状況 */}
+          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-muted text-xs">
+            <span className="truncate">{s.place.primaryTypeDisplayName?.text ?? "飲食店"}</span>
+            <OpenBadge place={s.place} />
           </span>
           {s.place.googleRank && (
             <span className="mt-1 block">
@@ -184,6 +205,7 @@ function Row({
           <span className="block truncate text-muted text-xs">
             {s.place.primaryTypeDisplayName?.text ?? "飲食店"}
             {s.place.googleRank ? `・Google の検索結果では${s.place.googleRank}番目` : ""}
+            <OpenBadge place={s.place} className="ml-1.5" />
           </span>
           {kq?.quote && (
             <span className="mt-0.5 block truncate text-xs">

@@ -16,7 +16,7 @@ import {
 } from "@/lib/jibunmap/score";
 import { Author, Highlighted } from "./Highlighted";
 import { BackIcon } from "./Icons";
-import { BAND_TEXT, GoogleRankBadge } from "./ListPanel";
+import { BAND_TEXT, GoogleRankBadge, OpenBadge } from "./ListPanel";
 import { PhotoMosaic } from "./PhotoMosaic";
 import { PlacePhotoImg } from "./PlacePhotoImg";
 
@@ -340,8 +340,11 @@ export function DetailPanel({
             </h1>
             <p className="mt-1 text-muted text-sm">
               {p.primaryTypeDisplayName?.text ?? "飲食店"}
-              {p.formattedAddress ? `・${p.formattedAddress}` : ""}
+              <OpenBadge place={p} className="ml-1.5 align-middle" />
             </p>
+            {p.formattedAddress && (
+              <p className="mt-0.5 text-muted text-xs">{p.formattedAddress}</p>
+            )}
           </div>
           <div className="flex shrink-0 flex-col items-center">
             <Gauge v={s.score} />

@@ -11,7 +11,7 @@ import {
   demoSearch,
   demoSearchBounds,
 } from "@/lib/jibunmap/demo";
-import { genreByKey, genreChips, genreOf } from "@/lib/jibunmap/genre";
+import { genreByKey, genreChips, genreOf, MAIN_GENRE_KEYS, townPart } from "@/lib/jibunmap/genre";
 import {
   BROWSER_KEY,
   computeRoute,
@@ -33,7 +33,7 @@ import {
   wordHits,
   wordsForScene,
 } from "@/lib/jibunmap/score";
-import { foodQuery, nearbyQueries, TOKYO_TOWNS } from "@/lib/jibunmap/suggest";
+import { foodQuery, nearbyQueries } from "@/lib/jibunmap/suggest";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
 import { GoogleMapView } from "./GoogleMapView";
@@ -655,15 +655,29 @@ export function MapApp() {
   };
 
   /** 選んだジャンルが今の結果にないとき: そのジャンルで検索し直す（押したときだけ1リクエスト） */
-  const searchGenre = () => {
-    const g = genre ? (chips.find((c) => c.key === genre) ?? genreByKey(genre)) : null;
+  const searchGenre = (key = genre) => {
+    const g = key ? (chips.find((c) => c.key === key) ?? genreByKey(key)) : null;
     if (!g) return;
-    const town =
-      TOKYO_TOWNS.find((t) => urlQ.current.includes(t.name))?.name ?? urlQ.current.trim();
+    // 今の街（検索語からジャンルの語を除いたもの）。現在地のまわりで探していたら、現在地で探し直す
+    const near = lastLive.current?.near;
+    if (near && !urlQ.current) {
+      run(g.word, { fit: true, near });
+      return;
+    }
+    const town = townPart(urlQ.current) || urlQ.current.trim();
     const q = `${town} ${g.word}`.trim();
     setQuery(q);
     run(q, { fit: true });
   };
+
+  // ジャンルのチップ: 主なジャンルを常に出す。結果にあるものはその場で絞り込み、ないものは検索し直す
+  const genreButtons = useMemo(() => {
+    const have = new Set(chips.map((c) => c.key));
+    return MAIN_GENRE_KEYS.flatMap((k) => {
+      const g = genreByKey(k);
+      return g ? [{ ...g, have: have.has(k) }] : [];
+    });
+  }, [chips]);
 
   const openPrefs = () => {
     rankAtOpen.current = rankIds.join();
@@ -765,19 +779,25 @@ export function MapApp() {
               </button>
             ))}
           </fieldset>
-          {chips.length > 1 && (
+          {(places.length > 0 || title) && (
             <nav
               aria-label="ジャンルで絞り込む"
               className="scrollbar-none -mx-3 flex min-w-0 gap-1.5 overflow-x-auto px-3 max-md:w-[calc(100%+1.5rem)] md:mx-0 md:flex-1 md:px-0"
             >
-              {[{ key: "", label: "すべて" }, ...chips].map((c) => {
+              {[{ key: "", label: "すべて", have: true }, ...genreButtons].map((c) => {
                 const on = (genre ?? "") === c.key;
                 return (
                   <button
                     key={c.key || "all"}
                     type="button"
                     aria-pressed={on}
-                    onClick={() => changeGenre(c.key && !on ? c.key : null)}
+                    title={c.have ? undefined : "今の結果にないので、このジャンルで検索し直します"}
+                    onClick={() => {
+                      if (!c.key || on) changeGenre(null);
+                      else if (c.have) changeGenre(c.key);
+                      // 結果にないジャンルは、今の街＋ジャンルで検索し直す（1リクエスト）
+                      else searchGenre(c.key);
+                    }}
                     className={`h-10 shrink-0 rounded-full border px-3.5 text-[13px] transition-colors md:h-8 ${
                       on
                         ? "border-brand bg-brand font-bold text-on-brand"
@@ -785,6 +805,9 @@ export function MapApp() {
                     }`}
                   >
                     {c.label}
+                    {!c.have && (
+                      <SearchIcon className="ml-1 inline size-3.5 align-[-2px] opacity-60" />
+                    )}
                   </button>
                 );
               })}
@@ -973,7 +996,7 @@ export function MapApp() {
                 }}
                 genreLabel={genreLabel}
                 genreEmpty={!!genre && inGenre.length === 0}
-                onGenreSearch={searchGenre}
+                onGenreSearch={() => searchGenre()}
                 nearby={demo ? [] : nearbyQueries(urlQ.current)}
                 onSearchArea={demo || !boundsRef.current ? null : searchArea}
                 words={words}
