@@ -43,7 +43,7 @@ export function PhotoCredit({ photo, className = "" }: { photo?: PlacePhoto; cla
 /**
  * 店の写真1枚。画像を1枚読むごとに課金されるので、上位3つのサムネイルと詳細・拡大でだけ使う。
  * 画面に入ってから初めて上限を確かめて読む（見ない写真は数えず、読みもしない）。
- * セッションの上限を超えたら、写真の代わりにジャンルのアイコンを出す
+ * 1日の上限を超えたら、写真の代わりにジャンルのアイコンを出す
  */
 export function PlacePhotoImg({
   place,
