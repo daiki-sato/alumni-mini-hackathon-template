@@ -11,7 +11,7 @@ import {
 } from "@/lib/jibunmap/google";
 import type { Bounds } from "@/lib/jibunmap/place";
 import { placeName } from "@/lib/jibunmap/place";
-import { type Scored, verdict } from "@/lib/jibunmap/score";
+import { SCORE_NAME, type Scored, verdict } from "@/lib/jibunmap/score";
 import { visibleTimeout } from "@/lib/jibunmap/visible-timer";
 
 /* Maps JavaScript API の最小限の型（npm の型パッケージは足さない） */
@@ -66,7 +66,7 @@ function paint(el: HTMLElement, s: Scored, rank: number): void {
 }
 
 function markerTitle(s: Scored, rank: number): string {
-  return `${rank ? `${rank}位 ` : ""}${placeName(s.place)}（集まる度 ${s.score}・${verdict(s.score)}）`;
+  return `${rank ? `${rank}位 ` : ""}${placeName(s.place)}（${SCORE_NAME} ${s.score}点・${verdict(s.score)}）`;
 }
 
 type Entry = { m: Marker; el: HTMLElement; rank: number };

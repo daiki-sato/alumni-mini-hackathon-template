@@ -6,6 +6,8 @@ import {
   DEFAULT_SOLO_ONLY,
   DEFAULT_WORDS,
   reasonChips,
+  SCORE_HINT,
+  SCORE_NAME,
   type Scene,
   scorePlaceInScene,
   verdict,
@@ -64,7 +66,9 @@ export function LpScoreDemo() {
         >
           {s.score}
         </span>
-        <span className="pb-1 text-muted text-sm">/ 100・{verdict(s.score)}</span>
+        <span className="pb-1 text-muted text-sm" title={SCORE_HINT}>
+          / 100・{SCORE_NAME}・{verdict(s.score)}
+        </span>
       </div>
       <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
         <span

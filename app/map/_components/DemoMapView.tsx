@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { placeName } from "@/lib/jibunmap/place";
-import { type Scored, verdict } from "@/lib/jibunmap/score";
+import { SCORE_NAME, type Scored, verdict } from "@/lib/jibunmap/score";
 import { InfoIcon } from "./Icons";
 
 const PAD = 56;
@@ -147,7 +147,7 @@ export function DemoMapView({
           const id = s.place.id;
           const rank = rankIds.indexOf(id) + 1;
           const sel = id === selId;
-          const label = `${placeName(s.place)}、集まる度${s.score}（${verdict(s.score)}）${rank ? `、${rank}位` : ""}`;
+          const label = `${placeName(s.place)}、${SCORE_NAME}${s.score}点（${verdict(s.score)}）${rank ? `、${rank}位` : ""}`;
           return (
             // biome-ignore lint/a11y/useSemanticElements: SVG の中なので <button> は置けない
             <g

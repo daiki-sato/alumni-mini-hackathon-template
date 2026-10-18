@@ -9,6 +9,8 @@ import {
   partyText,
   reasonChips,
   reviewText,
+  SCORE_HINT,
+  SCORE_NAME,
   type Scored,
   verdict,
   type WordLists,
@@ -29,7 +31,7 @@ function Gauge({ v }: { v: number }) {
   const r = 80;
   const len = Math.PI * r;
   return (
-    <div className="relative w-24 shrink-0" title="自分の意思で選ぶ人が集まる度">
+    <div className="relative w-24 shrink-0" title={SCORE_HINT}>
       <svg viewBox="0 0 200 112" className="w-full" aria-hidden="true">
         <path
           d="M20 100 A80 80 0 0 1 180 100"
@@ -50,7 +52,7 @@ function Gauge({ v }: { v: number }) {
       </svg>
       <div className="absolute inset-x-0 bottom-0 text-center">
         <div className={`font-bold text-2xl tabular-nums leading-none ${BAND_TEXT[b]}`}>{v}</div>
-        <div className="text-[10px] text-muted">/ 100</div>
+        <div className="text-[10px] text-muted">/ 100・{SCORE_NAME}</div>
       </div>
     </div>
   );
