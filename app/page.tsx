@@ -179,7 +179,9 @@ function Phrases({ parts }: { parts: string[] }) {
 
 function MockCard({ s, rank, big }: { s: LpShop; rank: number; big: boolean }) {
   return (
-    <div className="flex items-start gap-2 rounded-xl border border-line bg-surface p-2">
+    // 実際のアプリの幅 360px 未満の形にそろえる（点数とひと言の評価は店名のすぐ下。右の列を作らない）。
+    // 行は min-w-0 にして、中身が枠を押し広げないようにする
+    <div className="flex min-w-0 items-start gap-2 rounded-xl border border-line bg-surface p-2">
       {big ? (
         <span className="relative grid size-11 shrink-0 place-items-center rounded-lg bg-surface-2 text-lg">
           <span aria-hidden="true">🍜</span>
@@ -194,24 +196,24 @@ function MockCard({ s, rank, big }: { s: LpShop; rank: number; big: boolean }) {
       )}
       <span className="min-w-0 flex-1">
         <span className="block truncate font-bold text-[11px] text-ink">{s.name}</span>
-        <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted">
+        <span className="mt-0.5 flex min-w-0 items-center gap-1">
+          <span className="shrink-0 rounded-md bg-hi-soft px-1.5 font-bold text-[12px] text-hi tabular-nums">
+            {s.score}
+          </span>
+          <span className="truncate font-bold text-[10px] text-hi">{s.verdict}</span>
+        </span>
+        <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] text-muted">
           <span className="truncate">{s.type}</span>
-          <span className="rounded-full bg-hi-soft px-1 font-bold text-hi">営業中</span>
+          <span className="shrink-0 rounded-full bg-hi-soft px-1 font-bold text-hi">営業中</span>
         </span>
         {big && s.quote && (
           <span className="mt-1 block truncate text-[10px] text-ink">
             「<Highlighted text={s.quote} words={DEFAULT_WORDS} />」
           </span>
         )}
-        <span className="mt-1 inline-block rounded-full bg-surface-2 px-1.5 text-[10px] text-muted">
+        <span className="mt-1 block max-w-full truncate rounded-full bg-surface-2 px-1.5 text-[10px] text-muted">
           口コミの多さでは{s.popRank}番目
         </span>
-      </span>
-      <span className="flex shrink-0 flex-col items-end">
-        <span className="rounded-md bg-hi-soft px-1.5 py-0.5 font-bold text-[12px] text-hi tabular-nums">
-          {s.score}
-        </span>
-        <span className="mt-0.5 whitespace-nowrap font-bold text-[10px] text-hi">{s.verdict}</span>
       </span>
     </div>
   );
@@ -222,7 +224,7 @@ function PhoneMock({ town, top3 }: { town: string; top3: LpShop[] }) {
     <figure className="mx-auto w-[260px] shrink-0 md:w-[290px]">
       {/* 画面の例は飾りとして読み上げない（意味は figcaption で伝える） */}
       <div
-        className="rounded-[34px] border-[7px] border-black/80 bg-bg p-2 shadow-2xl"
+        className="min-w-0 overflow-hidden rounded-[34px] border-[7px] border-black/80 bg-bg p-2 shadow-2xl"
         aria-hidden="true"
       >
         <div className="mx-auto mb-2 h-1.5 w-16 rounded-full bg-black/70" aria-hidden="true" />
@@ -244,7 +246,7 @@ function PhoneMock({ town, top3 }: { town: string; top3: LpShop[] }) {
           </span>
         </div>
         <p className="mt-2 font-bold text-[10px] text-ink">点数の高い順</p>
-        <div className="mt-1 grid gap-1.5">
+        <div className="mt-1 grid min-w-0 grid-cols-1 gap-1.5">
           {top3.map((s, i) => (
             <MockCard key={s.id} s={s} rank={i + 1} big={i === 0} />
           ))}
