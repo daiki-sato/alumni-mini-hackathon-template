@@ -33,7 +33,23 @@ export const PLACE_FIELDS = [
   "paymentOptions",
   "reviews",
   "editorialSummary",
+  // 以下は Pro（photos）と Enterprise（営業時間・価格帯・電話・Web サイト）。上の Enterprise + Atmosphere
+  // より下の区分なので、Text Search の料金は変わらない。写真の画像そのものは別の SKU（下の上限を参照）
+  "photos",
+  "regularOpeningHours",
+  "priceRange",
+  "nationalPhoneNumber",
+  "websiteURI",
 ];
+
+/** 1店あたり持っておく写真の数（詳細で最大4枚） */
+export const PHOTOS_PER_PLACE = 4;
+/**
+ * 1セッションで読む写真の上限。写真は1枚ごとに Place Details Photos（無料枠は月1,000回）に数えられるため。
+ * 上限を超えたら写真の代わりにプレースホルダーを出す
+ */
+export const PHOTO_LIMIT = 40;
+const PHOTO_KEY = "jibunmap-photo-urls";
 
 /* ---------- Maps JavaScript API の最小限の型 ---------- */
 
@@ -53,6 +69,19 @@ type JsReview = {
     photoURI?: string | null;
   } | null;
   googleMapsURI?: string | null;
+};
+
+type JsMoney = {
+  currencyCode?: string | null;
+  units?: number | string | null;
+  nanos?: number | null;
+};
+
+type JsPhoto = {
+  widthPx?: number | null;
+  heightPx?: number | null;
+  authorAttributions?: { displayName?: string; uri?: string | null }[] | null;
+  getURI(opts?: { maxWidth?: number; maxHeight?: number }): string;
 };
 
 type JsPlace = {
@@ -76,6 +105,11 @@ type JsPlace = {
   } | null;
   reviews?: JsReview[] | null;
   editorialSummary?: string | null;
+  photos?: JsPhoto[] | null;
+  regularOpeningHours?: { weekdayDescriptions?: string[] | null } | null;
+  priceRange?: { startPrice?: JsMoney | null; endPrice?: JsMoney | null } | null;
+  nationalPhoneNumber?: string | null;
+  websiteURI?: string | null;
 };
 
 type PlacesLib = {
@@ -163,6 +197,28 @@ function fromJsReview(r: JsReview): Review {
   };
 }
 
+function fromJsMoney(m?: JsMoney | null) {
+  if (!m) return undefined;
+  return {
+    currencyCode: opt(m.currencyCode),
+    units: m.units === null || m.units === undefined ? undefined : String(m.units),
+    nanos: opt(m.nanos),
+  };
+}
+
+function fromJsPhoto(ph: JsPhoto) {
+  return {
+    // URL を作るだけでは課金されない（画像を読んだときに数えられる）
+    thumb: ph.getURI({ maxWidth: 160, maxHeight: 160 }),
+    large: ph.getURI({ maxWidth: 600, maxHeight: 600 }),
+    widthPx: opt(ph.widthPx),
+    heightPx: opt(ph.heightPx),
+    authorAttributions: (ph.authorAttributions ?? []).flatMap((a) =>
+      a.displayName ? [{ displayName: a.displayName, uri: opt(a.uri) }] : [],
+    ),
+  };
+}
+
 export function fromJsPlace(p: JsPlace): Place {
   return {
     id: p.id,
@@ -189,7 +245,54 @@ export function fromJsPlace(p: JsPlace): Place {
       : undefined,
     reviews: p.reviews ? p.reviews.map(fromJsReview) : undefined,
     editorialSummary: p.editorialSummary ? { text: p.editorialSummary } : undefined,
+    photos: p.photos?.length ? p.photos.slice(0, PHOTOS_PER_PLACE).map(fromJsPhoto) : undefined,
+    regularOpeningHours: p.regularOpeningHours?.weekdayDescriptions?.length
+      ? { weekdayDescriptions: p.regularOpeningHours.weekdayDescriptions }
+      : undefined,
+    priceRange: p.priceRange
+      ? {
+          startPrice: fromJsMoney(p.priceRange.startPrice),
+          endPrice: fromJsMoney(p.priceRange.endPrice),
+        }
+      : undefined,
+    nationalPhoneNumber: opt(p.nationalPhoneNumber),
+    websiteUri: opt(p.websiteURI),
   };
+}
+
+/* ---------- 写真の上限 ---------- */
+
+const shownPhotos = new Set<string>();
+
+function loadShown(): void {
+  try {
+    for (const u of JSON.parse(sessionStorage.getItem(PHOTO_KEY) ?? "[]") as string[]) {
+      shownPhotos.add(u);
+    }
+  } catch {
+    // 読めなければメモリ上だけで数える
+  }
+}
+let shownLoaded = false;
+
+/**
+ * この写真の URL を読んでよいか。一度読んだ URL はそのまま許す（数え直さない）。
+ * 新しい URL は、セッションの上限 PHOTO_LIMIT までだけ許す
+ */
+export function photoAllowed(url: string): boolean {
+  if (!shownLoaded) {
+    shownLoaded = true;
+    loadShown();
+  }
+  if (shownPhotos.has(url)) return true;
+  if (shownPhotos.size >= PHOTO_LIMIT) return false;
+  shownPhotos.add(url);
+  try {
+    sessionStorage.setItem(PHOTO_KEY, JSON.stringify([...shownPhotos]));
+  } catch {
+    // 保存できなくてもメモリ上で数える
+  }
+  return true;
 }
 
 /* ---------- 一時キャッシュと回数 ---------- */
