@@ -11,6 +11,8 @@ const notoSansJp = Noto_Sans_JP({
 
 export const metadata: Metadata = {
   title: "ジブンマップ",
+  // iPhone のホーム画面に追加したとき、アプリのように全画面で開く
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "ジブンマップ" },
   description:
     "行きたい街の飲食店を、自分の意思で選ぶ人が集まる順に。一人客・常連・店の制約・SNS露出から付けた点数の高い順に、理由つきで並べます。",
 };
