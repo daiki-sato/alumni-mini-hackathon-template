@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   // iPhone のホーム画面に追加したとき、アプリのように全画面で開く
   appleWebApp: { capable: true, statusBarStyle: "default", title: "ジブンマップ" },
   description:
-    "行きたい街の飲食店を、あなたの幸福度が高くなりそうな順に。一人客・常連・店の制約・SNS露出から付けた点数の高い順に、理由つきで並べます。",
+    "行きたい街の飲食店を、あなたの幸福度が高くなりそうな順に。一人客・常連・店の制約・口コミの自然さなどから付けた点数の高い順に、理由つきで並べます。",
 };
 
 // 画面の端（ノッチ・ホームバー）まで描き、余白は env(safe-area-inset-*) で取る
