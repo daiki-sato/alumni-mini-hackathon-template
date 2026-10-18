@@ -27,7 +27,7 @@ import {
   wordHits,
   wordsForScene,
 } from "@/lib/jibunmap/score";
-import { foodQuery } from "@/lib/jibunmap/suggest";
+import { foodQuery, nearbyQueries } from "@/lib/jibunmap/suggest";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
 import { GoogleMapView } from "./GoogleMapView";
@@ -781,6 +781,8 @@ export function MapApp() {
                 onMinScore={(minScore) => update((p) => ({ ...p, minScore }))}
                 hidden={ranked.length - visible.length}
                 onShowAll={() => setShowAll(true)}
+                nearby={demo ? [] : nearbyQueries(urlQ.current)}
+                onSearchArea={demo || !boundsRef.current ? null : searchArea}
                 words={words}
                 hoverId={hoverId}
                 onOpenPrefs={openPrefs}
