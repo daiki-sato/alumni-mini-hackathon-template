@@ -1,27 +1,47 @@
 import Link from "next/link";
+import { BrandMark } from "./BrandMark";
 
-/** 地図ピン型のマーク */
+/**
+ * マークのタイル（角丸 22%）。ダークではヘッダーの地色と近くなるので、明るめの細い輪郭を付けて沈まないようにする
+ */
 export function LogoMark({ size = 28 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <path
-        d="M16 2.5c-5.8 0-10.5 4.6-10.5 10.4C5.5 20.6 16 29.5 16 29.5s10.5-8.9 10.5-16.6C26.5 7.1 21.8 2.5 16 2.5Z"
-        fill="var(--logo)"
-      />
-      <circle cx="16" cy="13" r="4.6" fill="var(--accent)" />
-    </svg>
+    <span
+      className="inline-flex shrink-0 overflow-hidden dark:shadow-[0_0_0_1px_rgba(255,255,255,0.12)]"
+      style={{ width: size, height: size, borderRadius: size * 0.22 }}
+      aria-hidden="true"
+    >
+      <BrandMark size={size} />
+    </span>
   );
 }
 
-export function Logo({ href = "/", compact = false }: { href?: string; compact?: boolean }) {
+/**
+ * ロゴ（マークのタイル＋「ジブンマップ」）。size はマークの一辺で、文字の行の高さもそろえる
+ * （アプリのヘッダーは 28、入口ページのヘッダーは 32）
+ */
+export function Logo({
+  href = "/",
+  compact = false,
+  size = 28,
+}: {
+  href?: string;
+  compact?: boolean;
+  size?: number;
+}) {
   return (
     <Link
       href={href}
       className="flex shrink-0 items-center gap-2 rounded-full pr-2 font-bold text-ink tracking-tight"
       aria-label="ジブンマップ トップへ"
     >
-      <LogoMark />
-      <span className={compact ? "hidden text-lg sm:inline" : "text-lg"}>ジブンマップ</span>
+      <LogoMark size={size} />
+      <span
+        className={compact ? "hidden text-lg sm:inline" : "text-lg"}
+        style={{ lineHeight: `${size}px` }}
+      >
+        ジブンマップ
+      </span>
     </Link>
   );
 }

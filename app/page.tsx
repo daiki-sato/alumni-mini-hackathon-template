@@ -233,7 +233,7 @@ export default function Home() {
     <div className="flex min-h-dvh flex-col bg-bg text-ink">
       <header className="sticky top-0 z-20 border-line border-b bg-surface/90 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 md:px-6">
-          <Logo />
+          <Logo size={32} />
           <nav className="flex items-center gap-1">
             <a
               href="#how"
