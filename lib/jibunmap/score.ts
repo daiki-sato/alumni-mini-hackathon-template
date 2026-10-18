@@ -85,7 +85,8 @@ export function reviewText(r: Review): string {
 }
 
 /** 語のすぐ後ろにこれが来たら、その語は「否定されている」とみなして数えない */
-export const NEGATIONS = ["ない", "にくい", "づらい", "無理", "できない", "ず"];
+// 「ず」だけだと「混まず快適」のような良い意味まで拾うので、「ずに」の形だけを見る
+export const NEGATIONS = ["ない", "にくい", "づらい", "無理", "できない", "ずに", "ません"];
 /** 否定を探す範囲（語の後ろの文字数）。文や読点をまたいでは探さない */
 export const NEGATION_WINDOW = 8;
 const CLAUSE_END = /[。！？!?\n、，,]/;
@@ -102,6 +103,8 @@ export const NOT_NEGATIONS = [
   "問題ない",
   "抵抗ない",
   "困らない",
+  "無理なく",
+  "無理なし",
   "ずいぶん",
   "わずか",
   "ずっと",
