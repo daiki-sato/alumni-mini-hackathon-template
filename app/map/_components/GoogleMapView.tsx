@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { boundsOf, type GLatLngBounds, importLibrary, MAP_ID } from "@/lib/jibunmap/google";
 import type { Bounds } from "@/lib/jibunmap/place";
 import { placeName } from "@/lib/jibunmap/place";
-import { band, type Scored, verdict } from "@/lib/jibunmap/score";
+import { type Scored, verdict } from "@/lib/jibunmap/score";
 
 /* Maps JavaScript API の最小限の型（npm の型パッケージは足さない） */
 type Listener = { remove(): void };
@@ -22,7 +22,9 @@ type MapsLib = { Map: new (el: HTMLElement, opts: Record<string, unknown>) => GM
 type CoreLib = { LatLngBounds: new () => GBounds };
 type Marker = {
   map: GMap | null;
-  zIndex?: number;
+  zIndex?: number | null;
+  title: string;
+  position: LatLngLiteral | null;
   addEventListener(ev: string, fn: () => void): void;
 };
 type MarkerLib = { AdvancedMarkerElement: new (opts: Record<string, unknown>) => Marker };
@@ -31,16 +33,22 @@ const TOKYO = { lat: 35.681, lng: 139.767 };
 /** 地図の読み込みがこれ以上かかったら、Google に届いていないとみなす */
 const LOAD_TIMEOUT_MS = 12_000;
 
-function markerContent(s: Scored, rank: number): HTMLElement {
-  const el = document.createElement("div");
+/** マーカーの中身を描き直す（要素は使い回す）。3軒は番号と点数、ほかは灰色の小さな点 */
+function paint(el: HTMLElement, s: Scored, rank: number): void {
   if (rank) {
     el.className = "jm-marker jm-marker-top";
     el.innerHTML = `<span class="jm-marker-no">${rank}</span><span class="jm-marker-score">${s.score}</span>`;
   } else {
-    el.className = `jm-marker jm-marker-dot jm-${band(s.score)}`;
+    el.className = "jm-marker jm-marker-dot";
+    el.innerHTML = "";
   }
-  return el;
 }
+
+function markerTitle(s: Scored, rank: number): string {
+  return `${rank ? `今日の3軒の${rank}番 ` : ""}${placeName(s.place)}（集まる度 ${s.score}・${verdict(s.score)}）`;
+}
+
+type Entry = { m: Marker; el: HTMLElement; rank: number };
 
 export function GoogleMapView({
   items,
@@ -69,8 +77,7 @@ export function GoogleMapView({
   const divRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<GMap | null>(null);
   const libs = useRef<{ core: CoreLib; marker: MarkerLib } | null>(null);
-  const markers = useRef<Marker[]>([]);
-  const contents = useRef(new Map<string, HTMLElement>());
+  const markers = useRef(new Map<string, Entry>());
   const programmatic = useRef(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
@@ -137,45 +144,65 @@ export function GoogleMapView({
     };
   }, [boundsRef]);
 
-  // マーカー（20件以下なので、結果か順位が変わったら作り直す）
+  // マーカーは差分で更新する（毎回作り直すと、条件を変えるたびにちらつくため）
   useEffect(() => {
     const map = mapRef.current;
     const L = libs.current;
     if (!ready || !map || !L) return;
-    for (const m of markers.current) m.map = null;
-    markers.current = [];
-    contents.current.clear();
+    const seen = new Set<string>();
     for (const s of items) {
       const loc = s.place.location;
       if (!loc) continue;
       const id = s.place.id;
       const rank = topIds.indexOf(id) + 1;
-      const content = markerContent(s, rank);
-      const m = new L.marker.AdvancedMarkerElement({
-        map,
-        position: { lat: loc.latitude, lng: loc.longitude },
-        title: `${rank ? `今日の3軒の${rank}番 ` : ""}${placeName(s.place)}（集まる度 ${s.score}・${verdict(s.score)}）`,
-        content,
-        gmpClickable: true,
-        zIndex: rank ? 100 - rank : 1,
-      });
-      m.addEventListener("gmp-click", () => cb.current.onSelect(id));
-      content.addEventListener("mouseenter", () => cb.current.onHover(id));
-      content.addEventListener("mouseleave", () => cb.current.onHover(null));
-      markers.current.push(m);
-      contents.current.set(id, content);
+      const position = { lat: loc.latitude, lng: loc.longitude };
+      seen.add(id);
+      let e = markers.current.get(id);
+      if (!e) {
+        const el = document.createElement("div");
+        const m = new L.marker.AdvancedMarkerElement({
+          map,
+          position,
+          content: el,
+          gmpClickable: true,
+        });
+        m.addEventListener("gmp-click", () => cb.current.onSelect(id));
+        el.addEventListener("mouseenter", () => cb.current.onHover(id));
+        el.addEventListener("mouseleave", () => cb.current.onHover(null));
+        e = { m, el, rank };
+        markers.current.set(id, e);
+      } else {
+        e.m.position = position;
+      }
+      e.rank = rank;
+      paint(e.el, s, rank);
+      e.m.title = markerTitle(s, rank);
     }
-    return () => {
-      for (const m of markers.current) m.map = null;
-    };
+    for (const [id, e] of markers.current) {
+      if (seen.has(id)) continue;
+      e.m.map = null;
+      markers.current.delete(id);
+    }
   }, [ready, items, topIds]);
 
-  // 選択とホバーは見た目のクラスだけ付け替える（作り直すと点滅するため）
-  // biome-ignore lint/correctness/useExhaustiveDependencies: items・topIds が変わってマーカーを作り直したあとも付け直す
+  // 地図を外すときだけ、マーカーをすべて消す
   useEffect(() => {
-    for (const [id, el] of contents.current) {
-      el.classList.toggle("is-sel", id === selId);
-      el.classList.toggle("is-hot", id === hoverId);
+    const all = markers.current;
+    return () => {
+      for (const e of all.values()) e.m.map = null;
+      all.clear();
+    };
+  }, []);
+
+  // 選択とホバーは見た目のクラスと重なり順だけ付け替える。選択中は最前面に出す
+  // biome-ignore lint/correctness/useExhaustiveDependencies: items・topIds で描き直したあとも付け直す
+  useEffect(() => {
+    for (const [id, e] of markers.current) {
+      const sel = id === selId;
+      const hot = id === hoverId;
+      e.el.classList.toggle("is-sel", sel);
+      e.el.classList.toggle("is-hot", hot);
+      e.m.zIndex = sel ? 1000 : hot ? 500 : e.rank ? 100 - e.rank : 1;
     }
   }, [selId, hoverId, items, topIds]);
 

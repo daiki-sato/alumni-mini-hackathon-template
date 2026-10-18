@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { placeName } from "@/lib/jibunmap/place";
-import { band, type Scored, verdict } from "@/lib/jibunmap/score";
+import { type Scored, verdict } from "@/lib/jibunmap/score";
 import { InfoIcon } from "./Icons";
 
-const BAND_FILL = { hi: "var(--hi)", mid: "var(--mid)", lo: "var(--lo)" } as const;
 const PAD = 56;
 
 /** 決まった並びの乱数（描画のたびに街並みが変わらないように） */
@@ -104,15 +103,9 @@ export function DemoMapView({
     return { roads, blocks };
   }, [size]);
 
-  // 今日の3軒を最後に描いて前に出す
-  const order = items
-    .slice()
-    .sort(
-      (a, b) =>
-        (topIds.includes(a.place.id) ? 2 : 0) +
-        (a.place.id === selId ? 1 : 0) -
-        ((topIds.includes(b.place.id) ? 2 : 0) + (b.place.id === selId ? 1 : 0)),
-    );
+  // 今日の3軒を後に描いて前に出す。選択中の店はいちばん最後（最前面）
+  const weight = (id: string) => (id === selId ? 4 : 0) + (topIds.includes(id) ? 2 : 0);
+  const order = items.slice().sort((a, b) => weight(a.place.id) - weight(b.place.id));
   const tip = items.find((s) => s.place.id === (hoverId ?? ""));
   const tipPt = tip ? pts.get(tip.place.id) : undefined;
 
@@ -187,8 +180,8 @@ export function DemoMapView({
                     height={25}
                     rx={12.5}
                     fill="var(--accent)"
-                    stroke={sel ? "var(--focus)" : "#fff"}
-                    strokeWidth={sel ? 3 : 2}
+                    stroke={sel ? "var(--brand)" : "#fff"}
+                    strokeWidth={sel ? 4 : 2}
                   />
                   <circle cx={-10} cy={-20.5} r={8.5} fill="var(--brand)" />
                   <text
@@ -217,10 +210,10 @@ export function DemoMapView({
                 <g className="pin-body">
                   <circle
                     className="pin-focus"
-                    r={7}
-                    fill={BAND_FILL[band(s.score)]}
-                    stroke={sel ? "var(--focus)" : "#fff"}
-                    strokeWidth={sel ? 3 : 2}
+                    r={sel ? 7 : 5}
+                    fill="var(--pin-dot)"
+                    stroke={sel ? "var(--brand)" : "#fff"}
+                    strokeWidth={sel ? 4 : 1.5}
                   />
                 </g>
               )}
