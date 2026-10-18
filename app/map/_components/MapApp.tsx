@@ -13,13 +13,21 @@ import {
 import { BROWSER_KEY, SearchLimitError, searchesLeft, searchPlaces } from "@/lib/jibunmap/google";
 import type { Bounds, Place } from "@/lib/jibunmap/place";
 import { MAX_QUERY_LENGTH, placeName } from "@/lib/jibunmap/place";
-import { rankByScore, type Scored, scorePlace } from "@/lib/jibunmap/score";
+import {
+  rankByScore,
+  type Scene,
+  type Scored,
+  scorePlaceInScene,
+  wordHits,
+  wordsForScene,
+} from "@/lib/jibunmap/score";
 import { foodQuery } from "@/lib/jibunmap/suggest";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
 import { GoogleMapView } from "./GoogleMapView";
-import { InfoIcon, ListIcon, MapIcon, SearchIcon } from "./Icons";
+import { InfoIcon, ListIcon, MapIcon, SearchIcon, TuneIcon } from "./Icons";
 import { ListPanel, PeekCard } from "./ListPanel";
+import { PrefsSheet } from "./PrefsSheet";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_PREFS, usePrefs } from "./usePrefs";
 
@@ -96,7 +104,13 @@ export function MapApp() {
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [fitKey, setFitKey] = useState(0);
   const [moved, setMoved] = useState(false);
-  const [condOpen, setCondOpen] = useState(false);
+  const [prefsOpen, setPrefsOpen] = useState(false);
+  /** 「並びが変わりました」などの短い知らせ */
+  const [toast, setToast] = useState<string | null>(null);
+  /** マイ条件を開いたときの並び（閉じたときに変わったかを見る） */
+  const rankAtOpen = useRef<string>("");
+  // ひとりで／友だちと。保存はしない（毎回「ひとりで」から）。URL の ?scene=friends には載せる
+  const [scene, setSceneState] = useState<Scene>("solo");
   // スマホ（768px 未満）は地図とリストを全画面で切り替える。検索前は地図、検索後はリスト
   const [view, setViewState] = useState<View>("map");
   const viewRef = useRef<View>("map");
@@ -126,16 +140,28 @@ export function MapApp() {
   selRef.current = selId;
   const placesRef = useRef(places);
   placesRef.current = places;
-  /** URL に一緒に載せる値（表示モードなど）。コールバックの依存にしないよう ref で持つ */
+  /** URL に一緒に載せる値（表示モード・シーン）。コールバックの依存にしないよう ref で持つ */
   const urlExtra = useRef<Record<string, string | undefined>>({ view: "map" });
+  const setScene = useCallback((v: Scene) => {
+    urlExtra.current = { ...urlExtra.current, scene: v === "friends" ? "friends" : undefined };
+    setSceneState(v);
+  }, []);
   const setView = useCallback((v: View) => {
     viewRef.current = v;
     urlExtra.current = { ...urlExtra.current, view: v };
     setViewState(v);
   }, []);
 
-  const words = useMemo(() => ({ good: prefs.good, ng: prefs.ng }), [prefs.good, prefs.ng]);
-  const scored = useMemo(() => places.map((p) => scorePlace(p, now, words)), [places, now, words]);
+  const allWords = useMemo(() => ({ good: prefs.good, ng: prefs.ng }), [prefs.good, prefs.ng]);
+  // 印を付けるのは、いまのシーンで数えている語だけ（友だちとでは「一人」などに色を付けない）
+  const words = useMemo(
+    () => wordsForScene(allWords, prefs.soloOnly, scene),
+    [allWords, prefs.soloOnly, scene],
+  );
+  const scored = useMemo(
+    () => places.map((p) => scorePlaceInScene(p, now, allWords, prefs.soloOnly, scene)),
+    [places, now, allWords, prefs.soloOnly, scene],
+  );
   // 点数の高い順（同点は Google の検索結果の順）
   const ranked = useMemo(() => rankByScore(scored), [scored]);
   const rankIds = useMemo(() => ranked.map((s) => s.place.id), [ranked]);
@@ -302,13 +328,14 @@ export function MapApp() {
     const sp = new URLSearchParams(window.location.search);
     const v = sp.get("view");
     if (v === "list" || v === "map") bootView.current = v;
+    if (sp.get("scene") === "friends") setScene("friends");
     const q = sp.get("q")?.trim().slice(0, MAX_QUERY_LENGTH);
     if (!q) return;
     // デモデータに当たらない語（例: 高円寺）なら、最初のサンプルの街のままにする
     if (demoRef.current && !demoSearch(q).length) return;
     setQuery(q);
     run(q, { fit: true, select: sp.get("place") ?? undefined });
-  }, [run]);
+  }, [run, setScene]);
 
   /** デモから Google に戻してもう一度探す */
   const retry = useCallback(() => {
@@ -439,6 +466,43 @@ export function MapApp() {
     [mobile, onSelect],
   );
   const peek = peekId ? ranked.find((s) => s.place.id === peekId) : undefined;
+
+  /** シーンを切り替える。再検索はしない（手元で並べ直すだけなので費用はかからない） */
+  const changeScene = (v: Scene) => {
+    if (v === scene) return;
+    setScene(v);
+    window.history.replaceState(null, "", urlFor(urlQ.current, selRef.current, urlExtra.current));
+  };
+
+  const openPrefs = () => {
+    rankAtOpen.current = rankIds.join();
+    setPrefsOpen(true);
+  };
+  const closePrefs = () => setPrefsOpen(false);
+
+  // マイ条件を閉じたとき、並びが変わっていたら1.5秒だけ知らせる
+  const prevPrefsOpen = useRef(false);
+  useEffect(() => {
+    const was = prevPrefsOpen.current;
+    prevPrefsOpen.current = prefsOpen;
+    if (!was || prefsOpen || !rankIds.length) return;
+    if (rankIds.join() !== rankAtOpen.current) setToast("並びが変わりました");
+  }, [prefsOpen, rankIds]);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 1500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  /** 友だちとモードで外した語のうち、この店の口コミに出ていたもの（詳細の1行に使う） */
+  const sceneNote = (() => {
+    if (scene !== "friends" || !selected) return null;
+    const off = prefs.good.filter((w) => prefs.soloOnly.includes(w));
+    const hit = wordHits(selected.place.reviews ?? [], off).map((h) => h.word);
+    return hit.length
+      ? `友だちとモードのため${hit.map((w) => `「${w}」`).join("")}は数えていません`
+      : null;
+  })();
   const mapView = mobile && view === "map";
 
   // スマホで詳細を全画面で開いている間は、後ろのページをスクロールさせない
@@ -458,22 +522,61 @@ export function MapApp() {
         view === "map" ? "max-md:h-dvh max-md:overflow-hidden" : "max-md:min-h-dvh"
       }`}
     >
-      <header className="sticky top-0 z-30 flex items-center gap-2 border-line border-b bg-surface pt-[max(0.5rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-2 pl-[max(0.75rem,env(safe-area-inset-left))] md:relative md:gap-3 md:px-4">
-        <Logo compact />
-        <SearchBox
-          demo={demo}
-          value={query}
-          onChange={setQuery}
-          onSearch={onSearch}
-          onPickPlace={onPickPlace}
-        />
-        <Link
-          href="/#how"
-          className="hidden h-10 shrink-0 items-center rounded-full px-3 font-medium text-sm hover:bg-surface-2 md:inline-flex"
-        >
-          しくみ
-        </Link>
-      </header>
+      {/* 上部バーとシーンの切り替えは、リストをスクロールしても上に残す */}
+      <div className="sticky top-0 z-30">
+        <header className="relative z-30 flex items-center gap-2 border-line border-b bg-surface pt-[max(0.5rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-2 pl-[max(0.75rem,env(safe-area-inset-left))] md:relative md:gap-3 md:px-4">
+          <Logo compact />
+          <SearchBox
+            demo={demo}
+            value={query}
+            onChange={setQuery}
+            onSearch={onSearch}
+            onPickPlace={onPickPlace}
+          />
+          <button
+            type="button"
+            onClick={openPrefs}
+            aria-label="マイ条件"
+            className="flex h-10 shrink-0 items-center gap-1.5 rounded-full px-2.5 font-medium text-sm hover:bg-surface-2 md:px-3"
+          >
+            <TuneIcon className="size-5" />
+            <span className="hidden sm:inline">マイ条件</span>
+          </button>
+          <Link
+            href="/#how"
+            className="hidden h-10 shrink-0 items-center rounded-full px-3 font-medium text-sm hover:bg-surface-2 lg:inline-flex"
+          >
+            しくみ
+          </Link>
+        </header>
+        <div className="flex items-center gap-2 border-line border-b bg-surface py-1.5 pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(0.75rem,env(safe-area-inset-left))] md:px-4">
+          {/* ひとりで／友だちと。押すとすぐ並び直す（再検索しない） */}
+          <fieldset className="flex rounded-full bg-surface-2 p-0.5">
+            <legend className="sr-only">誰と行くか</legend>
+            {(
+              [
+                ["solo", "ひとりで"],
+                ["friends", "友だちと"],
+              ] as const
+            ).map(([v, l]) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={scene === v}
+                onClick={() => changeScene(v)}
+                className={`h-10 rounded-full px-4 font-medium text-sm transition-colors md:h-8 ${
+                  scene === v ? "bg-brand text-on-brand shadow-e1" : "text-muted hover:text-ink"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </fieldset>
+          <p className="min-w-0 truncate text-muted text-xs">
+            {scene === "friends" ? "「ひとり」の印の語と、グループ向きの減点を外しています" : ""}
+          </p>
+        </div>
+      </div>
 
       {fellBack ? (
         <div
@@ -586,7 +689,7 @@ export function MapApp() {
                 key={selected.place.id}
                 s={selected}
                 rank={rank}
-                sceneNote={null}
+                sceneNote={sceneNote}
                 words={words}
                 demo={demo}
                 onBack={onBack}
@@ -598,13 +701,9 @@ export function MapApp() {
                 title={title}
                 status={status}
                 ranked={ranked}
-                prefs={prefs}
                 words={words}
                 hoverId={hoverId}
-                condOpen={condOpen}
-                onCondOpen={setCondOpen}
-                update={update}
-                onReset={onReset}
+                onOpenPrefs={openPrefs}
                 onSelect={onSelect}
                 onHover={setHoverId}
                 onPickExample={(q) => {
@@ -616,6 +715,24 @@ export function MapApp() {
           </div>
         </aside>
       </main>
+
+      <PrefsSheet
+        open={prefsOpen}
+        prefs={prefs}
+        update={update}
+        onReset={onReset}
+        onClose={closePrefs}
+      />
+      <div
+        aria-live="polite"
+        className="pointer-events-none fixed inset-x-0 top-[calc(7rem+env(safe-area-inset-top))] z-50 flex justify-center"
+      >
+        {toast && (
+          <p className="anim-pop-in rounded-full bg-brand px-4 py-2 font-medium text-on-brand text-sm shadow-e2">
+            {toast}
+          </p>
+        )}
+      </div>
 
       {/* スマホ: 地図とリストの切り替え。親指で届く画面下の中央に浮かせる */}
       {!selected && (

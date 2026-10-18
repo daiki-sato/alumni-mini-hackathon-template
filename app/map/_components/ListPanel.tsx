@@ -1,23 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import { DEMO_TOWNS } from "@/lib/jibunmap/demo";
 import { placeName } from "@/lib/jibunmap/place";
 import {
   band,
   constraintTags,
   keyQuote,
-  MAX_WORD_LENGTH,
-  MAX_WORDS,
   type Scored,
   verdict,
   type WordLists,
 } from "@/lib/jibunmap/score";
 import { LIVE_EXAMPLES } from "@/lib/jibunmap/suggest";
 import { Highlighted } from "./Highlighted";
-import { CloseIcon, InfoIcon, PlusIcon } from "./Icons";
+import { CloseIcon, InfoIcon } from "./Icons";
 import { PhotoCredit, PlacePhotoImg } from "./PlacePhotoImg";
-import type { Prefs } from "./usePrefs";
 
 export const BAND_TEXT = { hi: "text-hi", mid: "text-mid", lo: "text-lo" } as const;
 export const BAND_BG = { hi: "bg-hi-soft", mid: "bg-mid-soft", lo: "bg-lo-soft" } as const;
@@ -33,170 +29,6 @@ export function ScoreBadge({ v, size = "md" }: { v: number; size?: "md" | "lg" }
     >
       {v}
     </span>
-  );
-}
-
-/* ---------- 語のリスト ---------- */
-
-function WordEditor({
-  title,
-  hint,
-  kind,
-  words,
-  onChange,
-}: {
-  title: string;
-  hint: string;
-  kind: "good" | "ng";
-  words: string[];
-  onChange: (w: string[]) => void;
-}) {
-  const [draft, setDraft] = useState("");
-  const [msg, setMsg] = useState("");
-  const tone =
-    kind === "good" ? "bg-hi-soft text-hi border-hi/30" : "bg-lo-soft text-lo border-lo/30";
-
-  function add() {
-    const w = draft.trim();
-    if (!w) return;
-    if (words.includes(w)) return setMsg(`「${w}」はもう入っています`);
-    if (words.length >= MAX_WORDS) return setMsg(`${MAX_WORDS}語までです`);
-    onChange([...words, w]);
-    setDraft("");
-    setMsg("");
-  }
-
-  return (
-    <div>
-      <div className="flex items-baseline justify-between">
-        <h3 className="font-bold text-sm">{title}</h3>
-        <span className="text-muted text-xs">{hint}</span>
-      </div>
-      <ul className="mt-2 flex flex-wrap gap-1.5" aria-label={title}>
-        {words.map((w) => (
-          <li
-            key={w}
-            className={`flex items-center gap-0.5 rounded-full border py-0.5 pr-0.5 pl-2.5 text-[13px] ${tone}`}
-          >
-            {w}
-            <button
-              type="button"
-              aria-label={`「${w}」を${title}から外す`}
-              onClick={() => onChange(words.filter((x) => x !== w))}
-              className="-my-1.5 grid size-10 place-items-center rounded-full hover:bg-black/10 md:my-0 md:size-6 dark:hover:bg-white/10"
-            >
-              <CloseIcon className="size-3.5" />
-            </button>
-          </li>
-        ))}
-        {!words.length && <li className="text-muted text-xs">まだありません</li>}
-      </ul>
-      <form
-        className="mt-2 flex gap-1.5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          add();
-        }}
-      >
-        <input
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            setMsg("");
-          }}
-          maxLength={MAX_WORD_LENGTH}
-          aria-label={`${title}に足す語`}
-          placeholder="語を足す"
-          className="h-10 min-w-0 flex-1 rounded-full border border-line bg-surface px-3 text-base outline-none focus:border-[var(--focus)] md:h-9 md:text-sm"
-        />
-        <button
-          type="submit"
-          aria-label={`${title}に足す`}
-          className="grid size-10 shrink-0 place-items-center rounded-full bg-surface-2 text-ink hover:bg-surface-3 disabled:opacity-40 md:size-9"
-          disabled={!draft.trim()}
-        >
-          <PlusIcon className="size-5" />
-        </button>
-      </form>
-      {msg && (
-        <p className="mt-1 text-lo text-xs" role="status">
-          {msg}
-        </p>
-      )}
-    </div>
-  );
-}
-
-/* ---------- 条件カード ---------- */
-
-/** 畳んだときの1行の要約（例: うれしいワード 9語／NG 8語） */
-export function prefsSummary(prefs: Prefs): string {
-  return `うれしいワード ${prefs.good.length}語／NG ${prefs.ng.length}語`;
-}
-
-function ConditionCard({
-  prefs,
-  update,
-  onReset,
-  open,
-  onOpen,
-}: {
-  prefs: Prefs;
-  update: (fn: (p: Prefs) => Prefs) => void;
-  onReset: () => void;
-  open: boolean;
-  onOpen: (v: boolean) => void;
-}) {
-  return (
-    <section className="min-w-0 rounded-3xl bg-surface-2 p-4" aria-labelledby="cond-title">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h2 id="cond-title" className="font-bold">
-            あなたの条件
-          </h2>
-          {!open && <p className="mt-0.5 truncate text-muted text-xs">{prefsSummary(prefs)}</p>}
-        </div>
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls="cond-body"
-          onClick={() => onOpen(!open)}
-          className="h-10 shrink-0 rounded-full border border-line bg-surface px-3.5 font-medium text-[13px] hover:bg-surface-3 md:h-9"
-        >
-          {open ? "閉じる" : "条件を変える"}
-        </button>
-      </div>
-
-      {open && (
-        <div id="cond-body">
-          <div className="mt-4 grid gap-4">
-            <WordEditor
-              title="うれしいワード"
-              hint="口コミに出たら1語 +4（1人 +4・合計 +24 まで）"
-              kind="good"
-              words={prefs.good}
-              onChange={(good) => update((p) => ({ ...p, good }))}
-            />
-            <WordEditor
-              title="NGワード"
-              hint="口コミに出たら1語 −5（最大 −25）"
-              kind="ng"
-              words={prefs.ng}
-              onChange={(ng) => update((p) => ({ ...p, ng }))}
-            />
-          </div>
-          <div className="mt-3 flex justify-end">
-            <button
-              type="button"
-              onClick={onReset}
-              className="h-10 rounded-full px-3 text-muted text-xs hover:bg-surface-3 md:h-8"
-            >
-              初期値に戻す
-            </button>
-          </div>
-        </div>
-      )}
-    </section>
   );
 }
 
@@ -430,13 +262,9 @@ export function ListPanel({
   title,
   status,
   ranked,
-  prefs,
   words,
   hoverId,
-  condOpen,
-  onCondOpen,
-  update,
-  onReset,
+  onOpenPrefs,
   onSelect,
   onHover,
   onPickExample,
@@ -448,13 +276,10 @@ export function ListPanel({
   status: { kind: "idle" | "loading" | "ok" } | { kind: "error"; message: string };
   /** 点数の高い順に並べた全件 */
   ranked: Scored[];
-  prefs: Prefs;
   words: WordLists;
   hoverId: string | null;
-  condOpen: boolean;
-  onCondOpen: (v: boolean) => void;
-  update: (fn: (p: Prefs) => Prefs) => void;
-  onReset: () => void;
+  /** マイ条件の画面を開く */
+  onOpenPrefs: () => void;
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
   onPickExample: (q: string) => void;
@@ -497,11 +322,19 @@ export function ListPanel({
             </p>
           )}
         </div>
-        <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-accent-soft px-3 py-2 text-xs">
-          <InfoIcon className="mt-px size-4 shrink-0 text-mid" />
+        {/* 初めて来た人のために1行だけ。条件の編集は別の画面（マイ条件） */}
+        <p className="mt-2 flex items-center gap-1.5 rounded-xl bg-accent-soft px-3 py-1.5 text-xs">
+          <InfoIcon className="size-4 shrink-0 text-mid" />
           <span>
-            Google の順位（口コミの多さ・広告）ではなく、<b>あなたの条件</b>
-            で付けた点数の高い順に並べています。
+            あなたの条件で並べています（
+            <button
+              type="button"
+              onClick={onOpenPrefs}
+              className="-my-2 inline-flex min-h-10 items-center font-bold underline"
+            >
+              マイ条件
+            </button>
+            で変更）
           </span>
         </p>
       </header>
@@ -528,14 +361,6 @@ export function ListPanel({
           </div>
         </nav>
       )}
-
-      <ConditionCard
-        prefs={prefs}
-        update={update}
-        onReset={onReset}
-        open={condOpen}
-        onOpen={onCondOpen}
-      />
 
       <section
         className="min-w-0"
