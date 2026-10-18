@@ -13,10 +13,13 @@ import {
 import { genreByKey, genreChips, genreOf } from "@/lib/jibunmap/genre";
 import {
   BROWSER_KEY,
+  computeRoute,
   type LatLngLiteral,
+  RouteLimitError,
   SearchLimitError,
   searchesLeft,
   searchPlaces,
+  type TravelMode,
 } from "@/lib/jibunmap/google";
 import type { Bounds, Place } from "@/lib/jibunmap/place";
 import { MAX_QUERY_LENGTH, placeName } from "@/lib/jibunmap/place";
@@ -119,6 +122,20 @@ export function MapApp() {
   const [me, setMe] = useState<MyPos | null>(null);
   /** 現在地を取り直したら地図をそこへ動かすための番号 */
   const [meKey, setMeKey] = useState(0);
+  /** アプリ内に描いている経路（1本だけ。別の店を選んだら消す） */
+  const [route, setRoute] = useState<{
+    placeId: string;
+    name: string;
+    mode: TravelMode;
+    path: LatLngLiteral[];
+    minutes: number | null;
+  } | null>(null);
+  const [routeState, setRouteState] = useState<{
+    placeId: string;
+    mode: TravelMode;
+    status: "loading" | "error";
+    message?: string;
+  } | null>(null);
   /** マイ条件を開いたときの並び（閉じたときに変わったかを見る） */
   const rankAtOpen = useRef<string>("");
   // ひとりで／友だちと。保存はしない（毎回「ひとりで」から）。URL の ?scene=friends には載せる
@@ -283,6 +300,8 @@ export function MapApp() {
       setSelId(null);
       setMoved(false);
       setShowAll(false);
+      setRoute(null);
+      setRouteState(null);
       // 新しい検索ではジャンルの絞り込みを外す（起動時の URL のものと、エリアの再検索は残す）
       if (keepGenreOnce.current) keepGenreOnce.current = false;
       else if (!opts.bounds) setGenre(null);
@@ -429,6 +448,56 @@ export function MapApp() {
     });
   }, []);
 
+  /**
+   * 現在地から選んだ店までの経路をアプリの地図に描く（1回押す = 1リクエスト）。
+   * スマホでは地図に切り替えて、下に所要時間のバーを出す
+   */
+  const onRoute = useCallback(
+    async (mode: TravelMode) => {
+      const s = scored.find((x) => x.place.id === selRef.current);
+      const loc = s?.place.location;
+      if (!s || !loc) return;
+      const placeId = s.place.id;
+      setRouteState({ placeId, mode, status: "loading" });
+      const pos = await locate();
+      if (!pos) {
+        setRouteState({ placeId, mode, status: "error" });
+        return;
+      }
+      try {
+        const r = await computeRoute(
+          { lat: pos.lat, lng: pos.lng },
+          { lat: loc.latitude, lng: loc.longitude },
+          mode,
+        );
+        if (selRef.current !== placeId) return;
+        if (!r) {
+          setRouteState({ placeId, mode, status: "error" });
+          return;
+        }
+        setRoute({ placeId, name: placeName(s.place), mode, ...r });
+        setRouteState(null);
+        if (mobile) {
+          setView("map");
+          onBackRef.current();
+        }
+      } catch (e) {
+        console.warn(
+          "[ジブンマップ] 経路を取得できませんでした（Routes API の有効化・キーの制限を確認）",
+          e,
+        );
+        setRouteState({
+          placeId,
+          mode,
+          status: "error",
+          message: e instanceof RouteLimitError ? e.message : undefined,
+        });
+      }
+    },
+    [scored, locate, mobile, setView],
+  );
+  const onBackRef = useRef<() => void>(() => {});
+
   /** 現在地のまわりで探す。距離は点数にも画面にも使わない（「家の近さは関係ない」方針） */
   const onNear = useCallback(
     async (genre: string) => {
@@ -461,6 +530,9 @@ export function MapApp() {
 
   /** 店を選ぶ。一覧から開くときは履歴を1つ積む（ブラウザの戻るで一覧に戻れるように） */
   const onSelect = useCallback((id: string) => {
+    // 別の店を選んだら、前の経路は消す
+    setRoute((r) => (r && r.placeId !== id ? null : r));
+    setRouteState(null);
     if (selRef.current === id) return;
     if (selRef.current) {
       window.history.replaceState(null, "", urlFor(urlQ.current, id, urlExtra.current));
@@ -482,6 +554,7 @@ export function MapApp() {
     window.history.replaceState(null, "", urlFor(urlQ.current, null, urlExtra.current));
     setSelId(null);
   }, []);
+  onBackRef.current = onBack;
 
   // ブラウザの戻る・進む: URL の place に合わせて詳細を開け閉めする（ここでは履歴を積まない）
   useEffect(() => {
@@ -773,6 +846,7 @@ export function MapApp() {
               boundsRef={boundsRef}
               me={me}
               meKey={meKey}
+              route={route}
             />
           )}
           {!demo && (
@@ -800,7 +874,22 @@ export function MapApp() {
               <span className="text-muted text-xs tabular-nums">（残り{searchesLeft()}回）</span>
             </button>
           )}
-          {mapView && peek && !selected && (
+          {mapView && route && !selected && (
+            <div className="absolute inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 flex items-center gap-2 rounded-2xl border border-line bg-surface p-3 shadow-e2">
+              <p className="min-w-0 flex-1 truncate text-[15px]">
+                <b>{route.name}</b>まで {route.mode === "WALKING" ? "徒歩" : "電車"}
+                {route.minutes ? ` 約${route.minutes}分` : ""}
+              </p>
+              <button
+                type="button"
+                onClick={() => setRoute(null)}
+                className="h-10 shrink-0 rounded-full border border-line px-3.5 font-medium text-sm hover:bg-surface-2"
+              >
+                経路を消す
+              </button>
+            </div>
+          )}
+          {mapView && peek && !selected && !route && (
             <div className="absolute inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10">
               <PeekCard
                 s={peek}
@@ -833,6 +922,10 @@ export function MapApp() {
                 s={selected}
                 rank={rank}
                 sceneNote={sceneNote}
+                route={route?.placeId === selected.place.id ? route : null}
+                routeState={routeState?.placeId === selected.place.id ? routeState : null}
+                onRoute={onRoute}
+                onClearRoute={() => setRoute(null)}
                 words={words}
                 demo={demo}
                 onBack={onBack}
