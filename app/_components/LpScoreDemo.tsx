@@ -67,9 +67,10 @@ export function LpScoreDemo() {
           {s.score}
         </span>
         <span className="pb-1 text-muted text-sm" title={SCORE_HINT}>
-          / 100・{SCORE_NAME}・{verdict(s.score)}
+          / 100・{verdict(s.score)}
         </span>
       </div>
+      <p className="mt-1 text-[11px] text-muted">{SCORE_NAME}</p>
       <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
         <span
           className="block h-full rounded-full bg-[#F2A71B] transition-[width] duration-300"

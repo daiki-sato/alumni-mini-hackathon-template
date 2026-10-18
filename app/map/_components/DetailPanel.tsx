@@ -52,7 +52,8 @@ function Gauge({ v }: { v: number }) {
       </svg>
       <div className="absolute inset-x-0 bottom-0 text-center">
         <div className={`font-bold text-2xl tabular-nums leading-none ${BAND_TEXT[b]}`}>{v}</div>
-        <div className="text-[10px] text-muted">/ 100・{SCORE_NAME}</div>
+        {/* ゲージの中は「/ 100」だけ（幅 96px に名前まで入れると弧に重なる。名前はゲージの下に出す） */}
+        <div className="text-[10px] text-muted">/ 100</div>
       </div>
     </div>
   );
@@ -353,6 +354,7 @@ export function DetailPanel({
             <span className={`mt-0.5 font-bold text-xs ${BAND_TEXT[band(s.score)]}`}>
               {verdict(s.score)}
             </span>
+            <span className="text-[11px] text-muted">{SCORE_NAME}</span>
           </div>
         </div>
       </header>
