@@ -12,7 +12,7 @@ import {
 } from "@/lib/jibunmap/demo";
 import { BROWSER_KEY, SearchLimitError, searchesLeft, searchPlaces } from "@/lib/jibunmap/google";
 import type { Bounds, Place } from "@/lib/jibunmap/place";
-import { placeName } from "@/lib/jibunmap/place";
+import { MAX_QUERY_LENGTH, placeName } from "@/lib/jibunmap/place";
 import { computeTop, type Scored, scorePlace } from "@/lib/jibunmap/score";
 import { DemoMapView } from "./DemoMapView";
 import { DetailPanel } from "./DetailPanel";
@@ -61,7 +61,6 @@ export function MapApp() {
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [fitKey, setFitKey] = useState(0);
   const [moved, setMoved] = useState(false);
-  const [recent, setRecent] = useState<string[]>([]);
   const boundsRef = useRef<Bounds | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searching = useRef(false);
@@ -158,7 +157,7 @@ export function MapApp() {
       try {
         // 地図が出ているときは、表示中の範囲に寄せる（絞り込みではない）
         const { places: found } = await withTimeout(
-          searchPlaces(q, opts.bounds ?? boundsRef.current ?? undefined),
+          searchPlaces(q, opts.bounds ?? boundsRef.current ?? undefined, { area: !!opts.bounds }),
           SEARCH_TIMEOUT_MS,
         );
         if (my !== seq.current) return;
@@ -170,7 +169,7 @@ export function MapApp() {
             : { kind: "error", message: `「${label}」で店が見つかりませんでした。` },
         );
         if (opts.fit) setFitKey((k) => k + 1);
-        if (q.trim()) setRecent((r) => [q.trim(), ...r.filter((x) => x !== q.trim())].slice(0, 5));
+        if (opts.select && found.some((p) => p.id === opts.select)) setSelId(opts.select);
       } catch (e) {
         if (my !== seq.current) return;
         if (e instanceof SearchLimitError) {
@@ -196,6 +195,21 @@ export function MapApp() {
     },
     [fallBack],
   );
+
+  // /map?q=... で開いたら、その語で1回だけ探す（&place= があれば、結果の中にあれば詳細を開く）。
+  // StrictMode で effect が2回走っても二重に検索しないよう、ref で実行済みを覚える
+  const booted = useRef(false);
+  useEffect(() => {
+    if (booted.current) return;
+    booted.current = true;
+    const sp = new URLSearchParams(window.location.search);
+    const q = sp.get("q")?.trim().slice(0, MAX_QUERY_LENGTH);
+    if (!q) return;
+    // デモデータに当たらない語（例: 高円寺）なら、最初のサンプルの街のままにする
+    if (demoRef.current && !demoSearch(q).length) return;
+    setQuery(q);
+    run(q, { fit: true, select: sp.get("place") ?? undefined });
+  }, [run]);
 
   /** デモから Google に戻してもう一度探す */
   const retry = useCallback(() => {
@@ -254,7 +268,6 @@ export function MapApp() {
           onChange={setQuery}
           onSearch={onSearch}
           onPickPlace={onPickPlace}
-          recent={recent}
         />
         <Link
           href="/#how"
@@ -375,9 +388,9 @@ export function MapApp() {
                 onReset={onReset}
                 onSelect={onSelect}
                 onHover={setHoverId}
-                onPickTown={(name) => {
-                  setQuery(name);
-                  onSearch(name);
+                onPickExample={(q) => {
+                  setQuery(q);
+                  onSearch(q);
                 }}
               />
             )}

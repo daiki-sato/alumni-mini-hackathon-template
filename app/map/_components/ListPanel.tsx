@@ -14,6 +14,7 @@ import {
   MAX_WORDS,
   type Scored,
 } from "@/lib/jibunmap/score";
+import { LIVE_EXAMPLES } from "@/lib/jibunmap/suggest";
 import { CloseIcon, InfoIcon, PlusIcon } from "./Icons";
 import type { Prefs } from "./usePrefs";
 
@@ -364,7 +365,7 @@ export function ListPanel({
   onReset,
   onSelect,
   onHover,
-  onPickTown,
+  onPickExample,
 }: {
   demo: boolean;
   busy: boolean;
@@ -378,7 +379,7 @@ export function ListPanel({
   onReset: () => void;
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
-  onPickTown: (name: string) => void;
+  onPickExample: (q: string) => void;
 }) {
   return (
     <div className="anim-panel-in grid min-w-0 grid-cols-1 gap-5 px-4 pt-3 pb-8 md:pt-4">
@@ -417,7 +418,7 @@ export function ListPanel({
                 key={t.id}
                 type="button"
                 aria-pressed={title === t.name}
-                onClick={() => onPickTown(t.name)}
+                onClick={() => onPickExample(t.name)}
                 className={`h-8 shrink-0 rounded-full border px-3 text-[13px] ${
                   title === t.name
                     ? "border-accent bg-accent-soft font-bold"
@@ -460,11 +461,28 @@ export function ListPanel({
               ))}
             </ol>
           ) : (
-            <p className="rounded-2xl bg-surface-2 p-4 text-muted text-sm">
-              {title
-                ? "この条件に合う店がありません。別の街で探してください。"
-                : "検索すると、ここに3軒だけ出ます。"}
-            </p>
+            <div className="rounded-2xl bg-surface-2 p-4 text-sm">
+              {title ? (
+                <p className="text-muted">この条件に合う店がありません。別の街で探してください。</p>
+              ) : (
+                <>
+                  <p className="text-muted">検索すると、ここに3軒だけ出ます。例から試せます。</p>
+                  <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="検索の例">
+                    {LIVE_EXAMPLES.map((q) => (
+                      <li key={q}>
+                        <button
+                          type="button"
+                          onClick={() => onPickExample(q)}
+                          className="h-9 rounded-full border border-line bg-surface px-3.5 text-[13px] hover:bg-surface-3"
+                        >
+                          {q}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
           )}
         </div>
       </section>

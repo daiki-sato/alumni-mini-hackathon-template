@@ -218,6 +218,10 @@ export function searchesLeft(): number {
   return Math.max(0, SEARCH_LIMIT - readCount());
 }
 
+/**
+ * キャッシュのキー。ふつうの検索は語だけで決める（地図の範囲が少し違うだけで取り直して課金しないため）。
+ * 「このエリアで再検索」のときだけ範囲を含める
+ */
 function cacheKey(query: string, bounds?: Bounds): string {
   const b = bounds
     ? [bounds.low.latitude, bounds.low.longitude, bounds.high.latitude, bounds.high.longitude]
@@ -261,10 +265,17 @@ export class SearchLimitError extends Error {}
 
 export type SearchResult = { places: Place[]; cached: boolean };
 
-/** Text Search を1回だけ呼ぶ（ページ送りはしない） */
-export async function searchPlaces(query: string, bounds?: Bounds): Promise<SearchResult> {
+/**
+ * Text Search を1回だけ呼ぶ（ページ送りはしない）。
+ * bounds は寄せる範囲（locationBias）。area が true のときだけ、範囲もキャッシュのキーに入れる
+ */
+export async function searchPlaces(
+  query: string,
+  bounds?: Bounds,
+  opts: { area?: boolean } = {},
+): Promise<SearchResult> {
   const q = query.trim() || "飲食店";
-  const key = cacheKey(q, bounds);
+  const key = cacheKey(q, opts.area ? bounds : undefined);
   const hit = readCache(key);
   if (hit) return { places: hit, cached: true };
   if (readCount() >= SEARCH_LIMIT) {

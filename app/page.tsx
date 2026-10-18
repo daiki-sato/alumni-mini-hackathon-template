@@ -11,13 +11,16 @@ import {
 } from "@/lib/jibunmap/score";
 import { Logo, LogoMark } from "./_components/Logo";
 
+/** 入口のボタンと発表のリンクは、この URL（開いた瞬間に1回だけ検索する） */
+const TRY_HREF = `/map?q=${encodeURIComponent("高円寺 ラーメン")}`;
+
 function OpenMap({ className = "" }: { className?: string }) {
   return (
     <Link
-      href="/map"
+      href={TRY_HREF}
       className={`inline-flex h-12 items-center justify-center rounded-full bg-brand px-7 font-bold text-on-brand shadow-e1 transition hover:-translate-y-px hover:shadow-e2 dark:bg-accent dark:text-on-accent ${className}`}
     >
-      マップを開く
+      「高円寺 ラーメン」で試す
     </Link>
   );
 }
