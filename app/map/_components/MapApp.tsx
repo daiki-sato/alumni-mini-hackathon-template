@@ -71,6 +71,8 @@ type View = "list" | "map";
 type MyPos = { lat: number; lng: number; acc: number };
 
 const MOBILE_QUERY = "(max-width: 767px)";
+/** 点数の説明の吹き出しを閉じたかの記録 */
+const TIP_KEY = "jibunmap-tip-score";
 
 /** スマホの幅か（サーバーと最初の描画では false。hydration のずれを防ぐ） */
 function useIsMobile(): boolean {
@@ -126,6 +128,23 @@ export function MapApp() {
   const [prefsOpen, setPrefsOpen] = useState(false);
   /** 上の帯の「◯点以上」から開く、最低点のスライダー */
   const [minOpen, setMinOpen] = useState(false);
+  /** 点数の説明の吹き出し（初回だけ。閉じたら二度と出さない） */
+  const [scoreTip, setScoreTip] = useState(false);
+  useEffect(() => {
+    try {
+      setScoreTip(localStorage.getItem(TIP_KEY) !== "1");
+    } catch {
+      setScoreTip(false);
+    }
+  }, []);
+  const closeScoreTip = useCallback(() => {
+    setScoreTip(false);
+    try {
+      localStorage.setItem(TIP_KEY, "1");
+    } catch {
+      // 保存できなくても、このページでは閉じたままにする
+    }
+  }, []);
   /** 初めて使う人だけに出す、3ステップの設定 */
   const [onboardOpen, setOnboardOpen] = useState(false);
   useEffect(() => {
@@ -1008,43 +1027,48 @@ export function MapApp() {
                 onBack={onBack}
               />
             ) : (
-              <ListPanel
-                demo={demo}
-                busy={busy}
-                title={title}
-                status={status}
-                ranked={visible}
-                minScore={prefs.minScore}
-                onMinScore={(minScore) => update((p) => ({ ...p, minScore }))}
-                hidden={ranked.length - visible.length}
-                hiddenWhy={[
-                  genre ? "ほかのジャンル" : "",
-                  !showAll && inGenre.length > visible.length ? `${prefs.minScore}点未満` : "",
-                ]
-                  .filter(Boolean)
-                  .join("・")}
-                onClearGenre={genre ? () => changeGenre(null) : null}
-                onSolo={scene === "friends" ? () => changeScene("solo") : null}
-                onShowAll={() => {
-                  setShowAll(true);
-                  changeGenre(null);
-                }}
-                genreLabel={genreLabel}
-                genreEmpty={!!genre && inGenre.length === 0}
-                onGenreSearch={() => searchGenre()}
-                nearby={demo ? [] : nearbyQueries(urlQ.current)}
-                onSearchArea={demo || !boundsRef.current ? null : searchArea}
-                words={words}
-                hoverId={hoverId}
-                onOpenPrefs={openPrefs}
-                onSelect={onSelect}
-                onHover={setHoverId}
-                onNear={demo ? null : () => onNear("飲食店")}
-                onPickExample={(q) => {
-                  setQuery(q);
-                  onSearch(q);
-                }}
-              />
+              // 地図から戻ったときだけ短く出す（作り直しても状態は親にあるので消えない）
+              <div key={view} className={mobile ? "anim-view-in" : ""}>
+                <ListPanel
+                  demo={demo}
+                  busy={busy}
+                  title={title}
+                  status={status}
+                  ranked={visible}
+                  minScore={prefs.minScore}
+                  onMinScore={(minScore) => update((p) => ({ ...p, minScore }))}
+                  hidden={ranked.length - visible.length}
+                  hiddenWhy={[
+                    genre ? "ほかのジャンル" : "",
+                    !showAll && inGenre.length > visible.length ? `${prefs.minScore}点未満` : "",
+                  ]
+                    .filter(Boolean)
+                    .join("・")}
+                  scoreTip={scoreTip && !onboardOpen}
+                  onCloseScoreTip={closeScoreTip}
+                  onClearGenre={genre ? () => changeGenre(null) : null}
+                  onSolo={scene === "friends" ? () => changeScene("solo") : null}
+                  onShowAll={() => {
+                    setShowAll(true);
+                    changeGenre(null);
+                  }}
+                  genreLabel={genreLabel}
+                  genreEmpty={!!genre && inGenre.length === 0}
+                  onGenreSearch={() => searchGenre()}
+                  nearby={demo ? [] : nearbyQueries(urlQ.current)}
+                  onSearchArea={demo || !boundsRef.current ? null : searchArea}
+                  words={words}
+                  hoverId={hoverId}
+                  onOpenPrefs={openPrefs}
+                  onSelect={onSelect}
+                  onHover={setHoverId}
+                  onNear={demo ? null : () => onNear("飲食店")}
+                  onPickExample={(q) => {
+                    setQuery(q);
+                    onSearch(q);
+                  }}
+                />
+              </div>
             )}
           </div>
         </aside>

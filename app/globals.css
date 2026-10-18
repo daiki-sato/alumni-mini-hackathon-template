@@ -138,16 +138,30 @@ body {
   display: none;
 }
 
+/* 出だしを透明にしない（白い画面に見えないよう、薄い状態から始める） */
 @keyframes panel-in {
   from {
-    opacity: 0;
-    transform: translateY(6px);
+    opacity: 0.5;
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
+/* 地図とリストの切り替え。150ms 以内 */
+@keyframes view-in {
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anim-view-in {
+  animation: view-in 120ms ease-out backwards;
+}
+
 /* 終わったら transform を残さない（backwards）。残ると中の position: fixed がパネル基準になる */
 .anim-panel-in {
   animation: panel-in 150ms cubic-bezier(0.2, 0, 0, 1) backwards;
