@@ -417,7 +417,8 @@ export function ListPanel({
   onPickExample,
 }: {
   demo: boolean;
-  busy: boolean;
+  /** 前の検索が終わったら探す語 */
+  busy: string | null;
   title: string | null;
   status: { kind: "idle" | "loading" | "ok" } | { kind: "error"; message: string };
   total: number;
@@ -469,7 +470,7 @@ export function ListPanel({
         <div aria-live="polite">
           {busy && (
             <p className="mt-2 rounded-xl bg-surface-2 px-3 py-2 text-xs">
-              いま検索しています。終わってから、もう一度お試しください。
+              前の検索が終わったら「{busy}」を探します。
             </p>
           )}
         </div>

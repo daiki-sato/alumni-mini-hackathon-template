@@ -65,8 +65,8 @@ export function MapApp() {
   const [places, setPlaces] = useState<Place[]>(() => (HAS_KEY ? [] : demoSearch(FIRST_DEMO_TOWN)));
   const [now, setNow] = useState(DEMO_NOW);
   const [status, setStatus] = useState<Status>({ kind: HAS_KEY ? "idle" : "ok" });
-  /** 検索中に次の検索が来たことを知らせる */
-  const [busy, setBusy] = useState(false);
+  /** 検索中に来た次の検索の語（前の検索が終わったら自動で探す。表示にも使う） */
+  const [busy, setBusy] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [fitKey, setFitKey] = useState(0);
@@ -76,6 +76,10 @@ export function MapApp() {
   const boundsRef = useRef<Bounds | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searching = useRef(false);
+  type RunOpts = { bounds?: Bounds; fit: boolean; select?: string };
+  /** 検索中に来た、いちばん新しい検索（古い保留は上書きして捨てる） */
+  const pending = useRef<{ q: string; opts: RunOpts } | null>(null);
+  const runRef = useRef<(q: string, opts: RunOpts) => void>(() => {});
   /** いちばん新しい検索の番号。古い検索の結果やエラーは捨てる */
   const seq = useRef(0);
   /** 最後に Google で探した語（「もう一度試す」用） */
@@ -116,7 +120,9 @@ export function MapApp() {
       );
       seq.current++;
       searching.current = false;
-      setBusy(false);
+      // 保留していた検索も Google に聞くものなので、デモに切り替えたら捨てる
+      pending.current = null;
+      setBusy(null);
       setDemo(true);
       setFellBack(true);
       setSelId(null);
@@ -150,12 +156,13 @@ export function MapApp() {
   }, [fallBack]);
 
   const run = useCallback(
-    async (q: string, opts: { bounds?: Bounds; fit: boolean; select?: string }) => {
+    async (q: string, opts: RunOpts) => {
       if (searching.current) {
-        setBusy(true);
+        pending.current = { q, opts };
+        setBusy(q.trim() || "このエリア");
         return;
       }
-      setBusy(false);
+      setBusy(null);
       const label = q.trim() || "このエリア";
       setSelId(null);
       setOthersOpen(false);
@@ -225,12 +232,16 @@ export function MapApp() {
         // ただし新しい検索がもう始まっていたら、そちらの印は消さない
         if (my === seq.current) {
           searching.current = false;
-          setBusy(false);
+          setBusy(null);
+          const next = pending.current;
+          pending.current = null;
+          if (next) runRef.current(next.q, next.opts);
         }
       }
     },
     [fallBack],
   );
+  runRef.current = run;
 
   // /map?q=... で開いたら、その語で1回だけ探す（&place= があれば、結果の中にあれば詳細を開く）。
   // StrictMode で effect が2回走っても二重に検索しないよう、ref で実行済みを覚える
