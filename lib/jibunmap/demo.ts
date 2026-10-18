@@ -380,10 +380,3 @@ export function demoSearchBounds(b: Bounds): Place[] {
     );
   });
 }
-
-/** 検索欄の候補（デモの街） */
-export function demoTownSuggestions(q: string): DemoTown[] {
-  const ts = tokens(q).filter((t) => !GENRE_ALIASES[t]);
-  if (!ts.length) return [];
-  return DEMO_TOWNS.filter((t) => ts.every((x) => townText(t).includes(x)));
-}

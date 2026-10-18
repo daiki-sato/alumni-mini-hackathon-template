@@ -1,22 +1,29 @@
 import Link from "next/link";
 import {
+  BASE_POINT,
   DEFAULT_GOOD_WORDS,
   DEFAULT_NG_WORDS,
   GOOD_MAX,
+  GOOD_PER_AUTHOR,
   GOOD_POINT,
   NG_MAX,
   NG_POINT,
   RECENT_DAYS,
+  REPEAT_WEIGHT,
+  verdict,
 } from "@/lib/jibunmap/score";
 import { Logo, LogoMark } from "./_components/Logo";
+
+/** 入口のボタンと発表のリンクは、この URL（開いた瞬間に1回だけ検索する） */
+const TRY_HREF = `/map?q=${encodeURIComponent("高円寺 ラーメン")}`;
 
 function OpenMap({ className = "" }: { className?: string }) {
   return (
     <Link
-      href="/map"
+      href={TRY_HREF}
       className={`inline-flex h-12 items-center justify-center rounded-full bg-brand px-7 font-bold text-on-brand shadow-e1 transition hover:-translate-y-px hover:shadow-e2 dark:bg-accent dark:text-on-accent ${className}`}
     >
-      マップを開く
+      「高円寺 ラーメン」で試す
     </Link>
   );
 }
@@ -24,9 +31,9 @@ function OpenMap({ className = "" }: { className?: string }) {
 /** アプリ画面のプレビュー（画像は使わず CSS と SVG で描く） */
 function Preview() {
   const cards = [
-    { n: "中華そば 小石", s: 82, w: ["一人", "カウンター", "常連"] },
-    { n: "麺処 たけ", s: 78, w: ["食券", "通って"] },
-    { n: "定食 まるやま", s: 74, w: ["一人", "常連"] },
+    { n: "中華そば 小石", s: 84, w: ["一人", "カウンター", "常連"] },
+    { n: "麺処 たけ", s: 84, w: ["食券", "通って"] },
+    { n: "定食 まるやま", s: 80, w: ["一人", "常連"] },
   ];
   return (
     <div
@@ -37,16 +44,6 @@ function Preview() {
         <LogoMark size={20} />
         <div className="h-7 flex-1 rounded-full bg-surface-2 px-3 text-[11px] text-muted leading-7">
           学生街 ラーメン
-        </div>
-        <div className="hidden gap-1 sm:flex">
-          {["すべて", "ラーメン", "喫茶"].map((g, i) => (
-            <span
-              key={g}
-              className={`rounded-full border px-2 py-0.5 text-[10px] ${i === 1 ? "border-brand bg-brand text-on-brand" : "border-line"}`}
-            >
-              {g}
-            </span>
-          ))}
         </div>
       </div>
       <div className="grid grid-cols-[1fr] sm:grid-cols-[46%_1fr]">
@@ -188,11 +185,16 @@ const FEATURES = [
 ];
 
 const FORMULA: { l: string; v: string; tone: "base" | "plus" | "minus" }[] = [
-  { l: "基本", v: "40", tone: "base" },
+  { l: "基本", v: String(BASE_POINT), tone: "base" },
   { l: "少数派（口コミ30〜300件がちょうどいい。1000件以上は減点）", v: "+12 〜 −15", tone: "plus" },
   {
     l: `うれしいワードが口コミに出る（1語）`,
     v: `+${GOOD_POINT}（最大 +${GOOD_MAX}）`,
+    tone: "plus",
+  },
+  {
+    l: `同じ語が2件以上の口コミに出たら、その語の点は ${REPEAT_WEIGHT} 倍（上限は同じ。同じ人からは +${GOOD_PER_AUTHOR} まで）`,
+    v: `×${REPEAT_WEIGHT}`,
     tone: "plus",
   },
   { l: "店の制約（現金のみ・予約不可。Google の店舗情報）", v: "各 +5", tone: "plus" },
@@ -336,6 +338,9 @@ export default function Home() {
                 ))}
               </ul>
               <p className="mt-4 text-muted text-xs leading-relaxed">
+                点数の横には、ひと言の評価を出します（80以上「{verdict(80)}」・60以上「{verdict(60)}
+                」・35以上「
+                {verdict(35)}」・それ未満「{verdict(0)}」）。
                 今日の3軒は、選んだ判断軸（最大3つ）の合計が高い順。同点なら集まる度の高い順です。
               </p>
             </div>

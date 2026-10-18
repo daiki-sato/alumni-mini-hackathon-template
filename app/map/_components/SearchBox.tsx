@@ -1,22 +1,32 @@
 "use client";
 
 import { useId, useMemo, useRef, useState } from "react";
-import { DEMO_PLACES, type DemoTown, demoSearch, demoTownSuggestions } from "@/lib/jibunmap/demo";
+import { DEMO_PLACES, DEMO_TOWNS, demoSearch } from "@/lib/jibunmap/demo";
 import { MAX_QUERY_LENGTH, placeName } from "@/lib/jibunmap/place";
-import { CityIcon, CloseIcon, PinIcon, SearchIcon } from "./Icons";
+import {
+  DEMO_EXAMPLES,
+  DEMO_GENRE_NAMES,
+  GENRE_WORDS,
+  LIVE_EXAMPLES,
+  suggestQueries,
+  type Town,
+} from "@/lib/jibunmap/suggest";
+import { CloseIcon, PinIcon, SearchIcon } from "./Icons";
 
 type Item =
   | { kind: "query"; q: string }
-  | { kind: "example"; q: string }
-  | { kind: "town"; town: DemoTown }
+  | { kind: "suggest"; q: string }
   | { kind: "place"; id: string; name: string; sub: string };
 
-const LIVE_EXAMPLES = ["高円寺 ラーメン", "神保町 喫茶", "門前仲町 定食", "蒲田 餃子"];
-const DEMO_EXAMPLES = ["学生街 ラーメン", "灯町", "オフィス 定食", "桜ヶ丘 喫茶"];
+const DEMO_SUGGEST_TOWNS: Town[] = DEMO_TOWNS.map((t) => ({
+  name: t.name,
+  readings: [t.label, ...t.keywords],
+}));
+const DEMO_GENRES = GENRE_WORDS.filter((g) => DEMO_GENRE_NAMES.includes(g.name));
 
 /**
- * 検索欄。入力のたびには検索しない（費用のため）。Enter か候補を選んだときだけ onSearch を呼ぶ。
- * デモのときは、手元のデモデータから街と店の候補を出す（通信なし）
+ * 検索欄。入力のたびには検索しない（費用のため）。Enter・検索ボタン・候補を選んだときだけ onSearch を呼ぶ。
+ * 候補は手元の街とジャンルのリストから作る（通信なし）。検索した語の履歴は残さない
  */
 export function SearchBox({
   demo,
@@ -24,14 +34,12 @@ export function SearchBox({
   onChange,
   onSearch,
   onPickPlace,
-  recent,
 }: {
   demo: boolean;
   value: string;
   onChange: (v: string) => void;
   onSearch: (q: string) => void;
   onPickPlace: (id: string, q: string) => void;
-  recent: string[];
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -41,14 +49,16 @@ export function SearchBox({
   const items = useMemo<Item[]>(() => {
     const q = value.trim();
     if (!q) {
-      const ex = demo ? DEMO_EXAMPLES : LIVE_EXAMPLES;
-      const rs = recent.filter((r) => !ex.includes(r)).slice(0, 3);
-      return [...rs, ...ex].map((x) => ({ kind: "example" as const, q: x }));
+      return (demo ? DEMO_EXAMPLES : LIVE_EXAMPLES).map((x) => ({
+        kind: "suggest" as const,
+        q: x,
+      }));
     }
     const out: Item[] = [{ kind: "query", q }];
+    const sug = demo ? suggestQueries(q, DEMO_SUGGEST_TOWNS, DEMO_GENRES) : suggestQueries(q);
+    for (const x of sug) out.push({ kind: "suggest", q: x });
     if (demo) {
-      for (const town of demoTownSuggestions(q)) out.push({ kind: "town", town });
-      const hits = demoSearch(q).slice(0, 5);
+      const hits = demoSearch(q).slice(0, 3);
       for (const p of hits) {
         out.push({
           kind: "place",
@@ -59,13 +69,13 @@ export function SearchBox({
       }
       // 店名の一部だけでも当たるように（例:「汽笛」）
       if (!hits.length) {
-        for (const p of DEMO_PLACES.filter((x) => placeName(x).includes(q)).slice(0, 5)) {
+        for (const p of DEMO_PLACES.filter((x) => placeName(x).includes(q)).slice(0, 3)) {
           out.push({ kind: "place", id: p.id, name: placeName(p), sub: p.formattedAddress ?? "" });
         }
       }
     }
     return out;
-  }, [value, demo, recent]);
+  }, [value, demo]);
 
   function choose(it: Item) {
     setOpen(false);
@@ -74,9 +84,14 @@ export function SearchBox({
       onPickPlace(it.id, it.name);
       return;
     }
-    const q = it.kind === "town" ? it.town.name : it.q;
-    onChange(q);
-    onSearch(q);
+    onChange(it.q);
+    onSearch(it.q);
+  }
+
+  function submit() {
+    const q = value.trim();
+    if (!q) return;
+    choose({ kind: "query", q });
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -93,22 +108,32 @@ export function SearchBox({
       e.preventDefault();
       const it = open ? items[active] : undefined;
       if (it) choose(it);
-      else if (value.trim()) choose({ kind: "query", q: value.trim() });
+      else submit();
     } else if (e.key === "Escape") {
       setOpen(false);
     }
   }
 
   const showList = open && items.length > 0;
+  const empty = !value.trim();
 
   return (
     <div className="relative min-w-0 flex-1 md:max-w-xl">
       <div
-        className={`flex h-11 items-center gap-2 rounded-full bg-surface-2 pr-1 pl-4 transition-shadow ${
+        className={`flex h-11 items-center gap-1 rounded-full bg-surface-2 pr-1 pl-1 transition-shadow ${
           showList ? "rounded-b-none rounded-t-3xl bg-surface shadow-e2" : "hover:shadow-e1"
         }`}
       >
-        <SearchIcon className="size-5 shrink-0 text-muted" />
+        <button
+          type="button"
+          aria-label="検索する"
+          disabled={empty}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={submit}
+          className="grid size-9 shrink-0 place-items-center rounded-full text-muted enabled:hover:bg-surface-3 enabled:hover:text-ink disabled:cursor-default"
+        >
+          <SearchIcon className="size-5" />
+        </button>
         <input
           ref={inputRef}
           type="search"
@@ -152,6 +177,15 @@ export function SearchBox({
             <CloseIcon />
           </button>
         )}
+        <button
+          type="button"
+          disabled={empty}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={submit}
+          className="h-9 shrink-0 rounded-full bg-brand px-4 font-bold text-on-brand text-sm transition-opacity enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          検索
+        </button>
       </div>
       {showList && (
         <div
@@ -160,31 +194,22 @@ export function SearchBox({
           aria-label="検索の候補"
           className="anim-pop-in absolute inset-x-0 top-full z-40 overflow-hidden rounded-b-3xl border-line border-t bg-surface pb-2 shadow-e2"
         >
-          {!value.trim() && (
+          {empty && (
             <p className="px-4 pt-3 pb-1 font-medium text-muted text-xs">
-              {demo ? "デモの街で試す" : "検索の例"}
+              {demo ? "サンプルの街で試す" : "検索の例"}
             </p>
           )}
           {items.map((it, i) => {
             const selected = i === active;
             const icon =
-              it.kind === "town" ? (
-                <CityIcon className="size-5" />
-              ) : it.kind === "place" ? (
+              it.kind === "place" ? (
                 <PinIcon className="size-5" />
               ) : (
                 <SearchIcon className="size-5" />
               );
             const label =
-              it.kind === "query"
-                ? `「${it.q}」で探す`
-                : it.kind === "example"
-                  ? it.q
-                  : it.kind === "town"
-                    ? it.town.name
-                    : it.name;
-            const sub =
-              it.kind === "town" ? `街・${it.town.label}` : it.kind === "place" ? it.sub : "";
+              it.kind === "query" ? `「${it.q}」で探す` : it.kind === "suggest" ? it.q : it.name;
+            const sub = it.kind === "place" ? it.sub : "";
             return (
               <div
                 key={`${it.kind}-${label}`}

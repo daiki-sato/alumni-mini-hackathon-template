@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { placeName } from "@/lib/jibunmap/place";
-import { band, type Scored } from "@/lib/jibunmap/score";
+import { type Scored, verdict } from "@/lib/jibunmap/score";
 import { InfoIcon } from "./Icons";
 
-const BAND_FILL = { hi: "var(--hi)", mid: "var(--mid)", lo: "var(--lo)" } as const;
 const PAD = 56;
 
 /** 決まった並びの乱数（描画のたびに街並みが変わらないように） */
@@ -22,6 +21,7 @@ function seeded(seed: number) {
  * 背景の道や建物は飾りで、実際の地形ではない
  */
 export function DemoMapView({
+  note,
   items,
   topIds,
   selId,
@@ -29,6 +29,7 @@ export function DemoMapView({
   onSelect,
   onHover,
 }: {
+  note: string;
   items: Scored[];
   topIds: string[];
   selId: string | null;
@@ -102,15 +103,9 @@ export function DemoMapView({
     return { roads, blocks };
   }, [size]);
 
-  // 今日の3軒を最後に描いて前に出す
-  const order = items
-    .slice()
-    .sort(
-      (a, b) =>
-        (topIds.includes(a.place.id) ? 2 : 0) +
-        (a.place.id === selId ? 1 : 0) -
-        ((topIds.includes(b.place.id) ? 2 : 0) + (b.place.id === selId ? 1 : 0)),
-    );
+  // 今日の3軒を後に描いて前に出す。選択中の店はいちばん最後（最前面）
+  const weight = (id: string) => (id === selId ? 4 : 0) + (topIds.includes(id) ? 2 : 0);
+  const order = items.slice().sort((a, b) => weight(a.place.id) - weight(b.place.id));
   const tip = items.find((s) => s.place.id === (hoverId ?? ""));
   const tipPt = tip ? pts.get(tip.place.id) : undefined;
 
@@ -149,7 +144,7 @@ export function DemoMapView({
           const id = s.place.id;
           const rank = topIds.indexOf(id) + 1;
           const sel = id === selId;
-          const label = `${placeName(s.place)}、集まる度${s.score}${rank ? `、今日の3軒の${rank}番` : ""}`;
+          const label = `${placeName(s.place)}、集まる度${s.score}（${verdict(s.score)}）${rank ? `、今日の3軒の${rank}番` : ""}`;
           return (
             // biome-ignore lint/a11y/useSemanticElements: SVG の中なので <button> は置けない
             <g
@@ -185,8 +180,8 @@ export function DemoMapView({
                     height={25}
                     rx={12.5}
                     fill="var(--accent)"
-                    stroke={sel ? "var(--focus)" : "#fff"}
-                    strokeWidth={sel ? 3 : 2}
+                    stroke={sel ? "var(--brand)" : "#fff"}
+                    strokeWidth={sel ? 4 : 2}
                   />
                   <circle cx={-10} cy={-20.5} r={8.5} fill="var(--brand)" />
                   <text
@@ -215,10 +210,10 @@ export function DemoMapView({
                 <g className="pin-body">
                   <circle
                     className="pin-focus"
-                    r={7}
-                    fill={BAND_FILL[band(s.score)]}
-                    stroke={sel ? "var(--focus)" : "#fff"}
-                    strokeWidth={sel ? 3 : 2}
+                    r={sel ? 7 : 5}
+                    fill="var(--pin-dot)"
+                    stroke={sel ? "var(--brand)" : "#fff"}
+                    strokeWidth={sel ? 4 : 1.5}
                   />
                 </g>
               )}
@@ -233,12 +228,14 @@ export function DemoMapView({
           role="status"
         >
           {placeName(tip.place)}
-          <span className="ml-1.5 tabular-nums opacity-70">{tip.score}</span>
+          <span className="ml-1.5 tabular-nums opacity-70">
+            {tip.score}・{verdict(tip.score)}
+          </span>
         </div>
       )}
       <div className="absolute top-3 left-1/2 flex max-w-[92%] -translate-x-1/2 items-center gap-1.5 rounded-full bg-surface/95 px-3 py-1.5 text-muted text-xs shadow-e1">
         <InfoIcon className="size-4 shrink-0" />
-        <span className="truncate">Google マップのキーを設定すると実際の地図になります</span>
+        <span className="truncate">{note}</span>
       </div>
     </div>
   );

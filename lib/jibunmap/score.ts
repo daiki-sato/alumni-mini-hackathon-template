@@ -72,62 +72,138 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type Hit = {
   word: string;
+  /** 語が出た一文 */
   quote: string;
   author?: string;
   authorUri?: string;
+  /** 同じ投稿者を見分けるキー（名前がなければ口コミの番号） */
+  authorKey: string;
+  /** その語が（否定されずに）出た口コミの件数 */
+  reviewCount: number;
+  /** その語を書いた人のキー（重複なし） */
+  authorKeys: string[];
 };
 
 export function reviewText(r: Review): string {
   return r.text?.text ?? r.originalText?.text ?? "";
 }
 
-function count(text: string, w: string): number {
-  if (!w) return 0;
-  let n = 0;
-  let i = text.indexOf(w);
-  while (i >= 0) {
-    n++;
-    i = text.indexOf(w, i + w.length);
+/** 語のすぐ後ろにこれが来たら、その語は「否定されている」とみなして数えない */
+// 「ず」だけだと「混まず快適」のような良い意味まで拾うので、「ずに」の形だけを見る
+export const NEGATIONS = ["ない", "にくい", "づらい", "無理", "できない", "ずに", "ません"];
+/** 否定を探す範囲（語の後ろの文字数）。文や読点をまたいでは探さない */
+export const NEGATION_WINDOW = 8;
+const CLAUSE_END = /[。！？!?\n、，,]/;
+
+/**
+ * 否定の語を含むが、否定ではない言い回し（「気まずくない」「まずい」「一人ずつ」など）。
+ * 先にこれを伏せてから否定を探す
+ */
+export const NOT_NEGATIONS = [
+  "気まずくない",
+  "気にならない",
+  "苦にならない",
+  "悪くない",
+  "問題ない",
+  "抵抗ない",
+  "困らない",
+  "無理なく",
+  "無理なし",
+  "ずいぶん",
+  "わずか",
+  "ずっと",
+  "気まず",
+  "まずい",
+  "まず",
+  "必ず",
+  "ずつ",
+];
+
+/** text の at 文字目から始まる長さ len の語が、すぐ後ろで否定されているか */
+export function negatedAt(text: string, at: number, len: number): boolean {
+  // 言い回しが窓の端で切れないよう、少し長めに取ってから伏せる
+  let tail = text.slice(at + len, at + len + NEGATION_WINDOW * 2);
+  const cut = tail.search(CLAUSE_END);
+  if (cut >= 0) tail = tail.slice(0, cut);
+  for (const ok of NOT_NEGATIONS) tail = tail.replaceAll(ok, "＿".repeat(ok.length));
+  tail = tail.slice(0, NEGATION_WINDOW);
+  return NEGATIONS.some((n) => tail.includes(n));
+}
+
+/** 本文の中で w が出る位置。長い語（「おひとりさま」）の一部として出たものと、否定されたものは除く */
+export function positions(text: string, w: string, all: string[]): number[] {
+  if (!w) return [];
+  const longer = all.filter((x) => x !== w && x.length > w.length && x.includes(w));
+  const out: number[] = [];
+  for (let i = text.indexOf(w); i >= 0; i = text.indexOf(w, i + w.length)) {
+    const inLonger = longer.some((l) => {
+      const off = l.indexOf(w);
+      return off >= 0 && i - off >= 0 && text.startsWith(l, i - off);
+    });
+    if (!inLonger && !negatedAt(text, i, w.length)) out.push(i);
   }
-  return n;
+  return out;
+}
+
+/** 本文に w が「単独で」「否定されずに」出ているか */
+export function appears(text: string, w: string, all: string[]): boolean {
+  return positions(text, w, all).length > 0;
+}
+
+/** at 文字目を含む一文（長すぎるときは語のまわりだけ） */
+export function sentenceAt(text: string, at: number, len: number): string {
+  const ends = /[。！？!?\n]/;
+  let s = at;
+  while (s > 0 && !ends.test(text[s - 1])) s--;
+  let e = at + len;
+  while (e < text.length && !ends.test(text[e])) e++;
+  if (e < text.length) e++;
+  const MAX = 60;
+  let pre = "";
+  let post = "";
+  if (e - s > MAX) {
+    const ns = Math.max(s, at - 20);
+    const ne = Math.min(e, ns + MAX);
+    if (ns > s) pre = "…";
+    if (ne < e) post = "…";
+    s = ns;
+    e = ne;
+  }
+  return `${pre}${text.slice(s, e).replace(/\s+/g, " ").trim()}${post}`;
 }
 
 /**
- * 本文に w が「単独で」出ているか。
- * 「ひとり」が「おひとりさま」の中にしか出ないときは、長い方だけを数える（二重に数えない）
+ * 語ごとに、引用する口コミを1件だけ拾い、その語が出た口コミの件数と書いた人を数える。
+ * 引用は同じ投稿者に偏らないよう、まだ拾っていない投稿者の口コミを優先する
  */
-export function appears(text: string, w: string, all: string[]): boolean {
-  let n = count(text, w);
-  if (!n) return false;
-  for (const longer of all) {
-    if (longer !== w && longer.length > w.length && longer.includes(w)) {
-      n -= count(text, longer) * count(longer, w);
-    }
-  }
-  return n > 0;
-}
-
-function snippet(text: string, at: number, len: number): string {
-  const s = Math.max(0, at - 14);
-  const e = Math.min(text.length, at + len + 14);
-  return `${s > 0 ? "…" : ""}${text.slice(s, e).replace(/\s+/g, " ")}${e < text.length ? "…" : ""}`;
-}
-
-/** 語ごとに、最初に出た口コミを1件だけ拾う */
 export function wordHits(reviews: Review[], words: string[]): Hit[] {
   const out: Hit[] = [];
+  const used = new Set<string>();
   for (const w of words) {
-    for (const r of reviews) {
+    const found: Hit[] = [];
+    for (const [i, r] of reviews.entries()) {
       const text = reviewText(r);
-      if (!appears(text, w, words)) continue;
-      out.push({
+      const at = positions(text, w, words)[0];
+      if (at === undefined) continue;
+      const name = r.authorAttribution?.displayName;
+      found.push({
         word: w,
-        quote: snippet(text, text.indexOf(w), w.length),
-        author: r.authorAttribution?.displayName,
+        quote: sentenceAt(text, at, w.length),
+        author: name,
         authorUri: r.authorAttribution?.uri,
+        authorKey: name ? `n:${name}` : `r:${i}`,
+        reviewCount: 0,
+        authorKeys: [],
       });
-      break;
     }
+    if (!found.length) continue;
+    const pick = found.find((h) => !used.has(h.authorKey)) ?? found[0];
+    used.add(pick.authorKey);
+    out.push({
+      ...pick,
+      reviewCount: found.length,
+      authorKeys: [...new Set(found.map((h) => h.authorKey))],
+    });
   }
   return out;
 }
@@ -136,6 +212,8 @@ export function wordHits(reviews: Review[], words: string[]): Hit[] {
 
 export type Signals = {
   count: number;
+  /** 判定に使った口コミの件数（Places は最大5件） */
+  reviewsUsed: number;
   rating: number | null;
   good: Hit[];
   ng: Hit[];
@@ -171,6 +249,7 @@ export function signals(p: Place, now: number, words: WordLists): Signals {
   }
   return {
     count: p.userRatingCount ?? 0,
+    reviewsUsed: reviews.filter((r) => reviewText(r)).length,
     rating: typeof p.rating === "number" ? p.rating : null,
     good: wordHits(reviews, words.good),
     ng: wordHits(reviews, words.ng),
@@ -188,8 +267,8 @@ export function signals(p: Place, now: number, words: WordLists): Signals {
 export type Evidence = {
   text: string;
   quote?: string;
-  /** ハイライトする語 */
-  word?: string;
+  /** この一文に出た語 */
+  words?: string[];
   author?: string;
   authorUri?: string;
 };
@@ -198,8 +277,19 @@ export type PartKey = "base" | "minority" | "natural" | "good" | "ng" | "cons" |
 
 export type Part = { key: PartKey; label: string; value: number; reasons: Evidence[] };
 
+/** 基本点（何も材料がない店の点） */
+export const BASE_POINT = 50;
 export const GOOD_POINT = 4;
 export const GOOD_MAX = 24;
+/** 同じ投稿者の口コミからの加点は、1人あたりここまで */
+export const GOOD_PER_AUTHOR = 4;
+/** 同じ語が2件以上の口コミに出たら、その語の点をこの倍にする */
+export const REPEAT_WEIGHT = 1.5;
+
+/** 語の重み。1件の口コミだけなら1、2件以上なら REPEAT_WEIGHT */
+export function wordWeight(h: Hit): number {
+  return h.reviewCount >= 2 ? REPEAT_WEIGHT : 1;
+}
 export const NG_POINT = 5;
 export const NG_MAX = 25;
 
@@ -223,20 +313,52 @@ function minorityText(n: number): string {
   return `口コミ${n}件。多くの人が集まる店`;
 }
 
-function hitEvidence(h: Hit): Evidence {
-  return {
-    text: `口コミに「${h.word}」`,
-    quote: h.quote,
-    word: h.word,
-    author: h.author,
-    authorUri: h.authorUri,
-  };
+/** 同じ一文に出た語は1つの根拠にまとめる */
+export function hitEvidence(hits: Hit[]): Evidence[] {
+  const byQuote = new Map<string, Hit[]>();
+  for (const h of hits) byQuote.set(h.quote, [...(byQuote.get(h.quote) ?? []), h]);
+  return [...byQuote.values()].map((hs) => ({
+    text: `口コミに${hs
+      .map((h) => `「${h.word}」${h.reviewCount >= 2 ? `（${h.reviewCount}件）` : ""}`)
+      .join("")}`,
+    quote: hs[0].quote,
+    words: hs.map((h) => h.word),
+    author: hs[0].author,
+    authorUri: hs[0].authorUri,
+  }));
+}
+
+/**
+ * うれしいワードの加点。語ごとに GOOD_POINT × 重み（2件以上の口コミに出たら 1.5 倍）。
+ * その点を、語を書いた人たちで等分してから、1人あたり GOOD_PER_AUTHOR、合計 GOOD_MAX までに収める
+ */
+export function goodPoints(hits: Hit[]): { value: number; capped: boolean } {
+  const per = new Map<string, number>();
+  for (const h of hits) {
+    const keys = h.authorKeys.length ? h.authorKeys : [h.authorKey];
+    const share = (GOOD_POINT * wordWeight(h)) / keys.length;
+    for (const k of keys) per.set(k, (per.get(k) ?? 0) + share);
+  }
+  let v = 0;
+  let capped = false;
+  for (const n of per.values()) {
+    if (n > GOOD_PER_AUTHOR) capped = true;
+    v += Math.min(GOOD_PER_AUTHOR, n);
+  }
+  return { value: r1(Math.min(GOOD_MAX, v)), capped };
+}
+
+/** NG ワードの減点。語ごとに NG_POINT × 重み、合計 NG_MAX まで */
+export function ngPoints(hits: Hit[]): number {
+  let v = 0;
+  for (const h of hits) v += NG_POINT * wordWeight(h);
+  return r1(Math.min(NG_MAX, v));
 }
 
 export function parts(s: Signals): Part[] {
   const n = s.count;
   const out: Part[] = [
-    { key: "base", label: "基本", value: 40, reasons: [] },
+    { key: "base", label: "基本", value: BASE_POINT, reasons: [] },
     {
       key: "minority",
       label: "少数派（口コミ件数）",
@@ -260,17 +382,21 @@ export function parts(s: Signals): Part[] {
   }
   out.push({ key: "natural", label: "口コミの自然さ", value: natV, reasons: nat });
 
+  const gp = goodPoints(s.good);
   out.push({
     key: "good",
     label: "うれしいワード",
-    value: Math.min(GOOD_MAX, s.good.length * GOOD_POINT),
-    reasons: s.good.map(hitEvidence),
+    value: gp.value,
+    reasons: [
+      ...hitEvidence(s.good),
+      ...(gp.capped ? [{ text: `同じ人の口コミからの加点は1人 +${GOOD_PER_AUTHOR} まで` }] : []),
+    ],
   });
   out.push({
     key: "ng",
     label: "NGワード",
-    value: -Math.min(NG_MAX, s.ng.length * NG_POINT),
-    reasons: s.ng.map(hitEvidence),
+    value: -ngPoints(s.ng),
+    reasons: hitEvidence(s.ng),
   });
 
   const cons: Evidence[] = [];
@@ -309,6 +435,14 @@ export function totalScore(ps: Part[]): number {
   let t = 0;
   for (const p of ps) t += p.value;
   return Math.round(Math.max(0, Math.min(100, t)));
+}
+
+/** 点数の横に出す、ひと言の評価（一覧・詳細・地図でそろえる） */
+export function verdict(v: number): string {
+  if (v >= 80) return "◎ 仲間が多そう";
+  if (v >= 60) return "○ 合いそう";
+  if (v >= 35) return "△ ふつう";
+  return "× 合わなそう";
 }
 
 export type Band = "hi" | "mid" | "lo";
@@ -358,10 +492,22 @@ export function partyChance(s: Signals): { good: number; other: number } {
   return { good, other: 1 - good };
 }
 
+/** 口コミの件数を、数値を出さずに言う */
+export function popularityWord(n: number): string {
+  return n <= 5
+    ? "口コミはまだ少ない"
+    : n < 30
+      ? "口コミが少なめ"
+      : n <= 300
+        ? "知る人ぞ知る"
+        : n < 1000
+          ? "やや人気"
+          : "とても人気";
+}
+
+/** ここに並ぶ人の一文（数値は出さない） */
 export function whoText(s: Scored): string {
   const g = s.signals;
-  const n = g.count;
-  const size = n <= 5 ? "まだ少ない" : n <= 300 ? "ほどほど" : n < 1000 ? "やや多い" : "とても多い";
   let t = g.good.length
     ? `口コミに「${g.good.map((h) => h.word).join("」「")}」が出ます。`
     : "口コミにうれしいワードは出ていません。";
@@ -370,9 +516,73 @@ export function whoText(s: Scored): string {
     : "NGワードは出ていません。";
   const tags = constraintTags(g);
   t += tags.length ? `制約は${tags.join("・")}。` : "目立つ制約はなし。";
-  t += `口コミ件数は${n}件で${size}。`;
+  t += `${popularityWord(g.count)}店です。`;
   if (g.chain) t += "チェーン店の可能性があります。";
   return t;
+}
+
+/** 前後に並ぶ人の予想（数値は出さない） */
+export function partyText(s: Scored): string {
+  const pc = partyChance(s.signals).good;
+  if (pc >= 0.65) return "前後に並ぶのは、一人客や常連が多そう";
+  if (pc <= 0.35) return "前後に並ぶのは、グループやカップルが多そう";
+  return "前後に並ぶ人は、いろいろいそう";
+}
+
+export type ReasonChip = { text: string; tone: "plus" | "minus" };
+
+/** 点数を動かした理由だけを、数値なしの文で（±0 の項目は出さない） */
+export function reasonChips(s: Scored): ReasonChip[] {
+  const out: ReasonChip[] = [];
+  const g = s.signals;
+  const v = (k: PartKey) => partValue(s.parts, k);
+  if (v("minority") !== 0) {
+    out.push({ text: popularityWord(g.count), tone: v("minority") > 0 ? "plus" : "minus" });
+  }
+  if (g.rating !== null && g.rating >= 4.6 && g.count >= 100) {
+    out.push({ text: "高評価に偏りすぎ", tone: "minus" });
+  }
+  if (g.dated >= 3 && g.recent >= 3) out.push({ text: "最近急に口コミが増えた", tone: "minus" });
+  if (v("good") > 0)
+    for (const h of g.good) out.push({ text: `口コミに「${h.word}」`, tone: "plus" });
+  for (const h of g.ng) out.push({ text: `口コミに「${h.word}」`, tone: "minus" });
+  if (g.cashOnly) out.push({ text: "現金のみ", tone: "plus" });
+  if (g.notReservable) out.push({ text: "予約不可", tone: "plus" });
+  if (g.goodForGroups) out.push({ text: "グループ向き", tone: "minus" });
+  if (g.chain) out.push({ text: "チェーンらしい", tone: "minus" });
+  return out;
+}
+
+/* ---------- シーン（ひとりで／友だちと） ---------- */
+
+export type Scene = "solo" | "friends";
+
+/** 「ひとりのときだけ」の語の初期値（友だちと行くときは数えない） */
+export const DEFAULT_SOLO_ONLY = ["一人", "ひとり", "おひとりさま", "カウンター"];
+
+/**
+ * シーンに合わせた語のリスト。友だちとのときは「ひとりのときだけ」の語をうれしいワードから外す。
+ * NG ワードはそのまま（「大人数」などは友だちとでも苦手なので残す）
+ */
+export function wordsForScene(words: WordLists, soloOnly: string[], scene: Scene): WordLists {
+  if (scene === "solo") return words;
+  return { good: words.good.filter((w) => !soloOnly.includes(w)), ng: words.ng };
+}
+
+/** シーンに合わせた判断軸。友だちとのときは「グループ向きでない」を外す */
+export function axesForScene(axes: AxisKey[], scene: Scene): AxisKey[] {
+  return scene === "solo" ? axes : axes.filter((k) => k !== "groups");
+}
+
+/** シーンを加味して採点する（純粋な関数） */
+export function scorePlaceInScene(
+  p: Place,
+  now: number,
+  words: WordLists,
+  soloOnly: string[],
+  scene: Scene,
+): Scored {
+  return scorePlace(p, now, wordsForScene(words, soloOnly, scene));
 }
 
 /* ---------- 判断軸 ---------- */
@@ -382,6 +592,8 @@ export type AxisKey = "good" | "ng" | "cons" | "rev" | "few" | "groups" | "chain
 export type Axis = {
   k: AxisKey;
   l: string;
+  /** 条件の要約に使う短い名前 */
+  s: string;
   /** 0〜1。大きいほど軸に合う */
   v: (s: Scored) => number;
   /** 選ばれた理由の一言 */
@@ -391,24 +603,29 @@ export type Axis = {
 export const AXES: Axis[] = [
   {
     k: "good",
+    s: "うれしい多",
     l: "うれしいワードが多い",
-    v: (s) => Math.min(s.signals.good.length, 4) / 4,
+    // 1人あたりの上限をかけたあとの点で見る（同じ人が語を並べても軸だけ上がらない）
+    v: (s) => Math.min(partValue(s.parts, "good") / GOOD_POINT, 4) / 4,
     w: (s) => `うれしいワード${s.signals.good.length}語`,
   },
   {
     k: "ng",
+    s: "NG少",
     l: "NGワードが少ない",
     v: (s) => 1 - Math.min(s.signals.ng.length, 4) / 4,
     w: (s) => (s.signals.ng.length ? `NGワード${s.signals.ng.length}語` : "NGワードなし"),
   },
   {
     k: "cons",
+    s: "制約あり",
     l: "制約がある",
     v: (s) => partValue(s.parts, "cons") / 10,
     w: (s) => `制約${constraintTags(s.signals).length}つ`,
   },
   {
     k: "rev",
+    s: "口コミ自然",
     l: "口コミが自然",
     v: (s) => 1 + partValue(s.parts, "natural") / 20,
     w: (s) => {
@@ -418,18 +635,21 @@ export const AXES: Axis[] = [
   },
   {
     k: "few",
+    s: "件数ほどほど",
     l: "件数がほどほど",
     v: (s) => (partValue(s.parts, "minority") + 15) / 27,
     w: (s) => `口コミ${s.signals.count}件`,
   },
   {
     k: "groups",
+    s: "グループ向きでない",
     l: "グループ向きでない",
     v: (s) => (s.signals.goodForGroups ? 0 : 1),
     w: (s) => (s.signals.goodForGroups ? "グループ向き" : "グループ向きではない"),
   },
   {
     k: "chain",
+    s: "チェーンでない",
     l: "チェーンらしくない",
     v: (s) => (s.signals.chain ? 0 : 1),
     w: (s) => (s.signals.chain ? "チェーンの可能性" : "個人店らしい"),
@@ -468,35 +688,13 @@ export function computeTop(cands: Scored[], axes: AxisKey[]): Scored[] {
     );
 }
 
-/* ---------- ジャンル ---------- */
-
-export const GENRES = ["すべて", "ラーメン", "喫茶", "定食", "餃子", "パン", "カレー"] as const;
-export type Genre = (typeof GENRES)[number];
-
-const GENRE_RULES: Record<Exclude<Genre, "すべて">, { types: string[]; words: string[] }> = {
-  ラーメン: {
-    types: ["ramen_restaurant"],
-    words: ["ラーメン", "らーめん", "中華そば", "麺", "つけ麺"],
-  },
-  喫茶: {
-    types: ["cafe", "coffee_shop", "tea_house"],
-    words: ["喫茶", "カフェ", "珈琲", "コーヒー"],
-  },
-  定食: { types: ["japanese_restaurant"], words: ["定食", "食堂", "ごはん", "とんかつ"] },
-  餃子: {
-    types: ["chinese_restaurant", "dumpling_restaurant"],
-    words: ["餃子", "ぎょうざ", "ギョーザ"],
-  },
-  パン: { types: ["bakery"], words: ["パン", "ベーカリー"] },
-  カレー: { types: ["indian_restaurant"], words: ["カレー", "スパイス"] },
-};
-
-export function matchesGenre(p: Place, g: Genre): boolean {
-  if (g === "すべて") return true;
-  const rule = GENRE_RULES[g];
-  if (p.primaryType && rule.types.includes(p.primaryType)) return true;
-  const text = `${p.displayName?.text ?? ""} ${p.primaryTypeDisplayName?.text ?? ""}`;
-  return rule.words.some((w) => text.includes(w));
+/**
+ * 決め手の口コミ一文。うれしいワードがいちばん多く出た一文を選ぶ（なければ null）
+ */
+export function keyQuote(s: Scored): Evidence | null {
+  const ev = hitEvidence(s.signals.good);
+  if (!ev.length) return null;
+  return ev.reduce((a, b) => ((b.words?.length ?? 0) > (a.words?.length ?? 0) ? b : a));
 }
 
 /** 本文を、うれしいワード・NGワードの位置で区切る（詳細画面のハイライト用） */
@@ -515,7 +713,8 @@ export function highlight(text: string, words: WordLists): Segment[] {
   let plain = "";
   while (i < text.length) {
     const m = all.find((x) => text.startsWith(x.w, i));
-    if (m) {
+    // 否定された語（「一人では入りにくい」の「一人」）は数えていないので、色も付けない
+    if (m && !negatedAt(text, i, m.w.length)) {
       if (plain) out.push({ text: plain });
       plain = "";
       out.push({ text: m.w, kind: m.kind });

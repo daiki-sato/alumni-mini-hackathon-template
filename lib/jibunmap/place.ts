@@ -17,6 +17,23 @@ export type Review = {
   googleMapsUri?: string;
 };
 
+export type Money = { currencyCode?: string; units?: string; nanos?: number };
+
+/**
+ * 写真。JS 版の Photo.getURI() で作った URL を持つ（このアプリ独自の形。REST の photos とは違う）。
+ * 画像を1枚読むごとに Place Details Photos の課金が発生するので、出す場所は限る
+ */
+export type PlacePhoto = {
+  /** サムネイル用（最大 160px） */
+  thumb: string;
+  /** 詳細用（最大 600px） */
+  large: string;
+  widthPx?: number;
+  heightPx?: number;
+  /** 写真の帰属表示（規約で必要） */
+  authorAttributions: { displayName: string; uri?: string }[];
+};
+
 export type PriceLevel =
   | "PRICE_LEVEL_UNSPECIFIED"
   | "PRICE_LEVEL_FREE"
@@ -49,6 +66,13 @@ export type Place = {
   reviews?: Review[];
   editorialSummary?: LocalizedText;
   currentOpeningHours?: { openNow?: boolean };
+  photos?: PlacePhoto[];
+  regularOpeningHours?: { weekdayDescriptions?: string[] };
+  priceRange?: { startPrice?: Money; endPrice?: Money };
+  nationalPhoneNumber?: string;
+  websiteUri?: string;
+  /** Google の検索結果での順番（1から）。Google から取ったときだけ。デモのデータにはない */
+  googleRank?: number;
 };
 
 export type Bounds = { low: LatLng; high: LatLng };

@@ -39,12 +39,14 @@
   --shadow-1: 0 1px 2px rgb(31 42 38 / 0.08), 0 1px 3px rgb(31 42 38 / 0.06);
   --shadow-2: 0 2px 6px rgb(31 42 38 / 0.1), 0 8px 24px rgb(31 42 38 / 0.1);
   --focus: #1a73e8;
+  --pin-dot: #8b948f;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --brand: #1f2a26;
-    --on-brand: #f6f7f3;
+    /* 暗い背景の上では、ブランド色を明るく・その上の文字を暗くする（選択中のチップが背景に溶けないように） */
+    --brand: #e9ede7;
+    --on-brand: #1f2a26;
     --accent: #f2a71b;
     --on-accent: #1f2a26;
     --accent-soft: #3a3020;
@@ -80,6 +82,7 @@
     --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
     --shadow-2: 0 2px 6px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
     --focus: #8ab4f8;
+    --pin-dot: #7d8781;
   }
 }
 
@@ -197,28 +200,26 @@ body {
   font-size: 12px;
 }
 .jm-marker-dot {
-  width: 14px;
-  height: 14px;
+  /* 今日の3軒以外は目立たせない（帯の色分けはしない） */
+  width: 10px;
+  height: 10px;
   border-radius: 999px;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
-}
-.jm-hi {
-  background: var(--hi);
-}
-.jm-mid {
-  background: var(--mid);
-}
-.jm-lo {
-  background: var(--lo);
+  background: var(--pin-dot);
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
 }
 .jm-marker.is-hot,
 .jm-marker.is-sel {
-  transform: scale(1.25);
+  transform: scale(1.3);
 }
+.jm-marker.is-hot {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+/* 選択中はブランド色の太いリング */
 .jm-marker.is-sel {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
+  outline: 4px solid var(--brand);
+  outline-offset: 1px;
 }
 
 /* デモ地図（SVG）のピン */
