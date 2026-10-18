@@ -274,7 +274,11 @@ export function ListPanel({
   minScore,
   onMinScore,
   hidden,
+  hiddenWhy,
   onShowAll,
+  genreLabel,
+  genreEmpty,
+  onGenreSearch,
   nearby,
   onSearchArea,
 }: {
@@ -299,7 +303,14 @@ export function ListPanel({
   onMinScore: (v: number) => void;
   /** 最低点で隠している件数（一時的に全部出しているときは 0） */
   hidden: number;
+  /** 隠している理由（例: ほかのジャンル・60点未満） */
+  hiddenWhy: string;
   onShowAll: () => void;
+  /** 選んでいるジャンル（なければ null） */
+  genreLabel: string | null;
+  /** 選んだジャンルが今の結果に1軒もない */
+  genreEmpty: boolean;
+  onGenreSearch: () => void;
   /** 隣の街で同じジャンルを探す語（「もっと探す」に出す。デモでは空） */
   nearby: string[];
   /** 地図のいまの範囲で探し直す（範囲がまだないときは null） */
@@ -392,6 +403,9 @@ export function ListPanel({
         <div className="flex items-center justify-between gap-2">
           <h2 id="list-title" className="font-bold">
             点数の高い順
+            {genreLabel && (
+              <span className="ml-1.5 font-normal text-muted text-sm">・{genreLabel}</span>
+            )}
           </h2>
           <button
             type="button"
@@ -414,7 +428,7 @@ export function ListPanel({
             onClick={onShowAll}
             className="mt-1 inline-flex min-h-10 items-center text-muted text-xs underline"
           >
-            {hidden}軒を非表示（{minScore}点未満）・押すと一時的に全部表示
+            {hidden}軒を非表示（{hiddenWhy}）・押すと一時的に全部表示
           </button>
         )}
         <div className="mt-2">
@@ -450,7 +464,18 @@ export function ListPanel({
             </ol>
           ) : (
             <div className="rounded-2xl bg-surface-2 p-4 text-sm">
-              {title ? (
+              {title && genreEmpty ? (
+                <>
+                  <p className="text-muted">「{genreLabel}」は今の結果にありません。</p>
+                  <button
+                    type="button"
+                    onClick={onGenreSearch}
+                    className="mt-2 h-10 rounded-full bg-brand px-4 font-bold text-on-brand text-sm hover:opacity-90"
+                  >
+                    このジャンルで検索し直す
+                  </button>
+                </>
+              ) : title ? (
                 <p className="text-muted">
                   {hidden > 0
                     ? `${minScore}点以上の店はありません。最低点を下げるか、上のボタンで全部表示できます。`
