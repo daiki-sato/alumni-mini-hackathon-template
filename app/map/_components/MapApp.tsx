@@ -110,6 +110,18 @@ export function MapApp() {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [selId]);
 
+  /**
+   * 地図と一覧の見た目の状態を初期に戻す（デモへの切り替え・再試行のとき）。
+   * 地図は作り直されるので、前の地図の表示範囲を locationBias に使わないよう boundsRef も消す
+   */
+  const resetView = useCallback(() => {
+    boundsRef.current = null;
+    setSelId(null);
+    setHoverId(null);
+    setOthersOpen(false);
+    setMoved(false);
+  }, []);
+
   /** Google に届かないとき: デモの店と SVG の地図に切り替える。詳しい理由は console にだけ出す */
   const fallBack = useCallback(
     (why: string, detail?: unknown) => {
@@ -125,8 +137,7 @@ export function MapApp() {
       setBusy(null);
       setDemo(true);
       setFellBack(true);
-      setSelId(null);
-      setMoved(false);
+      resetView();
       // URL の検索語は入力した語のまま残す（「もう一度試す」や再読み込みで Google に聞き直せるように）
       placePushed.current = false;
       fromCard.current = null;
@@ -141,7 +152,7 @@ export function MapApp() {
       setStatus({ kind: "ok" });
       setFitKey((k) => k + 1);
     },
-    [setDemo],
+    [setDemo, resetView],
   );
 
   // キーの拒否（HTTP リファラ制限・キーの誤り）は、Maps の読み込み後にこの関数で知らされる
@@ -262,6 +273,7 @@ export function MapApp() {
   const retry = useCallback(() => {
     setDemo(false);
     setFellBack(false);
+    resetView();
     setPlaces([]);
     setTitle(null);
     setStatus({ kind: "idle" });
@@ -272,7 +284,7 @@ export function MapApp() {
     } else {
       setQuery("");
     }
-  }, [run, setDemo]);
+  }, [run, setDemo, resetView]);
 
   const onSearch = useCallback(
     (q: string) => {
