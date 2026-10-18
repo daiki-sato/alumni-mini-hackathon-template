@@ -33,7 +33,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ja" className={`${notoSansJp.variable} h-full antialiased`}>
+    <html
+      lang="ja"
+      className={`${notoSansJp.variable} h-full antialiased`}
+      // iPhone の Safari に効くのは -webkit- 付き。CSS の変換で落ちるので、ここで直接渡す
+      style={{ WebkitTextSizeAdjust: "100%" }}
+    >
       <body className="flex min-h-full flex-col">
         {children}
         <SwRegister version={SW_VERSION} />

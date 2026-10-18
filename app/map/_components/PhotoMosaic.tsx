@@ -187,7 +187,7 @@ function PhotoGrid({ place, onClose }: { place: Place; onClose: () => void }) {
         </button>
         <h2 className="truncate font-bold">すべての写真</h2>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+      <div className="jm-sheet-scroll min-h-0 flex-1 p-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
         <ul className="grid grid-cols-2 gap-1 md:grid-cols-3">
           {photos.map((ph, i) => (
             <li key={ph.mid} className="aspect-square overflow-hidden">

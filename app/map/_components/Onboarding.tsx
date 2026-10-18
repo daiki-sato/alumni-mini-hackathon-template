@@ -177,7 +177,7 @@ export function Onboarding({
             <CloseIcon />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
+        <div className="jm-sheet-scroll min-h-0 flex-1 px-5 pb-4">
           <h2
             id="onboard-title"
             ref={titleRef}
