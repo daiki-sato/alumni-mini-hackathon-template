@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_WORD_LENGTH, MAX_WORDS } from "@/lib/jibunmap/score";
 import { CloseIcon, PlusIcon } from "./Icons";
-import type { Prefs } from "./usePrefs";
+import { MIN_SCORE_MAX, MIN_SCORE_STEP, type Prefs } from "./usePrefs";
 
 /* ---------- 語のリスト ---------- */
 
@@ -129,6 +129,39 @@ function WordEditor({
   );
 }
 
+/** 表示する最低点のスライダー（マイ条件と、一覧の上のチップで共通） */
+export function MinScoreSlider({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="mt-4">
+      <label className="flex items-baseline justify-between gap-2" htmlFor={id}>
+        <span className="font-bold text-[15px] md:text-sm">表示する最低点</span>
+        <span className="font-bold text-sm tabular-nums">
+          {value ? `${value}点以上` : "すべて表示"}
+        </span>
+      </label>
+      <input
+        id={id}
+        type="range"
+        min={0}
+        max={MIN_SCORE_MAX}
+        step={MIN_SCORE_STEP}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="mt-2 h-10 w-full accent-[var(--brand)]"
+      />
+      <p className="text-muted text-xs">これより低い店は、一覧と地図に出しません。</p>
+    </div>
+  );
+}
+
 /**
  * マイ条件。検索画面からは外し、ヘッダーのボタンで開く面で編集する。
  * デスクトップは右から出るドロワー、スマホは全画面のシート（どちらも <dialog> の showModal で、
@@ -191,7 +224,12 @@ export function PrefsSheet({
           <p className="text-muted text-sm">
             口コミにこの語が出ると、点数が上がったり下がったりします。この端末の中にだけ保存します。
           </p>
-          <div className="mt-4 grid gap-5">
+          <MinScoreSlider
+            id="min-score-sheet"
+            value={prefs.minScore}
+            onChange={(minScore) => update((p) => ({ ...p, minScore }))}
+          />
+          <div className="mt-5 grid gap-5 border-line border-t pt-4">
             <WordEditor
               title="うれしいワード"
               hint="「ひとり」の印は、友だちと行くときに数えない"

@@ -182,6 +182,13 @@ export function MapApp() {
   // 点数の高い順（同点は Google の検索結果の順）
   const ranked = useMemo(() => rankByScore(scored), [scored]);
   const rankIds = useMemo(() => ranked.map((s) => s.place.id), [ranked]);
+  /** 最低点で隠したものを、一時的に全部出す（新しい検索で戻す） */
+  const [showAll, setShowAll] = useState(false);
+  // 点数の高い順なので、隠れるのは末尾だけ（順位の番号はずれない）。一覧と地図に同じ絞り込みを当てる
+  const visible = useMemo(
+    () => (showAll ? ranked : ranked.filter((s) => s.score >= prefs.minScore)),
+    [ranked, showAll, prefs.minScore],
+  );
   const selected: Scored | undefined = scored.find((s) => s.place.id === selId);
 
   // 一覧と詳細を切り替えたら、パネルを上まで戻す
@@ -256,6 +263,7 @@ export function MapApp() {
       const label = opts.near ? `現在地の近く（${q}）` : q.trim() || "このエリア";
       setSelId(null);
       setMoved(false);
+      setShowAll(false);
       fromCard.current = null;
       placePushed.current = false;
       // 現在地のまわりの検索は URL に語を載せない（再読み込みで、位置なしの検索にならないように）
@@ -677,7 +685,7 @@ export function MapApp() {
                   ? "サンプルの街（架空）の地図です"
                   : "Google マップのキーを設定すると実際の地図になります"
               }
-              items={scored}
+              items={visible}
               rankIds={rankIds}
               selId={selId ?? peekId}
               hoverId={hoverId}
@@ -686,7 +694,7 @@ export function MapApp() {
             />
           ) : (
             <GoogleMapView
-              items={scored}
+              items={visible}
               rankIds={rankIds}
               selId={selId ?? peekId}
               hoverId={hoverId}
@@ -768,7 +776,11 @@ export function MapApp() {
                 busy={busy}
                 title={title}
                 status={status}
-                ranked={ranked}
+                ranked={visible}
+                minScore={prefs.minScore}
+                onMinScore={(minScore) => update((p) => ({ ...p, minScore }))}
+                hidden={ranked.length - visible.length}
+                onShowAll={() => setShowAll(true)}
                 words={words}
                 hoverId={hoverId}
                 onOpenPrefs={openPrefs}

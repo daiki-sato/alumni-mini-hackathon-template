@@ -9,17 +9,33 @@ import {
   MAX_WORDS,
 } from "@/lib/jibunmap/score";
 
-// 保存するのは2つの語のリストと「ひとりのときだけ」の印だけ（店のデータ・シーンは保存しない）
+// 保存するのは2つの語のリスト、「ひとりのときだけ」の印、表示する最低点だけ（店のデータ・シーンは保存しない）
 const KEY = "jibunmap-v1";
 /** 保存形式の版。2 で soloOnly（ひとりのときだけ数える語）を足し、判断軸（axes）をやめた */
 const VERSION = 2;
 
-export type Prefs = { good: string[]; ng: string[]; soloOnly: string[] };
+export type Prefs = {
+  good: string[];
+  ng: string[];
+  soloOnly: string[];
+  /** 表示する最低点（0〜90、5点刻み。0 なら全部出す） */
+  minScore: number;
+};
+
+export const MIN_SCORE_MAX = 90;
+export const MIN_SCORE_STEP = 5;
+
+/** 最低点を 0〜90 の5点刻みに収める（壊れた値は 0） */
+export function cleanMinScore(v: unknown): number {
+  const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
+  return Math.min(MIN_SCORE_MAX, Math.max(0, Math.round(n / MIN_SCORE_STEP) * MIN_SCORE_STEP));
+}
 
 export const DEFAULT_PREFS: Prefs = {
   good: DEFAULT_GOOD_WORDS,
   ng: DEFAULT_NG_WORDS,
   soloOnly: DEFAULT_SOLO_ONLY,
+  minScore: 0,
 };
 
 function cleanWords(v: unknown): string[] | null {
@@ -44,6 +60,7 @@ export function migrate(d: Record<string, unknown>): Prefs {
     good,
     ng: cleanWords(d.ng) ?? DEFAULT_PREFS.ng,
     soloOnly: solo.filter((w) => good.includes(w)),
+    minScore: cleanMinScore(d.minScore),
   };
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { DEMO_TOWNS } from "@/lib/jibunmap/demo";
 import { placeName } from "@/lib/jibunmap/place";
 import {
@@ -14,6 +15,7 @@ import { LIVE_EXAMPLES } from "@/lib/jibunmap/suggest";
 import { Highlighted } from "./Highlighted";
 import { CloseIcon, InfoIcon, MyLocationIcon } from "./Icons";
 import { PhotoCredit, PlacePhotoImg } from "./PlacePhotoImg";
+import { MinScoreSlider } from "./PrefsSheet";
 
 export const BAND_TEXT = { hi: "text-hi", mid: "text-mid", lo: "text-lo" } as const;
 export const BAND_BG = { hi: "bg-hi-soft", mid: "bg-mid-soft", lo: "bg-lo-soft" } as const;
@@ -269,6 +271,10 @@ export function ListPanel({
   onHover,
   onPickExample,
   onNear,
+  minScore,
+  onMinScore,
+  hidden,
+  onShowAll,
 }: {
   demo: boolean;
   /** 前の検索が終わったら探す語 */
@@ -286,7 +292,14 @@ export function ListPanel({
   onPickExample: (q: string) => void;
   /** 現在地の近くで探す（デモでは null） */
   onNear: (() => void) | null;
+  /** 表示する最低点（0 なら全部） */
+  minScore: number;
+  onMinScore: (v: number) => void;
+  /** 最低点で隠している件数（一時的に全部出しているときは 0） */
+  hidden: number;
+  onShowAll: () => void;
 }) {
+  const [sliderOpen, setSliderOpen] = useState(false);
   const total = ranked.length;
   // 読み上げ: 件数と検索の状態だけを、静かに伝える
   const live =
@@ -370,9 +383,34 @@ export function ListPanel({
         aria-labelledby="list-title"
         aria-busy={status.kind === "loading"}
       >
-        <h2 id="list-title" className="font-bold">
-          点数の高い順
-        </h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 id="list-title" className="font-bold">
+            点数の高い順
+          </h2>
+          <button
+            type="button"
+            aria-expanded={sliderOpen}
+            aria-controls="min-score-inline-box"
+            onClick={() => setSliderOpen((v) => !v)}
+            className="inline-flex h-10 items-center rounded-full border border-line px-3.5 font-medium text-[13px] tabular-nums hover:bg-surface-2 md:h-8"
+          >
+            {minScore ? `${minScore}点以上` : "すべての点数"}
+          </button>
+        </div>
+        {sliderOpen && (
+          <div id="min-score-inline-box" className="rounded-2xl bg-surface-2 px-3 pb-3">
+            <MinScoreSlider id="min-score-inline" value={minScore} onChange={onMinScore} />
+          </div>
+        )}
+        {hidden > 0 && status.kind === "ok" && (
+          <button
+            type="button"
+            onClick={onShowAll}
+            className="mt-1 inline-flex min-h-10 items-center text-muted text-xs underline"
+          >
+            {hidden}軒を非表示（{minScore}点未満）・押すと一時的に全部表示
+          </button>
+        )}
         <div className="mt-2">
           {status.kind === "loading" ? (
             <Skeleton />
@@ -407,7 +445,11 @@ export function ListPanel({
           ) : (
             <div className="rounded-2xl bg-surface-2 p-4 text-sm">
               {title ? (
-                <p className="text-muted">店が見つかりませんでした。別の街で探してください。</p>
+                <p className="text-muted">
+                  {hidden > 0
+                    ? `${minScore}点以上の店はありません。最低点を下げるか、上のボタンで全部表示できます。`
+                    : "店が見つかりませんでした。別の街で探してください。"}
+                </p>
               ) : (
                 <>
                   <p className="text-[15px] text-muted md:text-sm">
