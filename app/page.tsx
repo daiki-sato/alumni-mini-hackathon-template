@@ -183,7 +183,7 @@ function MockCard({ s, rank, big }: { s: LpShop; rank: number; big: boolean }) {
       {big ? (
         <span className="relative grid size-11 shrink-0 place-items-center rounded-lg bg-surface-2 text-lg">
           <span aria-hidden="true">🍜</span>
-          <span className="absolute -top-1 -left-1 grid size-5 place-items-center rounded-full border-2 border-surface bg-accent font-bold text-[9px] text-on-accent">
+          <span className="absolute -top-1 -left-1 grid size-5 place-items-center rounded-full border-2 border-surface bg-accent font-bold text-[10px] text-on-accent">
             {rank}
           </span>
         </span>
@@ -194,16 +194,16 @@ function MockCard({ s, rank, big }: { s: LpShop; rank: number; big: boolean }) {
       )}
       <span className="min-w-0 flex-1">
         <span className="block truncate font-bold text-[11px] text-ink">{s.name}</span>
-        <span className="mt-0.5 flex items-center gap-1 text-[9px] text-muted">
+        <span className="mt-0.5 flex items-center gap-1 text-[10px] text-muted">
           <span className="truncate">{s.type}</span>
           <span className="rounded-full bg-hi-soft px-1 font-bold text-hi">営業中</span>
         </span>
         {big && s.quote && (
-          <span className="mt-1 block truncate text-[9px] text-ink">
+          <span className="mt-1 block truncate text-[10px] text-ink">
             「<Highlighted text={s.quote} words={DEFAULT_WORDS} />」
           </span>
         )}
-        <span className="mt-1 inline-block rounded-full bg-surface-2 px-1.5 text-[8px] text-muted">
+        <span className="mt-1 inline-block rounded-full bg-surface-2 px-1.5 text-[10px] text-muted">
           口コミの多さでは{s.popRank}番目
         </span>
       </span>
@@ -211,7 +211,7 @@ function MockCard({ s, rank, big }: { s: LpShop; rank: number; big: boolean }) {
         <span className="rounded-md bg-hi-soft px-1.5 py-0.5 font-bold text-[12px] text-hi tabular-nums">
           {s.score}
         </span>
-        <span className="mt-0.5 whitespace-nowrap font-bold text-[8px] text-hi">{s.verdict}</span>
+        <span className="mt-0.5 whitespace-nowrap font-bold text-[10px] text-hi">{s.verdict}</span>
       </span>
     </div>
   );
@@ -220,7 +220,11 @@ function MockCard({ s, rank, big }: { s: LpShop; rank: number; big: boolean }) {
 function PhoneMock({ town, top3 }: { town: string; top3: LpShop[] }) {
   return (
     <figure className="mx-auto w-[260px] shrink-0 md:w-[290px]">
-      <div className="rounded-[34px] border-[7px] border-black/80 bg-bg p-2 shadow-2xl">
+      {/* 画面の例は飾りとして読み上げない（意味は figcaption で伝える） */}
+      <div
+        className="rounded-[34px] border-[7px] border-black/80 bg-bg p-2 shadow-2xl"
+        aria-hidden="true"
+      >
         <div className="mx-auto mb-2 h-1.5 w-16 rounded-full bg-black/70" aria-hidden="true" />
         <div className="flex items-center gap-1.5">
           <LogoMark size={20} />
@@ -232,10 +236,10 @@ function PhoneMock({ town, top3 }: { town: string; top3: LpShop[] }) {
           </span>
         </div>
         <div className="mt-2 flex gap-1">
-          <span className="rounded-full bg-brand px-2.5 py-1 font-bold text-[9px] text-on-brand">
+          <span className="rounded-full bg-brand px-2.5 py-1 font-bold text-[10px] text-on-brand">
             ひとりで
           </span>
-          <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[9px] text-muted">
+          <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[10px] text-muted">
             友だちと
           </span>
         </div>
@@ -246,7 +250,11 @@ function PhoneMock({ town, top3 }: { town: string; top3: LpShop[] }) {
           ))}
         </div>
       </div>
-      <figcaption className="mt-3 text-center text-white/60 text-xs">
+      <figcaption className="mt-3 text-center text-white/70 text-xs">
+        <span className="sr-only">
+          アプリの画面の例。{town}の店を点数の高い順に並べた一覧（
+          {top3.map((s) => `${s.name} ${s.score}点`).join("、")}）。
+        </span>
         画面はデモデータ（架空の店）の例です
       </figcaption>
     </figure>
