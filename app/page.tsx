@@ -12,6 +12,7 @@ import {
   REPEAT_WEIGHT,
   verdict,
 } from "@/lib/jibunmap/score";
+import { LIVE_EXAMPLES } from "@/lib/jibunmap/suggest";
 import { Logo, LogoMark } from "./_components/Logo";
 
 /** 入口のボタンと発表のリンクは、この URL（開いた瞬間に1回だけ検索する） */
@@ -23,7 +24,7 @@ function OpenMap({ className = "" }: { className?: string }) {
       href={TRY_HREF}
       className={`inline-flex h-12 items-center justify-center rounded-full bg-brand px-7 font-bold text-on-brand shadow-e1 transition hover:-translate-y-px hover:shadow-e2 dark:bg-accent dark:text-on-accent ${className}`}
     >
-      「高円寺 ラーメン」で試す
+      高円寺のラーメン屋を探す
     </Link>
   );
 }
@@ -58,7 +59,7 @@ function Preview() {
               ))}
             </div>
           </div>
-          <div className="font-bold text-[11px]">今日の3軒</div>
+          <div className="font-bold text-[11px]">点数の高い順</div>
           {cards.map((c, i) => (
             <div
               key={c.n}
@@ -169,18 +170,37 @@ function Preview() {
   );
 }
 
+/** 課題 → 気づき → 解決 */
+const STORY = [
+  {
+    k: "課題",
+    t: "行列で、知らない人が近くて嫌",
+    d: "人気の店に並ぶと、前後の知らない人との距離が気になって、食事を楽しめない。",
+  },
+  {
+    k: "気づき",
+    t: "嫌なのは距離ではなかった",
+    d: "嫌なのは近さそのものではなく、「仲間だと思えない人」との近さ。仲間だと思えるのは、自分の意思で、人があまり選ばない店を選んで来た人です。",
+  },
+  {
+    k: "解決",
+    t: "自分の意思で選ぶ人が集まる順に",
+    d: "Google マップの飲食店を、口コミの多さや広告の順ではなく、「自分の意思で選ぶ人が集まる度」の点数で並べ替えます。",
+  },
+];
+
 const FEATURES = [
   {
-    t: "自分の意思で選ぶ人が集まる度",
-    d: "一人客・常連・店の制約の気配で上がり、口コミの多すぎ・急な増え方・チェーンらしさで下がる 0〜100 の数字。なぜその点数かを、口コミの一文まで見せます。",
+    t: "点数の高い順に、理由つきで",
+    d: "一人客・常連・店の制約の気配で上がり、口コミの多すぎ・急な増え方・チェーンらしさで下がる 0〜100 の点数。決め手の口コミの一文と、Google の検索結果では何番目だったかも見せます。",
   },
   {
-    t: "今日の3軒だけ",
-    d: "判断軸を3つまで選ぶと、その合計で3軒だけを大きく出します。前後に並ぶ人が仲間かどうかの見込みも、人のアイコンで分かります。",
+    t: "自分だけのうれしいワードと NG ワード",
+    d: "「デート」「映え」「大人数」。口コミに出てほしくない語、出てほしい語を足したり外したりできます。並びはすぐ変わります。",
   },
   {
-    t: "自分だけの NG ワード",
-    d: "「デート」「映え」「大人数」。口コミに出てほしくない語を足したり外したりできます。うれしいワードも同じように編集でき、地図の並びがすぐ変わります。",
+    t: "ひとりで／友だちと",
+    d: "友だちと行くときは、「ひとり」「カウンター」など、ひとりのときだけうれしい語を数えずに並べ直します。",
   },
 ];
 
@@ -234,40 +254,84 @@ export default function Home() {
       <main className="flex-1">
         <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-14 md:grid-cols-[1.05fr_1fr] md:px-6 md:py-20">
           <div>
-            <p className="font-bold text-mid text-sm">ジブンマップ</p>
-            <h1 className="mt-3 font-bold text-[34px] leading-[1.3] tracking-tight md:text-5xl md:leading-[1.25]">
-              行列が嫌なのは、
-              <br />
-              近さのせいじゃなかった。
+            <p className="font-bold text-mid text-sm">ジブンマップ ― 飲食店さがし</p>
+            {/* 句の途中で折り返さないよう、句ごとにまとめて balance で整える */}
+            <h1 className="mt-3 text-balance font-bold text-[32px] leading-[1.3] tracking-tight sm:text-[40px] md:text-5xl md:leading-[1.25]">
+              <span className="inline-block">行列が嫌なのは、</span>
+              <span className="inline-block">近さのせい</span>
+              <span className="inline-block">じゃなかった。</span>
             </h1>
-            <p className="mt-5 max-w-xl text-lg text-muted leading-relaxed">
-              行きたい街で、自分の意思で選ぶ人が集まる店を、行く前に選べる地図。
+            <p className="mt-5 max-w-xl text-lg leading-relaxed">
+              行きたい街の<b>飲食店</b>を、自分の意思で選ぶ人が集まる順に。
             </p>
             <p className="mt-3 max-w-xl text-muted text-sm leading-relaxed">
-              Google マップの店の情報を、口コミの多さや広告の順ではなく、あなたの判断軸と NG
-              ワードで並べ替えます。
+              Google マップの店の情報を、口コミの多さや広告の順ではなく、あなたのうれしいワードと NG
+              ワードで付けた点数の高い順に並べます。
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <OpenMap />
               <a
                 href="#how"
-                className="rounded-full px-5 py-3 font-medium text-sm hover:bg-surface-2"
+                className="inline-flex h-12 items-center rounded-full px-5 font-medium text-sm hover:bg-surface-2"
               >
                 しくみを見る
               </a>
             </div>
           </div>
-          <Preview />
+          {/* スマホでは下に回して小さく */}
+          <div className="mx-auto w-full max-w-sm md:max-w-none">
+            <Preview />
+          </div>
+        </section>
+
+        <section className="mx-auto w-full max-w-6xl px-4 pb-14 md:px-6" aria-labelledby="story">
+          <h2 id="story" className="sr-only">
+            ジブンマップができるまで
+          </h2>
+          <ol className="grid gap-4 md:grid-cols-3">
+            {STORY.map((x) => (
+              <li key={x.k} className="rounded-3xl border border-line bg-surface p-6 shadow-e1">
+                <span className="inline-block rounded-full bg-accent px-3 py-0.5 font-bold text-on-accent text-xs">
+                  {x.k}
+                </span>
+                <h3 className="mt-3 text-balance font-bold text-lg">{x.t}</h3>
+                <p className="mt-2 text-muted text-sm leading-relaxed">{x.d}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="mx-auto w-full max-w-6xl px-4 pb-16 md:px-6" aria-labelledby="demo">
+          <div className="rounded-3xl bg-accent-soft p-6 md:p-8">
+            <h2 id="demo" className="font-bold text-2xl">
+              デモ: 例のボタンから試す
+            </h2>
+            <p className="mt-2 text-muted text-sm">
+              押すと、その街の飲食店を点数の高い順に並べます。
+            </p>
+            <ul className="mt-4 flex flex-wrap gap-2">
+              {LIVE_EXAMPLES.map((q) => (
+                <li key={q}>
+                  <Link
+                    href={`/map?q=${encodeURIComponent(q)}`}
+                    className="inline-flex h-11 items-center rounded-full border border-line bg-surface px-5 font-medium text-sm hover:bg-surface-2"
+                  >
+                    {q}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
 
         <section className="mx-auto w-full max-w-6xl px-4 pb-16 md:px-6" aria-labelledby="features">
-          <h2 id="features" className="sr-only">
+          <h2 id="features" className="font-bold text-2xl">
             特長
           </h2>
-          <ul className="grid gap-4 md:grid-cols-3">
+          <ul className="mt-4 grid gap-4 md:grid-cols-3">
             {FEATURES.map((f, i) => (
               <li key={f.t} className="rounded-3xl border border-line bg-surface p-6 shadow-e1">
-                <span className="grid size-9 place-items-center rounded-full bg-accent font-bold text-on-accent tabular-nums">
+                <span className="grid size-9 place-items-center rounded-full bg-surface-2 font-bold tabular-nums">
                   {i + 1}
                 </span>
                 <h3 className="mt-4 font-bold text-lg">{f.t}</h3>
@@ -352,14 +416,14 @@ export default function Home() {
             <div>
               <p className="font-bold text-2xl md:text-3xl">使うのは行く前だけ。記録はしない。</p>
               <p className="mt-2 text-sm opacity-80">
-                並んでいる最中や店を出た後には使いません。保存するのは、あなたの判断軸と語のリストだけ（この端末の中）。
+                並んでいる最中や店を出た後には使いません。保存するのは、あなたの語のリストだけ（この端末の中）。
               </p>
             </div>
             <Link
-              href="/map"
+              href={TRY_HREF}
               className="inline-flex h-12 shrink-0 items-center rounded-full bg-accent px-7 font-bold text-on-accent hover:opacity-90"
             >
-              マップを開く
+              高円寺のラーメン屋を探す
             </Link>
           </div>
         </section>
