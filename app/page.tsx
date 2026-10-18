@@ -12,7 +12,6 @@ import {
   REPEAT_WEIGHT,
   verdict,
 } from "@/lib/jibunmap/score";
-import { BrandMark } from "./_components/BrandMark";
 import { Logo, LogoMark } from "./_components/Logo";
 import { LpScoreDemo } from "./_components/LpScoreDemo";
 import { Highlighted } from "./map/_components/Highlighted";
@@ -68,27 +67,111 @@ function DotField({ className = "" }: { className?: string }) {
   );
 }
 
-/** 物語の絵: 行列（灰色の点が1列。その中に自分の点） */
+/**
+ * 人の形（頭の円＋肩の半円。塗りで描く）。x は中心、y は足もと。
+ * 自分はアンバー、知らない人は暗い灰緑、仲間はアンバーの輪郭（点のときと同じ色の役割）
+ */
+function Person({
+  x,
+  y,
+  s = 1,
+  fill,
+  ring = false,
+}: {
+  x: number;
+  y: number;
+  s?: number;
+  fill: string;
+  ring?: boolean;
+}) {
+  const w = 12 * s;
+  const head = 7 * s;
+  const neck = y - 18 * s;
+  const stroke = ring ? { stroke: AMBER, strokeWidth: 3, paintOrder: "stroke" as const } : {};
+  return (
+    <g>
+      <path d={`M${x - w} ${y} A${w} ${18 * s} 0 0 1 ${x + w} ${y} Z`} fill={fill} {...stroke} />
+      <circle cx={x} cy={neck - head - 2 * s} r={head} fill={fill} {...stroke} />
+    </g>
+  );
+}
+
+/** 物語の絵: 行列。7人が詰めて並び、4人目が自分。friends のときは、両隣が仲間（アンバーの輪郭） */
 function QueueArt({ friends = false }: { friends?: boolean }) {
   const n = 7;
   const me = 3;
+  const gap = 30;
   return (
-    <svg viewBox="0 0 280 60" className="w-full max-w-xs" aria-hidden="true" focusable="false">
+    <svg
+      viewBox={`0 0 ${gap * (n - 1) + 40} 64`}
+      className="w-full max-w-[300px]"
+      aria-hidden="true"
+      focusable="false"
+    >
       {Array.from({ length: n }).map((_, i) => {
-        const cx = 20 + i * 40;
         const isMe = i === me;
         const isFriend = friends && Math.abs(i - me) === 1;
         return (
-          // biome-ignore lint/suspicious/noArrayIndexKey: 並びが変わらない飾りの点
-          <g key={i}>
-            {isFriend && (
-              <circle cx={cx} cy={30} r={13} fill="none" stroke={AMBER} strokeWidth={3} />
-            )}
-            <circle cx={cx} cy={30} r={isMe ? 11 : 9} fill={isMe ? AMBER : DOT} />
-          </g>
+          <Person
+            // biome-ignore lint/suspicious/noArrayIndexKey: 並びが変わらない飾りの人
+            key={i}
+            x={20 + i * gap}
+            y={60}
+            s={isMe ? 1.08 : 1}
+            fill={isMe ? AMBER : DOT}
+            ring={isFriend}
+          />
         );
       })}
     </svg>
+  );
+}
+
+/** 物語の絵: 解決。格子に並ぶ人（4×3）のうち、1人の頭の上にアンバーのピン（マークと同じ構図） */
+function CrowdArt() {
+  const cols = 4;
+  const rows = 3;
+  const pin = { c: 3, r: 0 };
+  return (
+    <svg
+      viewBox="0 0 200 186"
+      className="w-full max-w-[220px]"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {Array.from({ length: rows }).flatMap((_, r) =>
+        Array.from({ length: cols }).map((__, c) => (
+          <Person
+            // biome-ignore lint/suspicious/noArrayIndexKey: 並びが変わらない飾りの人
+            key={`${r}-${c}`}
+            x={30 + c * 46}
+            y={70 + r * 52}
+            s={0.95}
+            fill={c === pin.c && r === pin.r ? AMBER : DOT}
+          />
+        )),
+      )}
+      <g transform={`translate(${30 + pin.c * 46},${10}) scale(0.42)`}>
+        <path
+          d="M0-22c-12 0-21 9-21 21 0 15 21 33 21 33s21-18 21-33C21-13 12-22 0-22z"
+          fill={AMBER}
+        />
+        <circle cx="0" cy="-1" r="8" fill={INK} />
+      </g>
+    </svg>
+  );
+}
+
+/** 見出しを句ごとに折り返す（auto-phrase に対応しないブラウザ向けに、句を inline-block で包む） */
+function Phrases({ parts }: { parts: string[] }) {
+  return (
+    <>
+      {parts.map((t) => (
+        <span key={t} className="inline-block">
+          {t}
+        </span>
+      ))}
+    </>
   );
 }
 
@@ -180,42 +263,57 @@ function CompareRow({
   mark,
   rank,
   meta,
+  short,
 }: {
   s: LpShop;
   mark: string;
   rank: number;
   meta: string;
+  /** スマホ（2列で幅が狭い）で出す短い補足 */
+  short?: string;
 }) {
   const hot = mark === "A" || s.mineRank === 1;
   return (
     <li
-      className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-3"
+      className="flex items-center gap-2 rounded-2xl border border-line bg-surface px-2 md:gap-3 md:px-3"
       style={{ height: ROW - 8 }}
     >
       <span
-        className={`grid size-8 shrink-0 place-items-center rounded-full font-bold text-sm ${
+        className={`grid size-6 shrink-0 place-items-center rounded-full font-bold text-xs md:size-8 md:text-sm ${
           hot ? "bg-[#F2A71B] text-[#1F2A26]" : "bg-[#4C5C54] text-white"
         }`}
         aria-hidden="true"
       >
         {mark}
       </span>
-      <span className="w-6 shrink-0 font-bold text-muted tabular-nums">{rank}</span>
+      <span className="hidden w-6 shrink-0 font-bold text-muted tabular-nums md:block">{rank}</span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-bold text-[15px]">{s.name}</span>
-        <span className="block truncate text-muted text-xs">{meta}</span>
+        <span className="block truncate font-bold text-[13px] md:text-[15px]">
+          <span className="text-muted tabular-nums md:hidden">{rank}. </span>
+          {s.name}
+        </span>
+        <span className="hidden truncate text-muted text-xs md:block">{meta}</span>
+        {short && <span className="block truncate text-[11px] text-muted md:hidden">{short}</span>}
       </span>
     </li>
   );
+}
+
+/** 順位の動き（同じ5軒の中で。順位の差という事実なので数値を出す） */
+function moveText(d: number, long: boolean): string {
+  if (d > 0) return long ? `↑${d}つ上がった` : `↑${d}`;
+  if (d < 0) return long ? `↓${-d}つ下がった` : `↓${-d}`;
+  return long ? "→ 同じ" : "→";
 }
 
 function Compare({ pop, mine }: { pop: LpShop[]; mine: LpShop[] }) {
   // 同じ店は同じ印（口コミの多い順に A〜E）
   const markOf = new Map(pop.map((s, i) => [s.id, MARKS[i]]));
   return (
-    <div className="grid gap-6 md:grid-cols-[1fr_96px_1fr] md:gap-0">
+    // スマホでも2列で並べ、間を線でつなぐ（線の幅だけ詰める）
+    <div className="grid grid-cols-[1fr_28px_1fr] md:grid-cols-[1fr_96px_1fr]">
       <div>
-        <h3 className="mb-3 font-bold text-lg">Google の順</h3>
+        <h3 className="mb-3 h-7 font-bold text-base md:text-lg">Google の順</h3>
         <ol className="grid gap-2" aria-label="口コミの多い順（Google の順に見立てた例）">
           {pop.map((s, i) => (
             <CompareRow
@@ -224,14 +322,16 @@ function Compare({ pop, mine }: { pop: LpShop[]; mine: LpShop[] }) {
               mark={markOf.get(s.id) ?? ""}
               rank={i + 1}
               meta={`あなたの順では${mine.findIndex((m) => m.id === s.id) + 1}位・${s.score}点`}
+              short={`${s.score}点`}
             />
           ))}
         </ol>
       </div>
-      {/* 同じ店を線でつなぐ（広い画面だけ。上下に並ぶスマホでは印の文字で対応が分かる） */}
+      {/* 同じ店を線でつなぐ（スマホは幅を詰めて引き伸ばす。線の太さは変えない） */}
       <svg
-        className="hidden md:block"
+        className="w-full"
         viewBox={`0 0 96 ${ROW * 5}`}
+        preserveAspectRatio="none"
         style={{ marginTop: 40, height: ROW * 5 }}
         aria-hidden="true"
         focusable="false"
@@ -249,12 +349,13 @@ function Compare({ pop, mine }: { pop: LpShop[]; mine: LpShop[] }) {
               stroke={hot ? AMBER : DOT}
               strokeWidth={hot ? 4 : 2.5}
               strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
             />
           );
         })}
       </svg>
       <div>
-        <h3 className="mb-3 font-bold text-lg">あなたの順</h3>
+        <h3 className="mb-3 h-7 font-bold text-base md:text-lg">あなたの順</h3>
         <ol className="grid gap-2" aria-label="あなたの順（点数の高い順）">
           {mine.map((s, i) => (
             <CompareRow
@@ -262,7 +363,8 @@ function Compare({ pop, mine }: { pop: LpShop[]; mine: LpShop[] }) {
               s={s}
               mark={markOf.get(s.id) ?? ""}
               rank={i + 1}
-              meta={`${s.score}点・${s.verdict}`}
+              meta={`${s.score}点・${s.verdict}・${moveText(pop.findIndex((p) => p.id === s.id) - i, true)}`}
+              short={`${s.score}点・${moveText(pop.findIndex((p) => p.id === s.id) - i, false)}`}
             />
           ))}
         </ol>
@@ -391,7 +493,7 @@ export default function Home() {
               {/* 句の途中で折り返さないよう、句ごとにまとめて balance で整える */}
               <h1
                 id="hero-title"
-                className="mt-4 text-balance font-bold text-[34px] leading-[1.25] tracking-tight sm:text-[44px] md:text-[56px] md:leading-[1.15]"
+                className="jm-phrase mt-4 font-bold text-[34px] leading-[1.25] tracking-tight sm:text-[44px] md:text-[56px] md:leading-[1.15]"
               >
                 <span className="inline-block">行列が嫌なのは、</span>
                 <span className="inline-block">近さのせい</span>
@@ -424,9 +526,18 @@ export default function Home() {
           <div className="mx-auto w-full max-w-3xl px-4 py-16 md:px-6 md:py-20">
             <h2
               id="concept-title"
-              className="text-balance font-bold text-2xl leading-snug md:text-3xl"
+              className="jm-phrase font-bold text-2xl leading-snug md:text-3xl"
             >
-              飲食店を選んでから、お店を出るまで。そのときのあなたの状態に合わせて、いちばんいい1軒を。
+              <Phrases
+                parts={[
+                  "飲食店を選んでから、",
+                  "お店を出るまで。",
+                  "そのときの",
+                  "あなたの状態に",
+                  "合わせて、",
+                  "いちばんいい1軒を。",
+                ]}
+              />
             </h2>
             <p className="mt-5 text-[15px] text-muted leading-[1.8] md:text-base">
               「そのときの状態」は、たとえば
@@ -442,13 +553,18 @@ export default function Home() {
         {/* 3. 物語（課題 → 気づき → 解決） */}
         <section className="bg-bg" aria-labelledby="story-title">
           <div className="mx-auto w-full max-w-3xl px-4 py-16 md:px-6 md:py-20">
-            <h2 id="story-title" className="font-bold text-3xl tracking-tight md:text-4xl">
-              なぜ、ジブンマップなのか
+            <h2
+              id="story-title"
+              className="jm-phrase font-bold text-3xl tracking-tight md:text-4xl"
+            >
+              <Phrases parts={["なぜ、", "ジブンマップなのか"]} />
             </h2>
             <ol className="mt-10 grid gap-14">
               <li>
                 <p className="font-bold text-mid text-sm">課題</p>
-                <h3 className="mt-1 font-bold text-2xl">行列で、知らない人が近くて嫌</h3>
+                <h3 className="jm-phrase mt-1 font-bold text-2xl">
+                  <Phrases parts={["行列で、", "知らない人が", "近くて嫌"]} />
+                </h3>
                 <div className="mt-5">
                   <QueueArt />
                 </div>
@@ -459,7 +575,9 @@ export default function Home() {
               </li>
               <li>
                 <p className="font-bold text-mid text-sm">気づき</p>
-                <h3 className="mt-1 font-bold text-2xl">嫌なのは距離ではなかった</h3>
+                <h3 className="jm-phrase mt-1 font-bold text-2xl">
+                  <Phrases parts={["嫌なのは", "距離では", "なかった"]} />
+                </h3>
                 <div className="mt-5">
                   <QueueArt friends />
                 </div>
@@ -483,11 +601,11 @@ export default function Home() {
               </li>
               <li>
                 <p className="font-bold text-mid text-sm">解決</p>
-                <h3 className="mt-1 font-bold text-2xl">
-                  自分の意思で選ぶ人が集まる店を、行く前に選ぶ
+                <h3 className="jm-phrase mt-1 font-bold text-2xl">
+                  <Phrases parts={["自分の意思で", "選ぶ人が", "集まる店を、", "行く前に選ぶ"]} />
                 </h3>
-                <div className="mt-5 w-24 overflow-hidden rounded-[22%]">
-                  <BrandMark size={96} />
+                <div className="mt-5">
+                  <CrowdArt />
                 </div>
                 <p className="mt-4 text-[15px] leading-[1.8] md:text-base">
                   Google
@@ -505,9 +623,9 @@ export default function Home() {
           <div className="mx-auto w-full max-w-5xl px-4 py-16 md:px-6 md:py-24">
             <h2
               id="compare-title"
-              className="text-balance font-bold text-3xl tracking-tight md:text-4xl"
+              className="jm-phrase font-bold text-3xl tracking-tight md:text-4xl"
             >
-              同じ5軒でも、並びがこんなに変わる
+              <Phrases parts={["同じ5軒でも、", "並びが", "こんなに変わる"]} />
             </h2>
             <p className="mt-4 max-w-2xl text-[15px] leading-[1.8] md:text-base">
               Google は口コミの多さや広告で並べます。ジブンマップは、あなたの言葉で並べます。
@@ -527,7 +645,10 @@ export default function Home() {
         <section id="how" className="scroll-mt-20 bg-bg" aria-labelledby="how-title">
           <div className="mx-auto grid w-full max-w-5xl gap-10 px-4 py-16 md:grid-cols-2 md:px-6 md:py-24">
             <div>
-              <h2 id="how-title" className="font-bold text-3xl tracking-tight md:text-4xl">
+              <h2
+                id="how-title"
+                className="jm-phrase font-bold text-3xl tracking-tight md:text-4xl"
+              >
                 点数のしくみ
               </h2>
               <p className="mt-4 text-[15px] leading-[1.8] md:text-base">
@@ -594,7 +715,7 @@ export default function Home() {
         {/* 6. できること */}
         <section className="bg-surface" aria-labelledby="features-title">
           <div className="mx-auto w-full max-w-5xl px-4 py-16 md:px-6 md:py-20">
-            <h2 id="features-title" className="font-bold text-3xl tracking-tight">
+            <h2 id="features-title" className="jm-phrase font-bold text-3xl tracking-tight">
               できること
             </h2>
             <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -616,7 +737,7 @@ export default function Home() {
         {/* 7. アプリのように使う */}
         <section className="bg-[#1F2A26] text-white" aria-labelledby="pwa-title">
           <div className="mx-auto w-full max-w-5xl px-4 py-16 md:px-6 md:py-20">
-            <h2 id="pwa-title" className="font-bold text-3xl tracking-tight">
+            <h2 id="pwa-title" className="jm-phrase font-bold text-3xl tracking-tight">
               アプリのように使う
             </h2>
             <p className="mt-3 text-white/80 leading-[1.8]">
@@ -681,7 +802,7 @@ export default function Home() {
         {/* 8. 約束 */}
         <section className="bg-bg" aria-labelledby="promise-title">
           <div className="mx-auto w-full max-w-5xl px-4 py-16 md:px-6 md:py-20">
-            <h2 id="promise-title" className="font-bold text-3xl tracking-tight">
+            <h2 id="promise-title" className="jm-phrase font-bold text-3xl tracking-tight">
               約束
             </h2>
             <ul className="mt-8 grid gap-3 md:grid-cols-3">
