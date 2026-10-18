@@ -12,7 +12,7 @@ import {
 } from "@/lib/jibunmap/score";
 import { LIVE_EXAMPLES } from "@/lib/jibunmap/suggest";
 import { Highlighted } from "./Highlighted";
-import { CloseIcon, InfoIcon } from "./Icons";
+import { CloseIcon, InfoIcon, MyLocationIcon } from "./Icons";
 import { PhotoCredit, PlacePhotoImg } from "./PlacePhotoImg";
 
 export const BAND_TEXT = { hi: "text-hi", mid: "text-mid", lo: "text-lo" } as const;
@@ -268,6 +268,7 @@ export function ListPanel({
   onSelect,
   onHover,
   onPickExample,
+  onNear,
 }: {
   demo: boolean;
   /** 前の検索が終わったら探す語 */
@@ -283,6 +284,8 @@ export function ListPanel({
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
   onPickExample: (q: string) => void;
+  /** 現在地の近くで探す（デモでは null） */
+  onNear: (() => void) | null;
 }) {
   const total = ranked.length;
   // 読み上げ: 件数と検索の状態だけを、静かに伝える
@@ -411,6 +414,18 @@ export function ListPanel({
                     検索すると、点数の高い順にここに並びます。例から試せます。
                   </p>
                   <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="検索の例">
+                    {onNear && (
+                      <li>
+                        <button
+                          type="button"
+                          onClick={onNear}
+                          className="flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 font-medium text-[13px] hover:bg-surface-3"
+                        >
+                          <MyLocationIcon className="size-4" />
+                          現在地の近くで探す
+                        </button>
+                      </li>
+                    )}
                     {LIVE_EXAMPLES.map((q) => (
                       <li key={q}>
                         <button

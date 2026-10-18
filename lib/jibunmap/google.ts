@@ -404,6 +404,11 @@ export class SearchLimitError extends Error {}
 
 export type SearchResult = { places: Place[]; cached: boolean };
 
+/** 現在地のまわりで探すときの半径（m） */
+export const NEAR_RADIUS_M = 800;
+
+export type LatLngLiteral = { lat: number; lng: number };
+
 /**
  * Text Search を1回だけ呼ぶ（ページ送りはしない）。
  * bounds は寄せる範囲（locationBias）。area が true のときだけ、範囲もキャッシュのキーに入れる。
@@ -412,10 +417,13 @@ export type SearchResult = { places: Place[]; cached: boolean };
 export async function searchPlaces(
   query: string,
   bounds?: Bounds,
-  opts: { area?: boolean; textQuery?: string } = {},
+  opts: { area?: boolean; textQuery?: string; near?: LatLngLiteral } = {},
 ): Promise<SearchResult> {
   const q = query.trim() || "飲食店";
-  const key = cacheKey(q, opts.area ? bounds : undefined);
+  // 現在地のまわりは、丸めた座標（小数2桁、約1km）をキーにする。位置そのものは保存しない
+  const key = opts.near
+    ? `${CACHE_PREFIX}現在地|${opts.near.lat.toFixed(2)},${opts.near.lng.toFixed(2)}|${q}`
+    : cacheKey(q, opts.area ? bounds : undefined);
   const hit = readCache(key);
   if (hit) return { places: hit, cached: true };
   if (readCount() >= SEARCH_LIMIT) {
@@ -432,7 +440,9 @@ export async function searchPlaces(
     region: "JP",
     maxResultCount: 20,
   };
-  if (bounds) {
+  if (opts.near) {
+    req.locationBias = { center: opts.near, radius: NEAR_RADIUS_M };
+  } else if (bounds) {
     req.locationBias = {
       south: bounds.low.latitude,
       west: bounds.low.longitude,

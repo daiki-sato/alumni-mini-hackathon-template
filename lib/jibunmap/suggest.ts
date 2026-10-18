@@ -136,3 +136,13 @@ export function foodQuery(input: string): string {
   const hasHint = FOOD_HINTS.some((h) => norm(q).includes(h));
   return hasGenre || hasHint ? q : `${q} 飲食店`;
 }
+
+/** 「現在地の近くで ◯◯」の ◯◯。入力にジャンル語があればそれ、なければ「飲食店」 */
+export function nearGenre(input: string): string {
+  const tokens = input
+    .trim()
+    .split(/[\s　]+/)
+    .map(norm)
+    .filter(Boolean);
+  return GENRE_WORDS.find((g) => tokens.some((t) => hits(g, t)))?.name ?? "飲食店";
+}

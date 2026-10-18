@@ -275,6 +275,19 @@ body {
   outline-offset: 1px;
 }
 
+/* 現在地の青い点 */
+.jm-me {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #1a73e8;
+  border: 3px solid #fff;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.15),
+    0 1px 4px rgb(0 0 0 / 0.3);
+  transform: translateY(50%);
+}
+
 /* デモ地図（SVG）のピン */
 .demo-pin {
   cursor: pointer;
