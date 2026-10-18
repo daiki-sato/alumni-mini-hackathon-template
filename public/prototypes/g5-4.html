@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>マツカチ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0;font-size:15px;line-height:1.6}
+.outer{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:12px;padding-bottom:48px}
+.wrap{max-width:560px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.back{color:var(--muted);font-size:14px;text-decoration:none;padding:8px 0;display:inline-block}
+.back:hover{text-decoration:underline}
+.tag{font:500 11px var(--font-mono);border:1px solid var(--line);color:var(--muted);padding:2px 6px;border-radius:4px}
+.hyp{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.6;color:var(--muted);margin-bottom:18px}
+.hyp dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 10px}
+.hyp dt{font-weight:700;color:var(--ink);white-space:nowrap}
+.hyp dd{margin:0}
+.hyp .k-ok{color:var(--ok);font-weight:700}
+.hyp .k-ng{color:var(--ng);font-weight:700}
+h1{font-family:var(--font-display);font-size:28px;line-height:1.25;margin:0 0 4px;letter-spacing:.01em}
+h2{font-family:var(--font-display);font-size:16px;margin:24px 0 8px}
+.lead{margin:0 0 14px;color:var(--muted);font-size:14px}
+.note{color:var(--muted);font-size:12px;margin:6px 0 0}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:14px 16px;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.board .lbl{font-size:12px;color:var(--board-ink);opacity:.85;line-height:1.4}
+.board .big{font:600 46px/1.05 var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:.02em;color:var(--board-ink)}
+.board .mid{font:600 28px/1.1 var(--font-mono);font-variant-numeric:tabular-nums;color:var(--board-ink)}
+.board .unit{font:500 14px var(--font-mono);margin-left:4px}
+.btn{font:700 15px var(--font-body);min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal)}
+.btn.ghost{background:transparent}
+.btn.small{min-height:36px;font-size:13px;padding:4px 10px;font-weight:500}
+.btn[aria-pressed="true"]{background:var(--board);color:var(--board-ink);border-color:var(--board)}
+.btn:disabled{opacity:.5;cursor:default}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.numrow{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.numrow .btn{padding:4px 0;font-family:var(--font-mono);font-size:17px;font-variant-numeric:tabular-nums}
+input[type=text]{font:400 16px var(--font-body);width:100%;min-height:44px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.panel{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:12px}
+.list{list-style:none;margin:0;padding:0}
+.list li{padding:8px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:14px}
+.list li:first-child{border-top:none}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--ink)}
+.status{min-height:22px;font-size:13px;color:var(--muted);margin:8px 0 0}
+.sample-bar{margin-top:32px;border-top:1px solid var(--line);padding-top:12px;font-size:12px;color:var(--muted)}
+.sample-bar .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.confirm{margin-top:10px;border:1px solid var(--ng);border-radius:8px;padding:10px 12px;background:var(--surface);color:var(--ink);font-size:13px}
+.confirm[hidden]{display:none}
+.confirm .btns{margin-top:8px}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+
+.tabs{display:flex;gap:8px;margin:14px 0 4px}
+.tabs .btn{flex:1}
+.formula{font:500 12px var(--font-mono);color:var(--muted);margin:6px 0 0}
+.lab{font-size:13px;margin:12px 0 6px;display:flex;justify-content:space-between}
+.numrow.six{grid-template-columns:repeat(6,1fr)}
+.reason-big{font-family:var(--font-display);font-size:24px;line-height:1.5;margin:6px 0 14px;padding:16px;border-left:6px solid var(--signal);background:var(--surface);border-radius:0 8px 8px 0;overflow-wrap:anywhere}
+.reason-big.empty{font-size:16px;color:var(--muted);border-left-color:var(--line)}
+.meters{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-size:13px;margin-bottom:14px}
+.verdict{display:flex;gap:8px}
+.verdict .btn{flex:1}
+.pill{font:600 11px var(--font-body);padding:2px 8px;border-radius:999px;border:1px solid var(--ok);color:var(--ok);white-space:nowrap}
+.pill.no{border-color:var(--ng);color:var(--ng)}
+.rank li{display:block}
+.rank .t{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="outer"><div class="wrap">
+<div class="top"><a class="back" href="./">← 50の仮説</a><span class="tag" id="sample-tag">サンプル</span></div>
+<div class="hyp" aria-label="仮説カード"><dl>
+<dt>視点</dt><dd>認知・感情</dd>
+<dt>種類</dt><dd>具体</dd>
+<dt>仮説</dt><dd>待つ価値（それでも並ぶ理由）が自分の言葉になっていると、近さを受け入れられる。</dd>
+<dt>確かめること</dt><dd><span class="k-ok">当たり</span>＝並ぶ理由を見返すと近さに耐えられる<br><span class="k-ng">外れ</span>＝理由があっても近いものは近い</dd>
+</dl></div>
+<h1>マツカチ</h1>
+<p class="lead">店ごとに「待つ価値」を数字にして、並ぶ理由を一行で残す。列では見返すだけ。</p>
+
+<div class="board" aria-live="polite">
+  <div><div class="lbl" id="b-lbl">待つ価値</div><div class="big"><span id="b-val">–</span><span class="unit">/ 30</span></div></div>
+  <div><div class="lbl">食べたい度 × (6 − つらさ)</div><div class="mid" id="b-calc">–</div></div>
+</div>
+
+<div class="chips" id="shops" style="margin-top:12px" role="group" aria-label="店の選択"></div>
+<div class="tabs" role="group" aria-label="画面"><button type="button" class="btn" id="tab-edit" aria-pressed="true">つける</button><button type="button" class="btn" id="tab-look" aria-pressed="false">列で見返す</button></div>
+
+<section id="v-edit">
+  <h2>この店の点数と理由</h2>
+  <div class="lab"><label for="nm">店の名前</label></div>
+  <input type="text" id="nm" maxlength="20" autocomplete="off">
+  <div class="lab"><span>食べたい度（0〜5）</span><span class="mono" id="w-v"></span></div>
+  <div class="numrow six" id="num-want" role="group" aria-label="食べたい度"></div>
+  <div class="lab"><span>列の近さのつらさ（0〜5）</span><span class="mono" id="h-v"></span></div>
+  <div class="numrow six" id="num-hard" role="group" aria-label="列の近さのつらさ"></div>
+  <div class="lab"><label for="rs">それでも並ぶ理由（1行）</label></div>
+  <input type="text" id="rs" maxlength="50" autocomplete="off">
+  <div class="row" style="margin-top:14px">
+    <button type="button" class="btn small ghost" id="btn-del">この店を消す</button>
+  </div>
+  <h2>店を追加</h2>
+  <div class="row"><input type="text" id="new-nm" maxlength="20" autocomplete="off" aria-label="追加する店の名前" style="flex:1"><button type="button" class="btn" id="btn-add">店を追加</button></div>
+</section>
+
+<section id="v-look" hidden>
+  <h2>並ぶ理由</h2>
+  <div class="reason-big" id="l-reason"></div>
+  <div class="meters" id="l-meters"></div>
+  <div class="lab"><span>見返してみて</span></div>
+  <div class="verdict"><button type="button" class="btn" id="v-held">耐えられた</button><button type="button" class="btn" id="v-nope">やっぱり近い</button></div>
+  <p class="note" id="l-tally"></p>
+</section>
+
+<h2>待つ価値の順</h2>
+<ul class="list rank" id="rank"></ul>
+<p class="note">10以上を「待つ価値あり」と表示。点数は自分の付けた数字から出しているだけ。</p>
+<div class="sample-bar"><span id="sample-label"></span>
+<div class="btns"><button type="button" class="btn small ghost" id="btn-clear">サンプルを消して自分で使う</button><button type="button" class="btn small ghost" id="btn-reset">サンプルに戻す</button></div>
+<div class="confirm" id="confirm" hidden role="alertdialog" aria-live="assertive"><div id="confirm-msg"></div><div class="btns row"><button type="button" class="btn small" id="confirm-yes">はい</button><button type="button" class="btn small ghost" id="confirm-no">やめる</button></div></div>
+</div>
+</div></div>
+<script>
+(function(){
+'use strict';
+var KEY='hack3-g5-4-v1';
+var state=null;
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function loadState(){
+  try{var s=localStorage.getItem(KEY);if(s){var o=JSON.parse(s);if(o&&o.v===1)return o}}catch(e){}
+  return makeSample();
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function ask(msg,yes){
+  var box=$('confirm');
+  $('confirm-msg').textContent=msg;
+  box.hidden=false;
+  $('confirm-yes').onclick=function(){box.hidden=true;yes()};
+  $('confirm-no').onclick=function(){box.hidden=true};
+}
+function renderBar(){
+  var on=!!state.sample;
+  $('sample-tag').hidden=!on;
+  $('sample-label').textContent=on?'いま見えているのはサンプルのデータです。':'いま見えているのは自分のデータです（この端末の中だけ）。';
+  $('btn-clear').disabled=!on;
+}
+function bindCommon(){
+  $('btn-clear').addEventListener('click',function(){
+    ask('サンプルを消して、空の状態から始めます。よいですか。',function(){state=makeEmpty();save();render();renderBar()});
+  });
+  $('btn-reset').addEventListener('click',function(){
+    ask('いまのデータを消して、サンプルに戻します。よいですか。',function(){state=makeSample();save();render();renderBar()});
+  });
+}
+function boot(){
+  state=loadState();
+  bindCommon();
+  if(typeof initProduct==='function')initProduct();
+  render();
+  renderBar();
+}
+
+var sel=null,mode='edit';
+function makeSample(){
+  return {v:1,sample:true,seq:6,sel:1,shops:[
+    {id:1,name:'ラーメン',want:5,hard:3,reason:'あの味は他にない。30分は味のうち。',held:4,nope:1},
+    {id:2,name:'接骨院',want:4,hard:2,reason:'ここで診てもらうと翌日が軽い。',held:3,nope:0},
+    {id:3,name:'餃子',want:3,hard:5,reason:'',held:0,nope:2},
+    {id:4,name:'電車（通勤）',want:1,hard:5,reason:'',held:0,nope:3},
+    {id:5,name:'飛行機（搭乗）',want:1,hard:4,reason:'',held:0,nope:1}]};
+}
+function makeEmpty(){return {v:1,sample:false,seq:1,sel:null,shops:[]}}
+function val(s){return s.want*(6-s.hard)}
+function cur(){
+  for(var i=0;i<state.shops.length;i++)if(state.shops[i].id===state.sel)return state.shops[i];
+  if(state.shops.length){state.sel=state.shops[0].id;return state.shops[0]}
+  return null;
+}
+function numRow(act,v){
+  var h='';
+  for(var i=0;i<=5;i++)h+='<button type="button" class="btn" data-act="'+act+'" data-v="'+i+'" aria-pressed="'+(v===i)+'">'+i+'</button>';
+  return h;
+}
+function render(){
+  var s=cur();
+  var h='';
+  state.shops.forEach(function(q){h+='<button type="button" class="btn" data-act="pick" data-id="'+q.id+'" aria-pressed="'+(s&&q.id===s.id)+'">'+esc(q.name)+'</button>'});
+  $('shops').innerHTML=h||'<span class="muted">店がまだない。下で追加できる。</span>';
+  $('tab-edit').setAttribute('aria-pressed',mode==='edit');
+  $('tab-look').setAttribute('aria-pressed',mode==='look');
+  $('v-edit').hidden=mode!=='edit';
+  $('v-look').hidden=mode!=='look';
+  $('btn-del').hidden=!s;
+  if(s){
+    $('b-lbl').textContent=s.name+'の待つ価値';
+    $('b-val').textContent=val(s);
+    $('b-calc').textContent=s.want+' × '+(6-s.hard);
+    if(document.activeElement!==$('nm'))$('nm').value=s.name;
+    if(document.activeElement!==$('rs'))$('rs').value=s.reason;
+    $('num-want').innerHTML=numRow('want',s.want);
+    $('num-hard').innerHTML=numRow('hard',s.hard);
+    $('w-v').textContent=s.want;$('h-v').textContent=s.hard;
+    var r=$('l-reason');
+    r.textContent=s.reason||'理由はまだ書いていない。「つける」で1行だけ残せる。';
+    r.className='reason-big'+(s.reason?'':' empty');
+    $('l-meters').innerHTML=
+      '<span>食べたい度</span><div class="bar"><i style="width:'+s.want*20+'%"></i></div><span class="mono">'+s.want+'/5</span>'
+      +'<span>近さのつらさ</span><div class="bar"><i style="width:'+s.hard*20+'%;background:var(--ng)"></i></div><span class="mono">'+s.hard+'/5</span>'
+      +'<span>待つ価値</span><div class="bar"><i style="width:'+val(s)/30*100+'%;background:var(--ok)"></i></div><span class="mono">'+val(s)+'/30</span>';
+    var n=s.held+s.nope;
+    $('l-tally').textContent=n?'見返した '+n+'回のうち、耐えられた '+s.held+'回・やっぱり近い '+s.nope+'回。':'まだ答えがない。';
+    $('v-held').disabled=false;$('v-nope').disabled=false;
+  }else{
+    $('b-lbl').textContent='待つ価値';$('b-val').textContent='–';$('b-calc').textContent='–';
+    $('l-reason').textContent='店を追加すると見える。';$('l-reason').className='reason-big empty';
+    $('l-meters').innerHTML='';$('l-tally').textContent='';
+    $('v-held').disabled=true;$('v-nope').disabled=true;
+    $('nm').value='';$('rs').value='';$('num-want').innerHTML='';$('num-hard').innerHTML='';
+  }
+  var rk='';
+  state.shops.slice().sort(function(a,b){return val(b)-val(a)}).forEach(function(q){
+    var ok=val(q)>=10;
+    rk+='<li><div style="flex:1"><div class="t"><span>'+esc(q.name)+'</span><span><span class="mono">'+val(q)+'</span> <span class="pill'+(ok?'':' no')+'">'+(ok?'待つ価値あり':'待つ価値なし')+'</span></span></div>'
+      +'<div class="bar"><i style="width:'+val(q)/30*100+'%;background:'+(ok?'var(--ok)':'var(--ng)')+'"></i></div></div></li>';
+  });
+  $('rank').innerHTML=rk||'<li class="muted">まだない</li>';
+}
+function initProduct(){
+  document.addEventListener('click',function(e){
+    var t=e.target&&e.target.closest?e.target.closest('[data-act]'):null;
+    if(!t)return;
+    var a=t.getAttribute('data-act'),s=cur();
+    if(a==='pick'){state.sel=parseInt(t.getAttribute('data-id'),10)}
+    else if(a==='want'&&s){s.want=parseInt(t.getAttribute('data-v'),10)}
+    else if(a==='hard'&&s){s.hard=parseInt(t.getAttribute('data-v'),10)}
+    else return;
+    save();render();
+  });
+  $('tab-edit').addEventListener('click',function(){mode='edit';render()});
+  $('tab-look').addEventListener('click',function(){mode='look';render()});
+  $('nm').addEventListener('input',function(){var s=cur();if(s){s.name=$('nm').value||'（名前なし）';save();render()}});
+  $('rs').addEventListener('input',function(){var s=cur();if(s){s.reason=$('rs').value;save();render()}});
+  $('v-held').addEventListener('click',function(){var s=cur();if(s){s.held++;save();render()}});
+  $('v-nope').addEventListener('click',function(){var s=cur();if(s){s.nope++;save();render()}});
+  $('btn-add').addEventListener('click',function(){
+    var n=$('new-nm').value.trim();if(!n)return;
+    var id=state.seq++;
+    state.shops.push({id:id,name:n,want:3,hard:3,reason:'',held:0,nope:0});
+    state.sel=id;$('new-nm').value='';save();render();
+  });
+  $('btn-del').addEventListener('click',function(){
+    var s=cur();if(!s)return;
+    ask('「'+s.name+'」を消します。よいですか。',function(){
+      state.shops=state.shops.filter(function(q){return q.id!==s.id});
+      state.sel=null;save();render();
+    });
+  });
+}
+
+boot();
+})();
+</script>
+</body>
+</html>

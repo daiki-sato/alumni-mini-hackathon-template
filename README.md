@@ -205,6 +205,37 @@ npm run db:push
 
 ---
 
+## 試作（public/prototypes）
+
+ハッカソンのお題「行列で知らない人が近くて嫌」に向けた試作60本を `public/prototypes/` に置いています。
+どれも1ファイルで動く静的な HTML で、Supabase には接続しません（データは見ている人のブラウザにだけ保存）。
+
+| 見たいもの | URL |
+|---|---|
+| 一覧（仮説の木・ラベル・並べ替え） | `/prototypes` |
+| 第5版（行く前に使う5本） | `/prototypes/ik-1.html` 〜 `ik-5.html` |
+| 第4版（仲間認識の5本） | `/prototypes/nk-1.html` 〜 `nk-5.html` |
+
+ローカルでは `npm run dev` のあと [http://localhost:3000/prototypes](http://localhost:3000/prototypes) を開きます（Supabase を起動していなくても見られます）。
+
+> 一覧ページの投票は Claude の Artifact 上でだけチームで集計されます。Vercel 上では投票は各自のブラウザに残るだけです。
+
+### Vercel で試作だけを公開する手順
+
+試作は環境変数なしで動くので、上の「2. Vercel」の環境変数は後回しでかまいません（トップページは「接続できませんでした」と出ますが、`/prototypes` は見られます）。
+
+1. 作業用ブランチを切って push し、PR を作る（`main` に直接 push しない）
+   ```bash
+   git switch -c feat/<やること>
+   git push -u origin feat/<やること>
+   gh pr create
+   ```
+2. [vercel.com](https://vercel.com) の Add New → Project で、このリポジトリを Import する（Framework は Next.js が自動で選ばれる。設定は変更不要）
+3. PR を作るたびに Preview の URL ができる。Preview は初期設定だと Vercel にログインしたチームメンバーしか見られない
+4. チームの外の人にも見せるときは、PR を `main` にマージする。`main` が本番（Production）の URL になり、誰でも見られる
+
+---
+
 ## よくあるトラブル
 
 | 症状 | 対処 |

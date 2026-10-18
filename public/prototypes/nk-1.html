@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>キョウツウノテキ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --raised:#FFFFFF; --shadow-1:0 1px 2px rgba(26,35,32,.08); --shadow-2:0 6px 18px rgba(26,35,32,.12);
+  --radius:12px; --flap:#2B3833;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --raised:#222A26; --shadow-1:0 1px 2px rgba(0,0,0,.4); --shadow-2:0 8px 22px rgba(0,0,0,.5); --flap:#18201C;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --raised:#222A26; --shadow-1:0 1px 2px rgba(0,0,0,.4); --shadow-2:0 8px 22px rgba(0,0,0,.5); --flap:#18201C;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+.wrap{max-width:560px;margin:0 auto;padding:16px max(16px, env(safe-area-inset-right, 0px)) 56px max(16px, env(safe-area-inset-left, 0px))}
+a{color:var(--ink)}
+a.back{display:inline-block;font-size:14px;color:var(--muted);padding:6px 0;margin-bottom:6px}
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+button{font:inherit;color:inherit;cursor:pointer}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+h1{font-family:var(--font-display);font-size:30px;letter-spacing:-.02em;margin:0;line-height:1.2}
+.sub{font-size:13px;color:var(--muted);margin:4px 0 12px}
+h2{font-family:var(--font-display);font-size:20px;letter-spacing:-.01em;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+h2 .step{font-family:var(--font-mono);font-size:12px;background:var(--board);color:var(--board-ink);border-radius:6px;padding:2px 7px;letter-spacing:0}
+h3{font-family:var(--font-display);font-size:15px;margin:18px 0 6px}
+section.stage{margin:28px 0 0}
+
+/* 仮説カード（折りたたみの帯） */
+details.hyp{border:1px solid var(--line);border-left:5px solid var(--signal);background:var(--surface);border-radius:var(--radius);font-size:13px;line-height:1.6;margin:0 0 10px}
+details.hyp summary{cursor:pointer;padding:9px 12px;list-style:none;display:flex;gap:8px;align-items:baseline}
+details.hyp summary::-webkit-details-marker{display:none}
+details.hyp summary .pos{font-family:var(--font-mono);font-size:11px;color:var(--muted);white-space:nowrap}
+details.hyp summary .tog{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+details.hyp[open] summary .tog::after{content:"たたむ"}
+details.hyp:not([open]) summary .tog::after{content:"ひらく"}
+details.hyp .body{padding:0 12px 10px}
+details.hyp p{margin:2px 0}
+details.hyp .hit{color:var(--ok)} details.hyp .miss{color:var(--ng)}
+details.hyp b{font-family:var(--font-display)}
+.sample{font-size:12px;color:var(--muted);margin:0}
+
+/* イラスト */
+.scene-fig{margin:10px 0 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-1);overflow:hidden}
+.scene-fig svg{display:block;width:100%;height:auto}
+.scene-fig figcaption{display:flex;justify-content:space-between;gap:8px;padding:8px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.scene-fig figcaption b{color:var(--ink);font-family:var(--font-display);font-size:13px}
+.f-ground{fill:var(--bg)} .f-line{stroke:var(--line);fill:none;stroke-width:1.5}
+.f-wall{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.f-board{fill:var(--board)} .f-boardink{fill:var(--board-ink)}
+.f-bg{fill:var(--bg);stroke:var(--line);stroke-width:1.5}
+.f-muted{fill:var(--muted)} .f-lineFill{fill:var(--line)}
+.f-ink{fill:var(--ink)} .s-ink{stroke:var(--ink);fill:none;stroke-width:1.6;stroke-linecap:round}
+.f-ng{fill:var(--ng)} .f-signal{fill:var(--signal)}
+.t-small{font-family:var(--font-display);font-size:9px;font-weight:700}
+.t-mono{font-family:var(--font-mono);font-size:8px;font-weight:600}
+.bgset{opacity:0} .bgset.on{opacity:1}
+.icon{opacity:0} .icon.on{opacity:1}
+.badge{fill:var(--raised);stroke:var(--ng);stroke-width:1.5}
+.person .head,.person .torso{fill:var(--muted)}
+.person.ally .head,.person.ally .torso{fill:var(--ok)}
+.person.me .head,.person.me .torso{fill:var(--signal)}
+.me-tag{fill:var(--ink);font-family:var(--font-display);font-size:9px;font-weight:700}
+.bond{fill:none;stroke:var(--ok);stroke-width:1.6;stroke-linecap:round;stroke-dasharray:60;stroke-dashoffset:60;opacity:0}
+.bond.on{stroke-dashoffset:0;opacity:1}
+.hull{fill:none;stroke:var(--ok);stroke-width:1.4;stroke-dasharray:4 4;opacity:0}
+.hull.on{opacity:.9}
+
+/* 発車標 */
+.board{background:var(--board);color:var(--board-ink);border-radius:var(--radius);padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0 0;box-shadow:var(--shadow-1)}
+.board .cell{display:flex;flex-direction:column;gap:6px}
+.board .lab{font-size:12px;opacity:.85}
+.board .val{display:flex;align-items:baseline;gap:6px}
+.flaps{display:inline-flex;gap:3px}
+.flap{display:inline-block;font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:44px;line-height:1;padding:4px 5px;border-radius:6px;background:var(--flap);color:var(--board-ink);min-width:.9em;text-align:center;position:relative}
+.flap::after{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid var(--board)}
+.board .unit{font-size:13px}
+
+/* 操作 */
+.coach{position:relative;margin:0 0 10px;background:var(--board);color:var(--board-ink);border-radius:10px;padding:8px 36px 8px 12px;font-size:13px;box-shadow:var(--shadow-2)}
+.coach::after{content:"";position:absolute;left:22px;bottom:-6px;border:6px solid transparent;border-bottom:0;border-top-color:var(--board)}
+.coach button{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--board-ink);width:32px;height:32px;font-size:16px;border-radius:8px}
+.scenes{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;border:0}
+.scenes legend{font-size:13px;color:var(--muted);padding:0;margin-bottom:6px}
+.scene{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;min-height:44px;text-align:left;box-shadow:var(--shadow-1)}
+.scene[aria-pressed="true"]{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+.lead{font-size:13px;color:var(--muted);margin:0 0 10px;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px;min-height:44px}
+.chip[aria-pressed="true"]{background:var(--board);color:var(--board-ink);border-color:var(--board)}
+.enemies{display:grid;gap:8px;margin-top:12px}
+.enemy{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--ng);border-radius:10px;padding:10px 12px}
+.enemy .t{font-family:var(--font-display);font-weight:700;font-size:15px;margin:0 0 2px}
+.enemy .d{font-size:13px;color:var(--muted);margin:0;line-height:1.6}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:12px;font-size:13px;color:var(--muted);line-height:1.6}
+.rec{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.rec .q{grid-column:1/-1;font-size:13px;color:var(--muted);margin:0}
+.rec button{min-height:56px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:15px;font-weight:700;padding:10px;box-shadow:var(--shadow-1)}
+.rec .yes{background:var(--signal);color:var(--signal-ink);border-color:var(--signal)}
+
+/* 結果パネル */
+.result{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow-1)}
+.fact{font-family:var(--font-display);font-size:17px;font-weight:700;line-height:1.5;margin:0 0 4px;letter-spacing:-.01em}
+.fact .mono,.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.fact2{font-size:12px;color:var(--muted);margin:0 0 12px;line-height:1.6}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin:0 0 8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.legend .k i{background:var(--ng)} .legend .p i{background:var(--ok)}
+.rows{display:grid;gap:12px}
+.row .name{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:4px}
+.row .name b{font-weight:700}
+.row.cur .name b::after{content:"いま";font-size:10px;font-family:var(--font-display);background:var(--signal);color:var(--signal-ink);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:1px}
+.track{display:grid;grid-template-columns:64px 1fr 92px;align-items:center;gap:8px;font-size:12px;margin:3px 0}
+.track .lbl{color:var(--muted)}
+.track .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.bar{height:10px;background:var(--bg);border-radius:5px;overflow:hidden;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:5px}
+.bar.k i{background:var(--ng)} .bar.p i{background:var(--ok)}
+.axis{display:grid;grid-template-columns:64px 1fr 92px;gap:8px;font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:8px}
+.axis .ticks{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:3px}
+.empty-res{display:flex;gap:12px;align-items:center;font-size:13px;color:var(--muted);line-height:1.6}
+.empty-res svg{flex:0 0 96px}
+.note{font-size:12px;color:var(--muted);margin:8px 0 0}
+
+.foot{margin-top:28px;display:flex;flex-wrap:wrap;gap:8px}
+.foot button{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;font-size:13px;min-height:44px}
+.confirm{margin-top:10px;border:1px solid var(--ng);border-radius:var(--radius);padding:12px;font-size:14px;background:var(--raised);box-shadow:var(--shadow-2)}
+.confirm .row2{display:flex;gap:8px;margin-top:8px}
+.confirm button{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;min-height:44px;font-size:14px}
+.confirm .go{background:var(--ng);color:var(--surface);border-color:var(--ng);font-weight:700}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--board);color:var(--board-ink);border-radius:12px;padding:8px 8px 8px 14px;font-size:14px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-2);max-width:calc(100% - 32px);opacity:0;pointer-events:none;z-index:20}
+.toast.show{opacity:1;pointer-events:auto}
+.toast button{background:none;border:1px solid var(--board-ink);color:var(--board-ink);border-radius:8px;padding:6px 10px;min-height:36px;font-size:13px}
+
+@media (max-width:600px){
+  .wrap{padding-bottom:calc(140px + env(safe-area-inset-bottom, 0px))}
+  .rec{position:fixed;left:0;right:0;bottom:0;margin:0;z-index:10;background:var(--raised);border-top:1px solid var(--line);box-shadow:var(--shadow-2);padding:8px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom));}
+  .toast{bottom:calc(112px + env(safe-area-inset-bottom, 0px))}
+  .flap{font-size:38px}
+  h1{font-size:26px}
+}
+
+@media (prefers-reduced-motion: no-preference){
+  .bgset{transition:opacity .28s ease}
+  .icon{transition:opacity .28s ease}
+  .icon .pop{transform-box:fill-box;transform-origin:center;transform:translateY(-10px) scale(.6);transition:transform .3s cubic-bezier(.3,1.4,.5,1)}
+  .icon.on .pop{transform:translateY(0) scale(1)}
+  .icon.on .bob{animation:bob 3.2s ease-in-out infinite}
+  .icon:nth-child(2n) .bob{animation-delay:-1.4s}
+  .icon:nth-child(3n) .bob{animation-delay:-2.3s}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+  .person .move{transition:transform .3s ease}
+  .person .head,.person .torso{transition:fill .25s ease}
+  .bond{transition:stroke-dashoffset .3s ease,opacity .2s ease}
+  .hull{transition:opacity .3s ease}
+  .flap.flip{animation:flip .26s ease-out}
+  @keyframes flip{0%{transform:rotateX(90deg);opacity:.3}100%{transform:rotateX(0);opacity:1}}
+  button{transition:transform .15s ease,background-color .2s ease,color .2s ease,border-color .2s ease}
+  button:active{transform:scale(.96)}
+  .coach button:active{transform:translateY(-50%) scale(.9)}
+  .enemy{animation:fadeup .25s ease both}
+  @keyframes fadeup{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .bar i{transition:width .6s cubic-bezier(.2,.8,.2,1)}
+  .toast{transition:opacity .2s ease,transform .2s ease;transform:translate(-50%,8px)}
+  .toast.show{transform:translate(-50%,0)}
+  .coach,.confirm{animation:fadeup .25s ease both}
+}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">← 一覧へ</a>
+  <h1>キョウツウノテキ</h1>
+  <p class="sub">列の全員が同じ「敵」の下にいると、前後の人はどう見えるか。</p>
+
+  <details class="hyp" id="hyp-card" open>
+    <summary><span class="pos">A1 共通の敵</span><span>仮説と確かめること</span><span class="tog"></span></summary>
+    <div class="body">
+      <p class="pos" style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">仮説の木 A1 共通の敵（枝A「仲間の証拠が見えると仲間になる」）</p>
+      <p><b>仮説</b> 列の全員が同じ「敵」と戦っていると意識できると、前後の人が戦友に見えて、近さが平気になる。</p>
+      <p class="hit">当たり: 敵を意識すると前後の人への見方が変わる</p>
+      <p class="miss">外れ: 敵があっても知らない人は知らない人</p>
+    </div>
+  </details>
+  <p class="sample" id="sample-note">表示中のデータはサンプルです。</p>
+
+  <section class="stage" aria-labelledby="h-see">
+    <h2 id="h-see"><span class="step">1</span>見る</h2>
+    <figure class="scene-fig">
+      <svg id="scene-svg" viewBox="0 0 360 210" role="img" aria-label="列のイラスト"></svg>
+      <figcaption><b id="fig-scene"></b><span id="fig-cap"></span></figcaption>
+    </figure>
+    <div class="board">
+      <div class="cell">
+        <span class="lab">この列の共通の敵</span>
+        <span class="val"><span class="flaps" id="enemy-count" aria-hidden="true"></span><span class="unit">つ</span></span>
+      </div>
+      <div class="cell">
+        <span class="lab">戦友に見えた割合</span>
+        <span class="val"><span class="flaps" id="pct-now" aria-hidden="true"></span><span class="unit">%</span></span>
+      </div>
+      <span class="sr" id="board-live" role="status" aria-live="polite"></span>
+    </div>
+  </section>
+
+  <section class="stage" aria-labelledby="h-tap">
+    <h2 id="h-tap"><span class="step">2</span>タップする</h2>
+    <div id="coach-area"></div>
+    <fieldset class="scenes" id="scenes"><legend>いまの場面</legend></fieldset>
+    <p class="lead" id="scene-lead" style="margin-top:10px"></p>
+
+    <h3>敵を足す・外す</h3>
+    <p class="lead">タップで入れ替えます。絵の空に敵が現れ、この場面の敵の数に反映されます。</p>
+    <div class="chips" id="chips"></div>
+    <div class="enemies" id="enemy-cards"></div>
+
+    <h3 id="h-rec">前後の人は、どう見えた</h3>
+    <div class="rec" role="group" aria-labelledby="h-rec">
+      <p class="q" id="rec-q"></p>
+      <button type="button" id="rec-yes" class="yes">戦友に見えた</button>
+      <button type="button" id="rec-no">変わらない</button>
+    </div>
+  </section>
+
+  <section class="stage" aria-labelledby="h-know">
+    <h2 id="h-know"><span class="step">3</span>分かる</h2>
+    <div class="result" id="result">
+      <p class="fact" id="fact"></p>
+      <p class="fact2" id="fact2"></p>
+      <div id="res-body"></div>
+    </div>
+    <p class="note">敵の数は、いま選んでいる内容で数えています。割合は場面ごとの記録から出しています。</p>
+  </section>
+
+  <div class="foot">
+    <button type="button" id="btn-clear">サンプルを消して自分で使う</button>
+    <button type="button" id="btn-sample">サンプルに戻す</button>
+  </div>
+  <div id="confirm-area"></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toast-msg"></span><button type="button" id="toast-undo">取り消す</button></div>
+
+<script>
+(function(){
+  var KEY = 'hack4-nk-1-v1';
+  var NS = 'http://www.w3.org/2000/svg';
+  var ENEMIES = [
+    {id:'weather', name:'天気', gen:'気温や雨。全員が同じ空の下で立っている。'},
+    {id:'wait', name:'待ち時間', gen:'進まない列。全員が同じ時計を見ている。'},
+    {id:'rules', name:'店のルール', gen:'食券の先買い、私語は少なめ、ロットを乱さない。守る側として全員が同じ。'},
+    {id:'owner', name:'店主の無言の圧', gen:'声をかけられなくても伝わる緊張。全員が同じ視線を感じている。'},
+    {id:'soldout', name:'売り切れの不安', gen:'自分の番まで残るか分からない。全員が同じ数を数えている。'},
+    {id:'delay', name:'遅延・乗り継ぎ', gen:'動かない予定と、間に合わない乗り継ぎ。全員が同じ画面を見ている。'}
+  ];
+  var SCENES = [
+    {id:'jiro', name:'二郎系の店', bg:'ramen', noren:'ラーメン', lead:'守るべき作法がはっきりした列。',
+     def:['weather','wait','rules','owner'],
+     text:{weather:'外で待つ。暑さも寒さも、前後の人と同じ。', wait:'ロットが回るまで進まない。全員が同じ順を待つ。', rules:'食券は先に買う、私語は少なめ、ロットを乱さない。全員が同じ作法の側。', owner:'店主は多くを言わない。その圧を全員が受けている。'}},
+    {id:'indie', name:'人気の個人ラーメン店', bg:'ramen', noren:'中華そば', lead:'席数が少なく、行列が長くなりやすい店。',
+     def:['wait','soldout'],
+     text:{wait:'席数が少なく、一人あたりの時間が長い。全員が同じ順を待つ。', soldout:'スープがなくなれば終わり。全員が同じ残り数を気にしている。'}},
+    {id:'relax', name:'ゆるい店（ゆっくり食べても話してもいい）', bg:'relax', lead:'急かす人も、守る作法もない列。',
+     def:[], text:{}},
+    {id:'gyoza', name:'宇都宮の餃子の有名店', bg:'gyoza', lead:'観光の途中で並ぶ人が多い列。',
+     def:['weather'], text:{weather:'屋外で待つ日は、気温が全員に同じようにかかる。'}},
+    {id:'flight', name:'遅延した飛行機の搭乗口', bg:'flight', lead:'3〜4時間の遅延が出た搭乗口。',
+     def:['weather','wait','delay'],
+     text:{weather:'天候が原因で、全員の予定が同じ理由で崩れた。', wait:'案内が出るまで、全員が動けない。', delay:'乗り継ぎが危うい人も、そうでない人も、同じ画面を見ている。'}}
+  ];
+  function sampleState(){
+    return {sample:true, scene:'jiro',
+      enemies:{jiro:['weather','wait','rules','owner'], indie:['wait','soldout'], relax:[], gyoza:['weather'], flight:['weather','wait','delay']},
+      rec:{jiro:{y:4,n:1}, indie:{y:3,n:1}, relax:{y:1,n:4}, gyoza:{y:1,n:3}, flight:{y:3,n:0}}};
+  }
+  function emptyState(){
+    var e={}, r={};
+    SCENES.forEach(function(s){ e[s.id]=s.def.slice(); r[s.id]={y:0,n:0}; });
+    return {sample:false, scene:'jiro', enemies:e, rec:r};
+  }
+  var state = null;
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(raw){
+        var p = JSON.parse(raw);
+        if(p && p.enemies && p.rec && p.scene) return p;
+      }
+    }catch(e){}
+    return sampleState();
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+  function $(id){ return document.getElementById(id); }
+  function clear(node){ while(node.firstChild) node.removeChild(node.firstChild); }
+  function el(tag, cls, text){
+    var n = document.createElement(tag);
+    if(cls) n.className = cls;
+    if(text != null) n.textContent = text;
+    return n;
+  }
+  function sv(tag, attrs, parent, text){
+    var n = document.createElementNS(NS, tag);
+    for(var k in attrs){ if(Object.prototype.hasOwnProperty.call(attrs,k)) n.setAttribute(k, attrs[k]); }
+    if(text != null) n.textContent = text;
+    if(parent) parent.appendChild(n);
+    return n;
+  }
+  function raf(fn){ try{ (window.requestAnimationFrame || setTimeout)(fn); }catch(e){ fn(); } }
+  function sceneById(id){ for(var i=0;i<SCENES.length;i++) if(SCENES[i].id===id) return SCENES[i]; return SCENES[0]; }
+  function enemyById(id){ for(var i=0;i<ENEMIES.length;i++) if(ENEMIES[i].id===id) return ENEMIES[i]; return null; }
+  function curList(){ return state.enemies[state.scene] || []; }
+  function recOf(id){ return state.rec[id] || {y:0,n:0}; }
+  function pct(r){ var t=r.y+r.n; return t? Math.round(r.y*100/t) : null; }
+
+  /* ---------- イラスト ---------- */
+  var ill = {bg:{}, icons:{}, people:[], bonds:[], hull:null, noren:null, weatherSun:null, weatherRain:null};
+  var PX = [24,60,96,132,168,204,240];      // 列の基本位置（右端が先頭、店は右）
+  var ME = 3;                                // 自分の位置
+  var SDX = [-12,16,-18,0,18,-14,12], SDY = [-10,6,-4,0,8,-8,4], SRT = [-8,6,-5,0,7,-6,5];
+  var LINK_ORDER = [2,3,1,4,0,5];            // 自分のまわりからつながる
+  var SLOT_X = {weather:40, wait:96, rules:152, owner:208, soldout:264, delay:320};
+
+  function building(g){
+    sv('rect',{x:262,y:70,width:96,height:10,rx:3,'class':'f-board'},g);
+    sv('rect',{x:268,y:80,width:84,height:102,'class':'f-wall'},g);
+    sv('rect',{x:292,y:124,width:38,height:58,'class':'f-bg'},g);
+  }
+  function buildIllustration(){
+    var svg = $('scene-svg'); clear(svg);
+    sv('rect',{x:0,y:182,width:360,height:28,'class':'f-ground'},svg);
+    sv('line',{x1:0,y1:182,x2:360,y2:182,'class':'f-line'},svg);
+
+    // ラーメン（二郎系・個人店）
+    var g = sv('g',{'class':'bgset'},svg); ill.bg.ramen = g; building(g);
+    for(var i=0;i<3;i++) sv('rect',{x:276+i*23,y:86,width:21,height:30,rx:2,'class':'f-board'},g);
+    ill.noren = sv('text',{x:310,y:105,'text-anchor':'middle','class':'t-small f-boardink'},g,'ラーメン');
+    ill.ticket = sv('g',{},g);
+    sv('rect',{x:272,y:134,width:15,height:26,rx:2,'class':'f-muted'},ill.ticket);
+    sv('rect',{x:275,y:138,width:9,height:5,'class':'f-lineFill'},ill.ticket);
+
+    // ゆるい店
+    g = sv('g',{'class':'bgset'},svg); ill.bg.relax = g;
+    sv('rect',{x:268,y:80,width:84,height:102,'class':'f-wall'},g);
+    for(i=0;i<6;i++) sv('rect',{x:264+i*16,y:72,width:16,height:14,'class':(i%2?'f-lineFill':'f-bg')},g);
+    sv('rect',{x:274,y:96,width:44,height:34,rx:3,'class':'f-bg'},g);
+    sv('rect',{x:282,y:116,width:10,height:3,'class':'f-muted'},g);
+    sv('rect',{x:300,y:116,width:10,height:3,'class':'f-muted'},g);
+    sv('rect',{x:322,y:124,width:24,height:58,'class':'f-bg'},g);
+    sv('text',{x:296,y:150,'text-anchor':'middle','class':'t-small f-muted'},g,'ごゆっくり');
+    sv('circle',{cx:258,cy:170,r:8,'class':'f-muted'},g);
+
+    // 餃子店
+    g = sv('g',{'class':'bgset'},svg); ill.bg.gyoza = g; building(g);
+    for(i=0;i<2;i++) sv('rect',{x:288+i*24,y:86,width:22,height:28,rx:2,'class':'f-board'},g);
+    sv('text',{x:311,y:104,'text-anchor':'middle','class':'t-small f-boardink'},g,'餃子');
+    sv('line',{x1:276,y1:80,x2:276,y2:92,'class':'s-ink'},g);
+    sv('ellipse',{cx:276,cy:102,rx:7,ry:10,'class':'f-wall'},g);
+    sv('line',{x1:270,y1:100,x2:282,y2:100,'class':'s-ink'},g);
+    sv('line',{x1:270,y1:105,x2:282,y2:105,'class':'s-ink'},g);
+
+    // 空港の搭乗口
+    g = sv('g',{'class':'bgset'},svg); ill.bg.flight = g;
+    sv('rect',{x:8,y:66,width:344,height:56,rx:6,'class':'f-bg'},g);
+    sv('path',{d:'M60 96 h120 l14 -6 h10 l-8 8 h-6 l-10 4 h-120 z','class':'f-lineFill'},g);
+    sv('path',{d:'M120 96 l20 -14 h8 l-10 14 z','class':'f-lineFill'},g);
+    sv('rect',{x:266,y:128,width:80,height:20,rx:3,'class':'f-board'},g);
+    sv('text',{x:306,y:142,'text-anchor':'middle','class':'t-mono f-boardink'},g,'GATE 12');
+    sv('rect',{x:288,y:152,width:52,height:30,rx:3,'class':'f-wall'},g);
+
+    // 共通の輪郭とつながり
+    ill.hull = sv('rect',{x:4,y:112,width:256,height:76,rx:24,'class':'hull'},svg);
+    for(i=0;i<6;i++) ill.bonds.push(sv('path',{d:'','class':'bond'},svg));
+
+    // 列の人たち
+    for(i=0;i<7;i++){
+      var outer = sv('g',{transform:'translate('+PX[i]+',0)'},svg);
+      var p = sv('g',{'class':'person'+(i===ME?' me':'')},outer);
+      var mv = sv('g',{'class':'move'},p);
+      sv('circle',{cx:0,cy:139,r:9,'class':'head'},mv);
+      sv('rect',{x:-10,y:150,width:20,height:32,rx:8,'class':'torso'},mv);
+      if(i===ME) sv('text',{x:0,y:124,'text-anchor':'middle','class':'me-tag'},mv,'自分');
+      ill.people.push({g:p, mv:mv});
+    }
+
+    // 空に浮かぶ敵
+    var skyG = sv('g',{},svg);
+    ENEMIES.forEach(function(e){
+      var outerI = sv('g',{transform:'translate('+SLOT_X[e.id]+',34)'},skyG);
+      var ic = sv('g',{'class':'icon'},outerI);
+      var pop = sv('g',{'class':'pop'},ic);
+      var bob = sv('g',{'class':'bob'},pop);
+      sv('title',{},bob,e.name);
+      sv('circle',{cx:0,cy:0,r:19,'class':'badge'},bob);
+      drawIcon(e.id, bob);
+      ill.icons[e.id] = ic;
+    });
+  }
+  function drawIcon(id, g){
+    if(id==='weather'){
+      ill.weatherSun = sv('g',{},g);
+      sv('circle',{cx:-5,cy:-3,r:5,'class':'f-signal'},ill.weatherSun);
+      [[-5,-13,-5,-10],[-5,4,-5,7],[-15,-3,-12,-3],[2,-3,5,-3],[-12,-10,-10,-8],[-12,4,-10,2]].forEach(function(c){
+        sv('line',{x1:c[0],y1:c[1],x2:c[2],y2:c[3],'class':'s-ink'},ill.weatherSun);
+      });
+      sv('rect',{x:6,y:-12,width:6,height:17,rx:3,'class':'f-wall'},ill.weatherSun);
+      sv('circle',{cx:9,cy:8,r:4.5,'class':'f-ng'},ill.weatherSun);
+      sv('line',{x1:9,y1:-6,x2:9,y2:6,'class':'s-ink'},ill.weatherSun);
+      ill.weatherRain = sv('g',{},g);
+      sv('path',{d:'M-11 2 a6 6 0 0 1 2 -11 a8 8 0 0 1 15 1 a5 5 0 0 1 5 10 z','class':'f-muted'},ill.weatherRain);
+      [[-7,6,-9,11],[0,6,-2,11],[7,6,5,11]].forEach(function(c){
+        sv('line',{x1:c[0],y1:c[1],x2:c[2],y2:c[3],'class':'s-ink'},ill.weatherRain);
+      });
+    }else if(id==='wait'){
+      sv('circle',{cx:0,cy:0,r:11,'class':'s-ink'},g);
+      sv('line',{x1:0,y1:0,x2:0,y2:-7,'class':'s-ink'},g);
+      sv('line',{x1:0,y1:0,x2:6,y2:3,'class':'s-ink'},g);
+    }else if(id==='rules'){
+      sv('line',{x1:-6,y1:-14,x2:0,y2:-9,'class':'s-ink'},g);
+      sv('line',{x1:6,y1:-14,x2:0,y2:-9,'class':'s-ink'},g);
+      sv('rect',{x:-13,y:-9,width:26,height:17,rx:2,'class':'f-board'},g);
+      sv('text',{x:0,y:3,'text-anchor':'middle','class':'t-small f-boardink',style:'font-size:8px'},g,'ルール');
+    }else if(id==='owner'){
+      sv('circle',{cx:0,cy:-7,r:5,'class':'f-ink'},g);
+      sv('rect',{x:-10,y:-1,width:20,height:13,rx:5,'class':'f-ink'},g);
+      sv('line',{x1:-7,y1:4,x2:6,y2:7,'class':'s-ink',style:'stroke:var(--raised)'},g);
+      sv('line',{x1:7,y1:4,x2:-6,y2:7,'class':'s-ink',style:'stroke:var(--raised)'},g);
+    }else if(id==='soldout'){
+      sv('rect',{x:-13,y:-8,width:26,height:16,rx:2,'class':'f-wall'},g);
+      sv('text',{x:0,y:4,'text-anchor':'middle','class':'t-small f-ng'},g,'売切');
+    }else if(id==='delay'){
+      sv('rect',{x:-14,y:-10,width:28,height:20,rx:2,'class':'f-board'},g);
+      sv('text',{x:0,y:-1,'text-anchor':'middle','class':'t-small f-boardink',style:'font-size:7px'},g,'遅延');
+      sv('text',{x:0,y:7,'text-anchor':'middle','class':'t-mono f-boardink',style:'font-size:6px'},g,'+3h');
+    }
+  }
+  function setCls(n, cls, on){
+    var c = (n.getAttribute('class')||'').split(' ').filter(function(x){ return x && x!==cls; });
+    if(on) c.push(cls);
+    n.setAttribute('class', c.join(' '));
+  }
+  function renderIllustration(){
+    var s = sceneById(state.scene), list = curList(), k = list.length;
+    ['ramen','relax','gyoza','flight'].forEach(function(b){ setCls(ill.bg[b],'on', s.bg===b); });
+    if(s.bg==='ramen'){ ill.noren.textContent = s.noren; ill.ticket.setAttribute('opacity', s.id==='jiro'?'1':'0'); }
+    var rain = s.id==='flight';
+    ill.weatherSun.setAttribute('opacity', rain?'0':'1');
+    ill.weatherRain.setAttribute('opacity', rain?'1':'0');
+    ENEMIES.forEach(function(e){ setCls(ill.icons[e.id],'on', list.indexOf(e.id)>=0); });
+
+    var f = Math.max(0, 1 - k/4);                     // ばらばら度
+    var links = Math.min(6, k*2);                       // 見えるつながりの数
+    var shown = LINK_ORDER.slice(0, links);
+    var ally = {};
+    shown.forEach(function(li){ ally[li]=1; ally[li+1]=1; });
+    ill.people.forEach(function(p, i){
+      var dx = SDX[i]*f, dy = SDY[i]*f, rt = SRT[i]*f;
+      p.mv.style.transform = 'translate('+dx.toFixed(1)+'px,'+dy.toFixed(1)+'px) rotate('+rt.toFixed(1)+'deg)';
+      p.mv.style.transformOrigin = '0px 180px';
+      if(i!==ME) setCls(p.g,'ally', !!ally[i]);
+    });
+    ill.bonds.forEach(function(b, li){
+      var x1 = PX[li] + SDX[li]*f, y1 = 128 + SDY[li]*f;
+      var x2 = PX[li+1] + SDX[li+1]*f, y2 = 128 + SDY[li+1]*f;
+      var cy = Math.min(y1,y2) - 12;
+      b.setAttribute('d','M'+x1.toFixed(1)+' '+y1.toFixed(1)+' Q'+((x1+x2)/2).toFixed(1)+' '+cy.toFixed(1)+' '+x2.toFixed(1)+' '+y2.toFixed(1));
+      setCls(b,'on', shown.indexOf(li)>=0);
+    });
+    setCls(ill.hull,'on', k>=4);
+
+    var names = list.map(function(id){ var e=enemyById(id); return e?e.name:''; }).join('、');
+    $('scene-svg').setAttribute('aria-label', s.name+'の列。空の敵: '+(k?names:'なし')+'。つながり '+links+'本。');
+    $('fig-scene').textContent = s.name;
+    $('fig-cap').textContent = k===0 ? '敵なし。列の人はばらばら' : (k<4 ? '敵 '+k+'つ。自分のまわりからつながる' : '敵 '+k+'つ。列が1つの集団に');
+  }
+
+  /* ---------- 発車標（1桁ずつめくれる） ---------- */
+  function setFlaps(box, str, width){
+    while(str.length < width) str = ' ' + str;
+    var cells = box.querySelectorAll('.flap');
+    if(cells.length !== width){
+      clear(box); cells = [];
+      for(var i=0;i<width;i++){ var c = el('span','flap',''); box.appendChild(c); cells.push(c); }
+    }
+    for(var j=0;j<width;j++){
+      var ch = str.charAt(j) === ' ' ? ' ' : str.charAt(j);
+      var c2 = cells[j];
+      if(c2.textContent !== ch){
+        c2.textContent = ch;
+        c2.className = 'flap';
+        void c2.offsetWidth;
+        c2.className = 'flap flip';
+      }
+    }
+  }
+  var lastLive = '';
+  function renderBoard(){
+    var list = curList(), p = pct(recOf(state.scene));
+    setFlaps($('enemy-count'), String(list.length), 1);
+    setFlaps($('pct-now'), p==null ? '--' : String(p), 3);
+    var live = '共通の敵 '+list.length+'つ、戦友に見えた割合 '+(p==null?'記録なし':p+'%');
+    if(live !== lastLive){ $('board-live').textContent = live; lastLive = live; }
+  }
+
+  /* ---------- 操作 ---------- */
+  function renderScenes(){
+    var box = $('scenes');
+    Array.prototype.slice.call(box.querySelectorAll('button')).forEach(function(b){ box.removeChild(b); });
+    SCENES.forEach(function(s){
+      var b = el('button','scene',s.name);
+      b.type='button'; b.id='scene-'+s.id;
+      b.setAttribute('aria-pressed', s.id===state.scene ? 'true':'false');
+      b.addEventListener('click', function(){ if(state.scene===s.id) return; state.scene = s.id; save(); render(); });
+      box.appendChild(b);
+    });
+    $('scene-lead').textContent = sceneById(state.scene).lead;
+    $('rec-q').textContent = sceneById(state.scene).name + 'で、前後の人は';
+  }
+  function renderEnemyCards(){
+    var s = sceneById(state.scene), list = curList();
+    var box = $('enemy-cards'); clear(box);
+    if(list.length===0){
+      box.appendChild(el('div','empty','この場面で、全員が同じように戦っているものは選ばれていません。上のチップから足すこともできます。'));
+      return;
+    }
+    list.forEach(function(id){
+      var e = enemyById(id); if(!e) return;
+      var c = el('div','enemy');
+      c.appendChild(el('p','t',e.name));
+      c.appendChild(el('p','d',(s.text && s.text[id]) || e.gen));
+      box.appendChild(c);
+    });
+  }
+  function renderChips(){
+    var box = $('chips'); clear(box);
+    var list = curList();
+    ENEMIES.forEach(function(e){
+      var on = list.indexOf(e.id) >= 0;
+      var b = el('button','chip',e.name);
+      b.type='button'; b.id='chip-'+e.id;
+      b.setAttribute('aria-pressed', on?'true':'false');
+      b.addEventListener('click', function(){
+        var l = curList().slice();
+        var i = l.indexOf(e.id);
+        if(i>=0) l.splice(i,1); else l.push(e.id);
+        state.enemies[state.scene] = l; save(); render();
+        try{ $('chip-'+e.id).focus(); }catch(err){}
+      });
+      box.appendChild(b);
+    });
+  }
+  function renderCoach(){
+    var area = $('coach-area'); clear(area);
+    if(state.tip) return;
+    var c = el('div','coach','ここを押すと場面が切りかわり、絵と数字も変わります');
+    var x = el('button',null,'×'); x.type='button'; x.id='coach-close'; x.setAttribute('aria-label','案内を閉じる');
+    x.addEventListener('click', function(){ state.tip = 1; save(); renderCoach(); });
+    c.appendChild(x); area.appendChild(c);
+  }
+
+  /* ---------- 結果パネル ---------- */
+  function avg(a){ if(!a.length) return null; var s=0; a.forEach(function(v){ s+=v; }); return Math.round(s/a.length); }
+  function renderResult(){
+    var body = $('res-body'); clear(body);
+    var f = $('fact'), f2 = $('fact2'); clear(f); clear(f2);
+    var rows = SCENES.map(function(s){
+      var r = recOf(s.id);
+      return {s:s, k:(state.enemies[s.id]||[]).length, r:r, p:pct(r)};
+    });
+    rows.sort(function(a,b){ return b.k-a.k; });
+    var total = 0; rows.forEach(function(x){ total += x.r.y + x.r.n; });
+
+    if(total===0){
+      f.textContent = 'まだ記録がありません。';
+      var wrap = el('div','empty-res');
+      var ic = document.createElementNS(NS,'svg'); ic.setAttribute('viewBox','0 0 96 64'); ic.setAttribute('aria-hidden','true');
+      sv('rect',{x:4,y:10,width:40,height:8,rx:4,'class':'f-lineFill'},ic);
+      sv('rect',{x:4,y:26,width:62,height:8,rx:4,'class':'f-lineFill'},ic);
+      sv('rect',{x:4,y:42,width:24,height:8,rx:4,'class':'f-lineFill'},ic);
+      sv('circle',{cx:82,cy:22,r:6,'class':'f-signal'},ic);
+      sv('rect',{x:75,y:30,width:14,height:22,rx:6,'class':'f-signal'},ic);
+      wrap.appendChild(ic);
+      wrap.appendChild(el('div',null,'場面を選び、列で前後の人がどう見えたかを1タップで残すと、ここに場面ごとの「敵の数」と「戦友に見えた割合」が横棒で並びます。'));
+      body.appendChild(wrap);
+      return;
+    }
+
+    var withRec = rows.filter(function(x){ return x.p!=null; });
+    var hi = avg(withRec.filter(function(x){ return x.k>=3; }).map(function(x){ return x.p; }));
+    var lo = avg(withRec.filter(function(x){ return x.k<=2; }).map(function(x){ return x.p; }));
+    if(withRec.length<2){
+      f.textContent = '記録のある場面が2つ以上になると、敵の数と割合を見比べられます。';
+    }else if(hi!=null){
+      f.appendChild(document.createTextNode('敵が3つ以上の場面では、戦友に見えた割合が平均 '));
+      f.appendChild(el('span','mono',hi+'%'));
+      if(lo!=null){
+        f.appendChild(document.createTextNode('（2つ以下の場面では '));
+        f.appendChild(el('span','mono',lo+'%'));
+        f.appendChild(document.createTextNode('）'));
+      }
+    }else{
+      f.appendChild(document.createTextNode('敵が3つ以上の場面の記録はまだありません。2つ以下の場面では平均 '));
+      f.appendChild(el('span','mono',lo+'%'));
+    }
+    if(withRec.length>=2){
+      f2.appendChild(document.createTextNode('敵の数が多い順: '));
+      f2.appendChild(el('span','mono',withRec.map(function(x){ return x.k+'つ→'+x.p+'%'; }).join(' / ')));
+      f2.appendChild(document.createTextNode('。平均は場面ごとの割合の平均。'));
+    }
+
+    var lg = el('div','legend');
+    var a = el('span','k'); a.appendChild(el('i')); a.appendChild(document.createTextNode('敵の数（最大6）')); lg.appendChild(a);
+    var b = el('span','p'); b.appendChild(el('i')); b.appendChild(document.createTextNode('戦友に見えた割合')); lg.appendChild(b);
+    body.appendChild(lg);
+
+    var list = el('div','rows'), fills = [];
+    rows.forEach(function(x){
+      var row = el('div','row'+(x.s.id===state.scene?' cur':''));
+      var nm = el('div','name'); nm.appendChild(el('b',null,x.s.name)); row.appendChild(nm);
+      var t = x.r.y + x.r.n;
+      [['k','敵',x.k/ENEMIES.length*100, x.k+'つ'],
+       ['p','戦友',x.p==null?0:x.p, t ? (x.r.y+'/'+t+'回 '+x.p+'%') : '記録なし']].forEach(function(d){
+        var tr = el('div','track');
+        tr.appendChild(el('span','lbl',d[1]));
+        var bar = el('div','bar '+d[0]); var i = el('i'); bar.appendChild(i); tr.appendChild(bar);
+        tr.appendChild(el('span','num',d[3]));
+        row.appendChild(tr);
+        fills.push([i, d[2]]);
+      });
+      list.appendChild(row);
+    });
+    body.appendChild(list);
+    var ax = el('div','axis'); ax.appendChild(el('span',null,''));
+    var ticks = el('div','ticks'); ['0','50','100%'].forEach(function(v){ ticks.appendChild(el('span',null,v)); });
+    ax.appendChild(ticks); ax.appendChild(el('span',null,'')); body.appendChild(ax);
+    raf(function(){ raf(function(){ fills.forEach(function(fi){ fi[0].style.width = fi[1].toFixed(1)+'%'; }); }); });
+  }
+
+  function renderSample(){
+    $('sample-note').textContent = state.sample ? '表示中のデータはサンプルです。' : '自分の記録です。この端末の中だけに保存されます。';
+  }
+  function render(){ renderSample(); renderScenes(); renderIllustration(); renderBoard(); renderCoach(); renderChips(); renderEnemyCards(); renderResult(); }
+
+  /* ---------- トースト（取り消せる） ---------- */
+  var toastTimer = null, undoSnap = null;
+  function toast(msg, snap){
+    $('toast-msg').textContent = msg;
+    undoSnap = snap || null;
+    $('toast-undo').style.display = undoSnap ? '' : 'none';
+    $('toast').className = 'toast show';
+    try{ if(toastTimer) clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 6000); }catch(e){}
+  }
+  function hideToast(){ $('toast').className = 'toast'; undoSnap = null; }
+  function snapshot(){ return JSON.stringify(state); }
+  function record(kind){
+    var snap = snapshot();
+    var r = state.rec[state.scene] || (state.rec[state.scene]={y:0,n:0});
+    r[kind]++;
+    save(); render();
+    toast('記録しました（' + (kind==='y'?'戦友に見えた':'変わらない') + '）', snap);
+  }
+  function ask(msg, goLabel, onGo){
+    var area = $('confirm-area'); clear(area);
+    var box = el('div','confirm'); box.setAttribute('role','alertdialog');
+    box.appendChild(el('div',null,msg));
+    var row = el('div','row2');
+    var go = el('button','go',goLabel); go.type='button'; go.id='confirm-go';
+    var no = el('button',null,'やめる'); no.type='button'; no.id='confirm-no';
+    go.addEventListener('click', function(){ clear(area); onGo(); });
+    no.addEventListener('click', function(){ clear(area); });
+    row.appendChild(go); row.appendChild(no); box.appendChild(row); area.appendChild(box);
+    try{ no.focus(); }catch(e){}
+  }
+
+  state = load();
+  buildIllustration();
+  $('rec-yes').addEventListener('click', function(){ record('y'); });
+  $('rec-no').addEventListener('click', function(){ record('n'); });
+  $('toast-undo').addEventListener('click', function(){
+    if(!undoSnap) return;
+    try{ state = JSON.parse(undoSnap); }catch(e){ return; }
+    save(); render(); hideToast();
+  });
+  $('btn-clear').addEventListener('click', function(){
+    ask('サンプルの記録をすべて消します。敵の選択は初期の状態に戻ります。', '消して自分で使う', function(){
+      var snap = snapshot(), tip = state.tip;
+      state = emptyState(); if(tip) state.tip = tip; save(); render(); toast('サンプルを消しました', snap);
+    });
+  });
+  $('btn-sample').addEventListener('click', function(){
+    ask('いまの記録をすべて消して、サンプルに戻します。', 'サンプルに戻す', function(){
+      var snap = snapshot(), tip = state.tip;
+      state = sampleState(); if(tip) state.tip = tip; save(); render(); toast('サンプルに戻しました', snap);
+    });
+  });
+  render();
+})();
+</script>
+</body>
+</html>

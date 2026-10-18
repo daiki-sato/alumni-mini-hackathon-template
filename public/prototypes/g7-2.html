@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ユッタリマーク</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0;font-size:15px;line-height:1.6}
+.wrap{max-width:560px;margin:0 auto;padding-top:12px;padding-bottom:56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.back{display:inline-block;color:var(--muted);font-size:13px;text-decoration:none;padding:4px 0}
+.back:hover{text-decoration:underline}
+h1{font-family:var(--font-display);font-size:26px;margin:4px 0 10px;letter-spacing:.02em}
+h2{font-family:var(--font-display);font-size:17px;margin:0 0 8px}
+h3{font-family:var(--font-display);font-size:15px;margin:0 0 6px}
+p{margin:0 0 8px}
+.note{font-size:12px;color:var(--muted);margin:4px 0}
+.hypo{border:1px solid var(--line);border-left:4px solid var(--signal);border-radius:8px;background:var(--surface);padding:8px 12px;margin-bottom:12px;font-size:12.5px}
+.hypo dl{margin:0}.hypo dl>div{display:flex;gap:10px;padding:2px 0}
+.hypo dt{flex:0 0 5.4em;color:var(--muted);font-weight:500}.hypo dd{margin:0}
+.hypo .hit{color:var(--ok)}.hypo .miss{color:var(--ng)}
+.samplebar{border:1px dashed var(--line);border-radius:8px;padding:8px 12px;margin-bottom:14px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-weight:500;font-size:14px;border:1px solid var(--ink);background:var(--surface);color:var(--ink);border-radius:8px;padding:9px 14px;min-height:44px;cursor:pointer}
+.btn:hover{background:var(--bg)}
+.btn.primary{background:var(--signal);border-color:var(--signal);color:var(--signal-ink);font-weight:700}
+.btn.ghost{border-color:var(--line);color:var(--muted);font-size:12.5px;min-height:38px;padding:6px 10px}
+.btn[aria-pressed="true"],.btn.on{background:var(--ink);color:var(--surface)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.confirm{margin-top:8px;padding:8px 10px;background:var(--bg);border-radius:8px;font-size:13px}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:14px 16px;margin:12px 0}
+.board .lab{font-size:12.5px;opacity:.85}
+.board .big{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:40px;line-height:1.15;letter-spacing:.01em}
+.board .big small{font-size:16px;margin-left:4px}
+.board .sub{font-size:12px;opacity:.8;margin-top:2px}
+.board .cols{display:flex;gap:20px;flex-wrap:wrap}
+section.blk{border-top:1px solid var(--line);padding:14px 0}
+.feel{border-top:1px solid var(--line);padding:14px 0;margin-top:16px}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+label{font-size:13px}
+input[type=number],input[type=text],select{font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:6px 8px;min-height:40px;max-width:100%}
+input[type=range]{width:100%;accent-color:var(--signal)}
+.sl{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center;margin:8px 0}
+.sl .v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600}
+.sl input{grid-column:1/3}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:5px 4px;border-bottom:1px solid var(--line);font-weight:500}
+.tag{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 6px;color:var(--muted)}
+.tag.ok{color:var(--ok);border-color:var(--ok)}.tag.ng{color:var(--ng);border-color:var(--ng)}
+details{margin:8px 0}summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:32px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+
+.crit{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.crit li{display:grid;grid-template-columns:2.2em 1fr;gap:8px;align-items:start}
+.crit .n{font-family:var(--font-mono);font-weight:600;background:var(--board);color:var(--board-ink);border-radius:6px;text-align:center;line-height:2}
+.crit b{font-family:var(--font-display)}
+.dots{display:inline-flex;gap:3px;vertical-align:middle}
+.dots i{width:10px;height:10px;border-radius:2px;border:1.5px solid var(--muted);display:inline-block}
+.dots i.f{background:var(--ok);border-color:var(--ok)}
+.shop{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.shop .nm{font-weight:700;font-family:var(--font-display)}
+.shop .meta{color:var(--muted);font-size:12px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.side{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:10px;font-size:13px}
+.side.mk{border-color:var(--ok)}
+.side h3{margin-bottom:2px}
+.side ul{list-style:none;padding:0;margin:6px 0}
+.side li{padding:1px 0}.side li.y{color:var(--ok)}.side li.n{color:var(--muted)}
+.side .btn{width:100%;margin-top:6px}
+.add{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.add .full{grid-column:1/3}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<h1>ユッタリマーク</h1>
+<section class="hypo" aria-label="仮説カード">
+<dl>
+<div><dt>視点</dt><dd>ビジネス・店側 ／ 具体</dd></div>
+<div><dt>仮説</dt><dd>客は「ゆったり並べる店」を選ぶ（店選びの新しい軸になる）。</dd></div>
+<div><dt>確かめること</dt><dd><span class="hit">当たり＝同じくらい食べたい2軒ならマークのある方に行く</span><br><span class="miss">外れ＝味が全てで、マークは関係ない</span></dd></div>
+</dl>
+</section>
+<div class="samplebar" id="samplebar">
+<p id="sampleNote" class="note"></p>
+<div class="row"><button type="button" class="btn ghost" id="btnClear">サンプルを消して自分で使う</button><button type="button" class="btn ghost" id="btnReset">サンプルに戻す</button></div>
+<div id="confirmBox" class="confirm" hidden><p id="confirmMsg"></p><div class="row"><button type="button" class="btn primary" id="confirmYes">実行する</button><button type="button" class="btn ghost" id="confirmNo">やめる</button></div></div>
+</div>
+
+<div class="board" aria-live="polite">
+<div class="lab">味が近い2軒で、マーク付きを選んだ割合</div>
+<div class="big"><span id="bPct">0</span><small>%</small></div>
+<div class="sub" id="bSub"></div>
+</div>
+<section class="blk">
+<h2>ゆったりマークの基準</h2>
+<p class="note">次の3つのうち2つ以上を満たす店に「ゆったり」マーク（案）。</p>
+<ol class="crit">
+<li><span class="n">1</span><div><b>足元マーク</b><br><span class="note">立ち位置を床に表示している</span></div></li>
+<li><span class="n">2</span><div><b>間隔</b><br><span class="note">前後の間隔が 60cm 以上取れる（壁側に並ぶ幅がある）</span></div></li>
+<li><span class="n">3</span><div><b>整理券・呼び出し</b><br><span class="note">並ばずに待てる手段がある</span></div></li>
+</ol>
+</section>
+<section class="blk">
+<h2>2軒を比べる</h2>
+<p class="note">新しく店を探すときの軸として。2軒を選ぶと、並べて見られます。</p>
+<div class="row"><label for="selA">A</label><select id="selA"></select><label for="selB">B</label><select id="selB"></select></div>
+<div id="cmp" class="cmp" style="margin-top:10px"></div>
+<div class="sl"><label for="tol">味の差をどこまで許せるか（評価点）</label><span class="v" id="tolV"></span><input type="range" id="tol" min="0" max="1" step="0.1"></div>
+<p class="note" id="tolRes"></p>
+</section>
+<section class="blk">
+<h2>マーク付きの店（架空）</h2>
+<div id="list"></div>
+<details><summary>店を追加する</summary>
+<div class="add">
+<input type="text" id="aName" placeholder="店の名前（架空でよい）" aria-label="店の名前" class="full" maxlength="20">
+<label for="aTaste">味の評価</label><select id="aTaste"><option>3.5</option><option>3.8</option><option>4.0</option><option selected>4.2</option><option>4.4</option><option>4.6</option></select>
+<label><input type="checkbox" id="aFoot"> 足元マーク</label><label><input type="checkbox" id="aSpace"> 間隔</label>
+<label class="full"><input type="checkbox" id="aTicket"> 整理券・呼び出し</label>
+<button type="button" class="btn full" id="aBtn">この店を一覧に追加する</button>
+</div>
+</details>
+</section>
+
+<section class="feel" aria-label="触ってみた感想">
+<h2>触ってみて、どちらに近い？</h2>
+<div class="row"><button type="button" class="btn" id="feelHit">当たりに近い</button><button type="button" class="btn" id="feelMiss">外れに近い</button></div>
+<p class="note" id="feelCount"></p>
+</section>
+</div>
+<script>
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function storeKey(){return 'hack3-'+FILE+'-v1'}
+function loadState(){try{var s=localStorage.getItem(storeKey());return s?JSON.parse(s):null}catch(e){return null}}
+function saveState(o){try{localStorage.setItem(storeKey(),JSON.stringify(o))}catch(e){}}
+var G7={st:null,onClear:null,onReset:null,pending:null,rerender:null};
+function sampleNoteUpdate(){
+  var st=G7.st;
+  $('sampleNote').textContent=st.sample?'サンプル表示中（数字はすべて架空）':'自分の入力で使用中（サンプルは消してあります）';
+}
+function sampleBar(st,onClear,onReset){
+  G7.st=st;
+  function ask(msg,fn){G7.pending=fn;$('confirmMsg').textContent=msg;$('confirmBox').hidden=false;$('confirmYes').focus()}
+  $('btnClear').addEventListener('click',function(){ask('サンプルの数字を消して、空の状態から始めます。',function(){onClear();G7.st.sample=false})});
+  $('btnReset').addEventListener('click',function(){ask('今の内容を捨てて、サンプルに戻します。',function(){onReset();G7.st.sample=true})});
+  $('confirmNo').addEventListener('click',function(){G7.pending=null;$('confirmBox').hidden=true});
+  $('confirmYes').addEventListener('click',function(){
+    var f=G7.pending;G7.pending=null;$('confirmBox').hidden=true;
+    if(f){f();sampleNoteUpdate();saveState(G7.st);if(G7.rerender)G7.rerender()}
+  });
+  sampleNoteUpdate();
+}
+function feelInit(st){
+  if(!st.feel)st.feel={hit:0,miss:0};
+  function show(){$('feelCount').textContent='この端末での記録: 当たり '+st.feel.hit+' ／ 外れ '+st.feel.miss}
+  $('feelHit').addEventListener('click',function(){st.feel.hit++;saveState(st);show()});
+  $('feelMiss').addEventListener('click',function(){st.feel.miss++;saveState(st);show()});
+  show();
+}
+function seeded(seed){var s=seed>>>0;return function(){s=(s*1664525+1013904223)>>>0;return s/4294967296}}
+function slider(id,label,min,max,step,val,unit){
+  return '<div class="sl"><label for="'+id+'">'+label+'</label><span class="v" id="'+id+'V">'+val+unit+'</span><input type="range" id="'+id+'" min="'+min+'" max="'+max+'" step="'+step+'" value="'+val+'"></div>';
+}
+
+const FILE='g7-2';
+
+function sampleShops(){return [
+{n:'麺屋 こむぎ',taste:4.3,wait:35,c:[1,1,1]},
+{n:'らーめん 六角',taste:4.4,wait:40,c:[0,0,0]},
+{n:'鶏そば 凪',taste:4.2,wait:30,c:[1,0,1]},
+{n:'中華そば 柊',taste:4.5,wait:55,c:[0,0,0]},
+{n:'煮干し 波止場',taste:4.1,wait:25,c:[1,0,0]},
+{n:'担々麺 山椒堂',taste:4.3,wait:45,c:[0,1,1]}]}
+function fresh(){return {sample:true,shops:sampleShops(),a:0,b:1,tol:0.3,tally:{mk:14,no:6},feel:{hit:0,miss:0}}}
+var ST=loadState()||fresh();
+var CN=['足元マーク','間隔 60cm 以上','整理券・呼び出し'];
+function lvl(s){return s.c[0]+s.c[1]+s.c[2]}
+function hasMark(s){return lvl(s)>=2}
+function dots(s){var h='<span class="dots" aria-hidden="true">';for(var i=0;i<3;i++)h+='<i class="'+(i<lvl(s)?'f':'')+'"></i>';return h+'</span>'}
+function side(s,which){
+  var li='';CN.forEach(function(c,i){li+='<li class="'+(s.c[i]?'y':'n')+'">'+(s.c[i]?'あり':'なし')+'　'+c+'</li>'});
+  return '<div class="side'+(hasMark(s)?' mk':'')+'"><h3>'+esc(s.n)+'</h3>'+(hasMark(s)?'<span class="tag ok">ゆったりマーク '+lvl(s)+'/3</span>':'<span class="tag">マークなし '+lvl(s)+'/3</span>')+'<ul><li>味の評価　<b class="mono">'+s.taste.toFixed(1)+'</b></li><li>いつもの待ち　<b class="mono">'+s.wait+'分</b></li>'+li+'</ul><button type="button" class="btn primary" data-pick="'+which+'">今日はこちらに行く</button></div>';
+}
+function render(){
+  var S=ST.shops;
+  var opts=S.map(function(s,i){return '<option value="'+i+'">'+esc(s.n)+'</option>'}).join('');
+  $('selA').innerHTML=opts;$('selB').innerHTML=opts;
+  if(ST.a>=S.length)ST.a=0;if(ST.b>=S.length)ST.b=Math.min(1,S.length-1);
+  $('selA').value=ST.a;$('selB').value=ST.b;
+  $('tol').value=ST.tol;$('tolV').textContent=ST.tol.toFixed(1);
+  if(S.length>=2&&ST.a!==ST.b){
+    var A=S[ST.a],B=S[ST.b];
+    $('cmp').innerHTML=side(A,'a')+side(B,'b');
+    var d=Math.abs(A.taste-B.taste),hi=A.taste>=B.taste?A:B,mkS=hasMark(A)&&!hasMark(B)?A:(hasMark(B)&&!hasMark(A)?B:null);
+    var msg='味の差は '+d.toFixed(1)+' 点。';
+    if(mkS){var other=mkS===A?B:A;msg+=(other.taste-mkS.taste<=ST.tol+1e-9)?'許せる差（'+ST.tol.toFixed(1)+'）の範囲なので、マーク付きの「'+mkS.n+'」が候補に残ります。':'許せる差（'+ST.tol.toFixed(1)+'）を超えるので、味の高い「'+hi.n+'」が候補に残ります。'}
+    else msg+='マークの有無が同じなので、この基準では差が出ません。';
+    $('tolRes').textContent=msg;
+  }else{$('cmp').innerHTML='<p class="note" style="grid-column:1/3">別々の2軒を選ぶと比べられます（店が2軒以上必要です）。</p>';$('tolRes').textContent=''}
+  var lh='';
+  S.forEach(function(s){lh+='<div class="shop"><span class="nm">'+esc(s.n)+'</span><span>'+dots(s)+' '+(hasMark(s)?'<span class="tag ok">ゆったり</span>':'<span class="tag">なし</span>')+'</span><span class="meta">味 '+s.taste.toFixed(1)+' ／ 待ち '+s.wait+'分</span><span class="meta">'+CN.filter(function(c,i){return s.c[i]}).join('・')+'</span></div>'});
+  $('list').innerHTML=lh||'<p class="note">店がありません。下から追加できます。</p>';
+  var t=ST.tally,tot=t.mk+t.no;
+  $('bPct').textContent=tot?Math.round(t.mk/tot*100):0;
+  $('bSub').textContent='選んだ回数: マーク付き '+t.mk+' ／ マークなし '+t.no+(ST.sample?'（サンプル）':'');
+  saveState(ST);
+}
+$('selA').addEventListener('change',function(){ST.a=+this.value;render()});
+$('selB').addEventListener('change',function(){ST.b=+this.value;render()});
+$('tol').addEventListener('input',function(){ST.tol=parseFloat(this.value);render()});
+$('cmp').addEventListener('click',function(e){
+  var w=e.target.getAttribute&&e.target.getAttribute('data-pick');if(!w)return;
+  var s=ST.shops[w==='a'?ST.a:ST.b],o=ST.shops[w==='a'?ST.b:ST.a];
+  if(hasMark(s)&&!hasMark(o))ST.tally.mk++;else if(!hasMark(s)&&hasMark(o))ST.tally.no++;else{render();return}
+  render();
+});
+$('aBtn').addEventListener('click',function(){
+  var n=$('aName').value.trim();if(!n)n='新しい店 '+(ST.shops.length+1);
+  ST.shops.push({n:n,taste:parseFloat($('aTaste').value),wait:30,c:[$('aFoot').checked?1:0,$('aSpace').checked?1:0,$('aTicket').checked?1:0]});
+  $('aName').value='';ST.sample=false;sampleNoteUpdate();render();
+});
+sampleBar(ST,function(){ST.shops=[];ST.tally={mk:0,no:0};ST.a=0;ST.b=1},function(){var f=ST.feel;Object.assign(ST,fresh());ST.feel=f});
+G7.rerender=render;
+feelInit(ST);render();
+
+</script>
+</body>
+</html>

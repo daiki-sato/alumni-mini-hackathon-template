@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ミッツダケ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --raised:#FFFFFF; --sunk:#E7EAE5;
+  --shadow-1:0 1px 2px rgba(26,35,32,.08),0 1px 1px rgba(26,35,32,.04);
+  --shadow-2:0 6px 18px rgba(26,35,32,.14),0 2px 4px rgba(26,35,32,.06);
+  --radius:12px; --flap:rgba(255,255,255,.07); --board-rule:rgba(246,195,67,.28);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --raised:#232A26; --sunk:#151A18;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 8px 22px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.3);}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --raised:#232A26; --sunk:#151A18;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 8px 22px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.3);}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+.wrap{max-width:560px;margin:0 auto;padding:12px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px))}
+a{color:var(--ink)}
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.back{display:inline-block;font-size:14px;margin:4px 0 12px;color:var(--muted)}
+h1{font-family:var(--font-display);font-size:30px;letter-spacing:-.02em;margin:0 0 12px;font-weight:700;line-height:1.2}
+h2{font-family:var(--font-display);font-size:19px;letter-spacing:-.01em;margin:30px 0 10px;font-weight:700}
+h2 .step{font-family:var(--font-mono);font-size:12px;color:var(--muted);font-weight:600;margin-right:8px;letter-spacing:0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+/* 仮説カード */
+.hyp{border:1px solid var(--line);border-left:4px solid var(--signal);background:var(--surface);border-radius:var(--radius);font-size:13px;line-height:1.6}
+.hyp summary{cursor:pointer;padding:9px 12px;list-style:none;display:flex;gap:8px;align-items:baseline}
+.hyp summary::-webkit-details-marker{display:none}
+.hyp summary::after{content:"開く";margin-left:auto;font-size:11px;color:var(--muted);flex:none}
+.hyp[open] summary::after{content:"たたむ"}
+.hyp .pos{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.hyp .body{padding:0 12px 10px}
+.hyp p{margin:4px 0 0}
+
+.sample{font-size:12px;color:var(--muted);margin:12px 0 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-size:14px;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.main{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+.btn.small{min-height:36px;font-size:12px;padding:0 10px}
+.btn.ng{color:var(--ng);border-color:var(--ng)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.notice{background:var(--raised);border:1px solid var(--ink);border-radius:var(--radius);padding:12px;margin-top:10px;font-size:14px;box-shadow:var(--shadow-2)}
+.notice .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+/* 場面イラスト */
+.scene{margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 10px 8px;box-shadow:var(--shadow-1)}
+.scene svg{display:block;width:100%;height:auto}
+.scene .cap{font-size:12px;color:var(--muted);margin:6px 2px 0;line-height:1.5}
+.scene .cap b{color:var(--ink)}
+.sc-ground{stroke:var(--line);stroke-width:2}
+.sc-bld{fill:var(--raised);stroke:var(--muted);stroke-width:1}
+.sc-bld.tiny{fill:var(--sunk);stroke:var(--line)}
+.sc-roof{fill:var(--board)}
+.sc-door{fill:var(--board)}
+.sc-signbg{fill:var(--board)}
+.sc-signtx{fill:var(--board-ink);font-family:var(--font-mono);font-weight:600;text-anchor:middle;dominant-baseline:central}
+.sc-path{fill:none;stroke:var(--muted);stroke-width:1.2;stroke-dasharray:3 3}
+.sc-path.on{stroke:var(--signal);stroke-width:2;stroke-dasharray:none}
+.sc-p{fill:var(--muted)}
+.sc-p.solo{fill:var(--ok)}
+.sc-me{fill:var(--signal)}
+.sc-lab{fill:var(--ink);font-size:8px;font-family:var(--font-body);text-anchor:middle}
+.sc-q{fill:var(--muted);font-size:13px;font-family:var(--font-mono);text-anchor:middle;font-weight:600}
+.sc-dim{opacity:.32}
+
+/* ボード */
+.board{background:var(--board);color:var(--board-ink);border-radius:var(--radius);padding:14px 16px 12px;margin-top:12px;box-shadow:var(--shadow-1)}
+.board .cap{font-size:12px;opacity:.85;margin-bottom:8px}
+.board .row{display:flex;gap:6px;align-items:stretch}
+.board .col{flex:1;min-width:0}
+.board .sep{font-family:var(--font-mono);font-size:26px;opacity:.5;align-self:center;padding-top:16px}
+.board .lab{font-size:12px;line-height:1.4}
+.board .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:40px;line-height:1.1;display:flex;gap:3px;margin-top:4px;align-items:baseline}
+.board .unit{font-family:var(--font-body);font-size:13px;margin-left:3px;opacity:.85}
+.fc{display:inline-block;min-width:.66em;text-align:center;background:var(--flap);border-radius:4px;padding:0 2px}
+.board .sub{margin-top:10px;font-size:13px;border-top:1px solid var(--board-rule);padding-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.board .sub .num{font-size:24px;margin:0}
+.pips{display:inline-flex;gap:4px}
+.pips i{display:block;width:12px;height:12px;border-radius:3px;border:1px solid var(--board-ink)}
+.pips i.on{background:var(--board-ink)}
+
+/* 切りかえ */
+.tabs{position:relative;display:flex;gap:6px}
+.tabs button{flex:1;min-height:52px;font:inherit;font-size:15px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;cursor:pointer;line-height:1.3}
+.tabs button small{display:block;font-size:11px;color:var(--muted)}
+.tabs button[aria-pressed="true"]{background:var(--board);color:var(--board-ink);border-color:var(--board);font-weight:700}
+.tabs button[aria-pressed="true"] small{color:var(--board-ink);opacity:.8}
+.tip{position:relative;margin-top:10px;background:var(--board);color:var(--board-ink);border-radius:var(--radius);padding:10px 44px 10px 12px;font-size:13px;line-height:1.5;box-shadow:var(--shadow-2)}
+.tip::before{content:"";position:absolute;left:30%;top:-6px;width:12px;height:12px;background:var(--board);transform:rotate(45deg)}
+.xbtn{position:absolute;top:4px;right:4px;width:36px;height:36px;border:0;background:none;color:var(--board-ink);font:inherit;font-size:18px;cursor:pointer;border-radius:8px}
+
+/* 判断軸 */
+.axes{display:flex;flex-wrap:wrap;gap:8px}
+.axes button{font:inherit;font-size:14px;min-height:44px;padding:4px 12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;cursor:pointer;text-align:left;line-height:1.3}
+.axes button small{display:block;font-size:11px;color:var(--muted)}
+.axes button[aria-pressed="true"]{border:2px solid var(--signal);background:var(--raised);font-weight:700;padding:3px 11px}
+.axes button[aria-disabled="true"]{opacity:.45}
+.axnote{font-size:12px;color:var(--muted);margin:8px 2px 0;min-height:18px}
+
+/* 3軒のカード */
+.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:start}
+.three.pick0{grid-template-columns:2.2fr .7fr .7fr}
+.three.pick1{grid-template-columns:.7fr 2.2fr .7fr}
+.three.pick2{grid-template-columns:.7fr .7fr 2.2fr}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-1);padding:10px 8px;min-width:0;display:flex;flex-direction:column}
+.card.chosen{border:2px solid var(--signal);box-shadow:var(--shadow-2);padding:9px 7px}
+.card.dim{opacity:.55}
+.card .lt{font-family:var(--font-mono);font-weight:600;font-size:12px;color:var(--muted)}
+.card .today{display:none;font-size:11px;font-weight:700;color:var(--signal-ink);background:var(--signal);border-radius:6px;padding:1px 6px;margin-left:4px}
+.card.chosen .today{display:inline-block}
+.card .nm{font-family:var(--font-display);font-weight:700;font-size:15px;line-height:1.3;letter-spacing:-.01em;margin:4px 0 2px;min-height:40px;word-break:break-all}
+.card.chosen .nm{font-size:20px}
+.card .gn{font-size:11px;color:var(--muted);min-height:16px}
+.card ul{list-style:none;margin:8px 0 8px;padding:0;border-top:1px solid var(--line)}
+.card li{border-bottom:1px solid var(--line);padding:4px 0;min-height:40px}
+.card li .k{display:block;font-size:10.5px;color:var(--muted);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card li .v{display:flex;gap:4px;align-items:baseline;font-size:13px;line-height:1.35}
+.card li .v .val{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card li.ax .k{color:var(--ink);font-weight:700}
+.card li .best{font-weight:700}
+.mk{font-family:var(--font-mono);font-weight:600;flex:none}
+.mk.o{color:var(--ok)}.mk.x{color:var(--ng)}
+.card .pick{width:100%;min-height:44px;font:inherit;font-size:13px;font-weight:700;border-radius:10px;border:1px solid var(--signal);background:var(--surface);color:var(--ink);cursor:pointer;margin-top:auto}
+.card.chosen .pick{background:var(--signal);color:var(--signal-ink)}
+.card.dim li,.card.dim .gn{display:none}
+.card.dim ul{border-top:0;margin:4px 0}
+.card.dim .nm{font-size:13px}
+.hidden-n{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.6}
+.hidden-n b{color:var(--ink);font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.rr{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.rr .left{font-size:13px;color:var(--muted)}
+
+/* 100軒 */
+.filters{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;box-shadow:var(--shadow-1)}
+.filters fieldset{border:0;padding:0;margin:0 0 8px}
+.filters legend{font-size:12px;color:var(--muted);padding:0;margin-bottom:4px;font-weight:700}
+.filters .fs{display:flex;flex-wrap:wrap;gap:2px 10px}
+.filters label{font-size:12px;display:inline-flex;align-items:center;gap:3px;min-height:28px}
+.filters input{width:16px;height:16px;margin:0;accent-color:var(--muted)}
+.filters select{font:inherit;font-size:12px;min-height:30px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
+.cnt{font-size:12px;color:var(--muted);margin:10px 2px 6px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}
+.cnt b{font-family:var(--font-mono);color:var(--ink)}
+.many{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden;font-size:11.5px}
+.many li{display:grid;grid-template-columns:24px 1fr auto;gap:2px 6px;padding:5px 8px;border-bottom:1px solid var(--line);align-items:baseline}
+.many li:nth-child(even){background:var(--sunk)}
+.many .no{font-family:var(--font-mono);color:var(--muted);font-size:10px}
+.many .n{font-weight:700;word-break:break-all}
+.many .r{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.many .d{grid-column:2 / 4;color:var(--muted);font-size:10.5px;line-height:1.4}
+.many .del{font:inherit;font-size:11px;border:1px solid var(--ng);color:var(--ng);background:none;border-radius:6px;min-height:28px;padding:0 6px;cursor:pointer;margin-left:6px}
+.many .emp{display:block;padding:14px;color:var(--muted);font-size:13px}
+
+/* 結果パネル */
+.result{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow-1)}
+.fact{font-family:var(--font-display);font-size:16px;font-weight:700;line-height:1.55;letter-spacing:-.01em;margin:0 0 12px}
+.funnel{display:grid;grid-template-columns:auto 1fr auto;gap:8px 10px;align-items:center}
+.funnel .bl{font-size:12.5px;line-height:1.3;max-width:120px}
+.track{position:relative;height:16px;background:var(--sunk);border-radius:6px;overflow:hidden}
+.fill{height:100%;width:0;border-radius:6px;background:var(--muted)}
+.fill.last{background:var(--signal)}
+.funnel .bv{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;text-align:right;min-width:44px}
+.ticks{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--muted);grid-column:2}
+
+/* 空の状態・自分の候補 */
+.empty{text-align:center;background:var(--surface);border:1px dashed var(--line);border-radius:var(--radius);padding:18px 14px}
+.empty svg{width:170px;height:auto}
+.empty p{font-size:13px;line-height:1.7;color:var(--muted);margin:8px auto 0;max-width:320px}
+.empty p b{color:var(--ink)}
+.addf{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow-1)}
+.field{margin:12px 0 0}
+.field:first-child{margin-top:0}
+.field>label,.field>.fl{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input[type=text],input[type=number]{font:inherit;font-size:16px;min-height:44px;width:100%;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+.checks{display:flex;flex-wrap:wrap;gap:4px 14px}
+.checks label{font-size:14px;display:inline-flex;align-items:center;gap:6px;min-height:36px}
+.checks input{width:18px;height:18px;accent-color:var(--signal)}
+.err{color:var(--ng);font-size:12px;min-height:16px;margin-top:6px}
+.note{font-size:12px;color:var(--muted);line-height:1.7;margin-top:14px}
+
+/* トースト・下部バー */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--board);color:var(--board-ink);border-radius:var(--radius);box-shadow:var(--shadow-2);padding:6px 6px 6px 16px;display:flex;align-items:center;gap:12px;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
+.toast[hidden]{display:none}
+.toast button{font:inherit;font-size:14px;font-weight:700;min-height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--board-ink);background:none;color:var(--board-ink);cursor:pointer;flex:none}
+.bar{display:none}
+@media (max-width:600px){
+  .wrap{padding-bottom:calc(110px + env(safe-area-inset-bottom, 0px))}
+  .bar{display:flex;gap:8px;align-items:center;position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--raised);border-top:1px solid var(--line);box-shadow:var(--shadow-2);padding:8px max(12px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px))}
+  .bar .bt{flex:1;min-width:0;font-size:11px;color:var(--muted);line-height:1.4;overflow:hidden}
+  .bar .bt b{color:var(--ink);display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar .btn{flex:none}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom, 0px))}
+  .rr .btn{display:none}
+  h1{font-size:27px}
+  .board .num{font-size:34px}
+}
+
+@media (prefers-reduced-motion: no-preference){
+  .btn,.tabs button,.axes button,.card .pick,.xbtn,.toast button{transition:transform .15s ease,background-color .2s ease,color .2s ease,border-color .2s ease}
+  .btn:active,.tabs button:active,.axes button:active,.card .pick:active,.toast button:active{transform:scale(.96)}
+  .fc.go{animation:flip .26s ease-out}
+  @keyframes flip{0%{transform:rotateX(90deg);opacity:.2}100%{transform:rotateX(0);opacity:1}}
+  .three{transition:grid-template-columns .28s ease}
+  .card{transition:opacity .25s ease,box-shadow .2s ease}
+  .card.deal{animation:deal .28s ease-out both}
+  .card.deal:nth-child(2){animation-delay:.05s}
+  .card.deal:nth-child(3){animation-delay:.1s}
+  @keyframes deal{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
+  .tip,.notice,.view{animation:pop .2s ease-out}
+  @keyframes pop{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
+  .toast:not([hidden]){animation:toastin .22s ease-out}
+  @keyframes toastin{0%{opacity:0;transform:translate(-50%,10px)}100%{opacity:1;transform:translate(-50%,0)}}
+  .fill{transition:width .5s cubic-bezier(.3,.7,.4,1)}
+  .sc-in{animation:scin .3s ease-out both}
+  @keyframes scin{0%{opacity:0;transform:translateY(4px)}100%{opacity:1;transform:translateY(0)}}
+  .hyp summary::after{transition:opacity .2s}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">← 一覧へ</a>
+  <h1>ミッツダケ</h1>
+
+  <details class="hyp" open aria-label="仮説カード">
+    <summary><span class="pos">62 ミッツダケ</span></summary>
+    <div class="body">
+      <p><b>仮説</b> 候補を3つに絞って出してもらう方が、100個から探すより疲れずに選べて、選んだ店に満足できる。選ぶこと自体は自分でしたいので、最後の1つは自分で選ぶ。</p>
+      <p><b>確かめること</b></p>
+      <p>当たり＝3つから選ぶ方が楽で、しかも「自分で選んだ」感じがある</p>
+      <p>外れ＝3つだと物足りない、または絞られると自分で選んだ感じがしない</p>
+    </div>
+  </details>
+
+  <div class="sample">
+    <span id="sampleTag">サンプルデータ（架空の店100軒）を表示中</span>
+    <button class="btn small" id="btnClear" type="button">サンプルを消して自分で使う</button>
+    <button class="btn small" id="btnSample" type="button">サンプルに戻す</button>
+  </div>
+  <div id="notice" role="status" aria-live="polite"></div>
+
+  <section class="scene" aria-label="店の前の様子">
+    <svg id="scene" viewBox="0 0 320 120" aria-hidden="true"></svg>
+    <div class="cap" id="sceneCap"></div>
+  </section>
+
+  <section class="board" aria-label="いまの絞り込み">
+    <div class="row">
+      <div class="col"><div class="lab">判断軸</div><div class="num"><span id="bAx" aria-hidden="true"></span><span class="unit">つ</span></div></div>
+      <div class="sep" aria-hidden="true">／</div>
+      <div class="col"><div class="lab">候補</div><div class="num"><span id="bCand" aria-hidden="true"></span><span class="unit">軒</span></div></div>
+      <div class="sep" aria-hidden="true">／</div>
+      <div class="col"><div class="lab">見送った</div><div class="num"><span id="bSkip" aria-hidden="true"></span><span class="unit">軒</span></div></div>
+    </div>
+    <div class="sub">
+      <span>別の3つを見る 今日の残り</span>
+      <span class="num"><span id="bLeft" aria-hidden="true"></span></span><span>回</span>
+      <span class="pips" id="pips" aria-hidden="true"></span>
+    </div>
+    <span class="sr" id="bLive" aria-live="polite"></span>
+  </section>
+
+  <h2><span class="step">1</span>探し方を切りかえる</h2>
+  <div class="tabs" role="group" aria-label="探し方">
+    <button type="button" id="mode100" aria-pressed="false">100軒の中から探す<small>一覧と絞り込み</small></button>
+    <button type="button" id="mode3" aria-pressed="true">3軒だけ<small>判断軸で絞って3つ</small></button>
+  </div>
+  <div id="tip"></div>
+
+  <div id="view3" class="view">
+    <h2><span class="step">2</span>判断軸を選ぶ（3つまで）</h2>
+    <div class="axes" id="axes" role="group" aria-label="判断軸"></div>
+    <div class="axnote" id="axnote" aria-live="polite"></div>
+
+    <h2><span class="step">3</span>3軒から1つ選ぶ</h2>
+    <div id="threeBox"></div>
+    <div class="hidden-n" id="hiddenN"></div>
+    <div class="rr">
+      <button class="btn main" id="btnReroll" type="button">別の3つを見る</button>
+      <span class="left" id="rrLeft"></span>
+    </div>
+  </div>
+
+  <div id="view100" class="view" hidden>
+    <h2><span class="step">2</span>100軒から探す</h2>
+    <div class="filters" id="filters"></div>
+    <div class="cnt"><span>該当 <b id="hitN">0</b> 軒</span>
+      <label for="sortSel">並び順 <select id="sortSel"><option value="no">番号順</option><option value="walk">近い順</option><option value="rate">口コミ評価順</option><option value="cnt">口コミ件数順</option></select></label>
+    </div>
+    <ul class="many" id="many"></ul>
+  </div>
+
+  <div id="ownBox" hidden>
+    <h2 id="addHead">自分の候補を足す</h2>
+    <div id="emptyBox"></div>
+    <div class="addf" id="addForm">
+      <div class="field"><label for="inName">店の呼び方（自分が分かる言い方）</label><input type="text" id="inName" maxlength="30" autocomplete="off"></div>
+      <div class="field"><label for="inWalk">歩いて何分</label><input type="number" id="inWalk" min="1" max="60" step="1" inputmode="numeric" value="8"></div>
+      <div class="field"><span class="fl">当てはまること</span>
+        <div class="checks">
+          <label for="inSolo"><input type="checkbox" id="inSolo">一人客が多い</label>
+          <label for="inCouple"><input type="checkbox" id="inCouple">カップル・グループが多い</label>
+          <label for="inSns"><input type="checkbox" id="inSns">SNSで有名</label>
+          <label for="inTicket"><input type="checkbox" id="inTicket">食券</label>
+          <label for="inCounter"><input type="checkbox" id="inCounter">カウンターのみ</label>
+          <label for="inQuiet"><input type="checkbox" id="inQuiet">私語少なめ</label>
+          <label for="inOld"><input type="checkbox" id="inOld">年配の常連が多い</label>
+        </div>
+      </div>
+      <div class="err" id="addErr" aria-live="polite"></div>
+      <button class="btn main" id="btnAdd" type="button">候補に足す</button>
+    </div>
+  </div>
+
+  <h2><span class="step">4</span>いまのデータで分かること</h2>
+  <div class="result">
+    <p class="fact" id="fact" aria-live="polite"></p>
+    <div class="funnel" id="funnel"></div>
+  </div>
+
+  <p class="note">サンプルデータ。店名・数字はすべて架空。実際はGoogleマップ等の公開情報（口コミ数・評価・写真の傾向など）から作る想定。この端末に覚えるのは、選んだ判断軸と今日の残り回数だけです。</p>
+</div>
+
+<div class="bar" id="bar">
+  <div class="bt" id="barTxt"></div>
+  <button class="btn main" id="barBtn" type="button">別の3つを見る</button>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toastMsg"></span><button type="button" id="toastUndo">取り消す</button></div>
+
+<script>
+(function(){
+  var KEY = "hack5-ik-2-v1";
+  var MAX_AX = 3, MAX_RR = 3;
+
+  /* ---------- 判断軸 ---------- */
+  var SNS = ["ほぼ無し","少し","多い","とても多い"];
+  var AXES = [
+    {id:"solo", name:"一人客が多い", short:"一人客", hint:"一人客 50%以上",
+      ok:function(s){return s.solo>=0.5;}, val:function(s){return Math.round(s.solo*100)+"%";}, score:function(s){return s.solo;}},
+    {id:"fewc", name:"カップルが少ない", short:"カップル", hint:"カップル 15%以下",
+      ok:function(s){return s.couple<=0.15;}, val:function(s){return Math.round(s.couple*100)+"%";}, score:function(s){return -s.couple;}},
+    {id:"nosns", name:"SNSで有名でない", short:"SNS露出", hint:"写真の投稿が少ない",
+      ok:function(s){return s.sns<=1;}, val:function(s){return SNS[s.sns];}, score:function(s){return -s.sns;}},
+    {id:"rule", name:"制約がある", short:"制約", hint:"食券・カウンター・私語少なめ",
+      ok:function(s){return s.rules.length>0;}, val:function(s){return s.rules.length?s.rules.join("・"):"なし";}, score:function(s){return s.rules.length;}},
+    {id:"near", name:"歩いて10分以内", short:"徒歩", hint:"10分以内",
+      ok:function(s){return s.walk<=10;}, val:function(s){return s.walk+"分";}, score:function(s){return -s.walk;}},
+    {id:"old", name:"年配の常連が多い", short:"年配の常連", hint:"常連 50%以上",
+      ok:function(s){return s.regular>=0.5;}, val:function(s){return Math.round(s.regular*100)+"%";}, score:function(s){return s.regular;}}
+  ];
+  function axisById(id){ for(var i=0;i<AXES.length;i++){ if(AXES[i].id===id) return AXES[i]; } return null; }
+
+  /* ---------- 架空の店100軒（固定シード） ---------- */
+  function rng(seed){ var a=seed>>>0; return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
+  var GENRES = [
+    {g:"ラーメン", pre:["麺屋","中華そば","らーめん"]},
+    {g:"喫茶", pre:["喫茶","珈琲"]},
+    {g:"定食", pre:["食堂","定食"]},
+    {g:"そば", pre:["手打ちそば","そば処"]},
+    {g:"うどん", pre:["うどん"]},
+    {g:"カレー", pre:["カレー"]},
+    {g:"洋食", pre:["洋食"]},
+    {g:"立ち寿司", pre:["立ち寿司"]}
+  ];
+  var SUF = ["あかね","しらかば","とおの","みずき","こまち","ひよし","やまぶき","いちょう","ゆずりは","かじか","つばな","はぎの","ふじみ","たまゆら","ちどり","すずらん","のぎく","あおば","くるみ","かすみ","ほたる","わかば","こはる","すがの","おかめ","みさと","ひなた","つきみ","まつば","しおり","ゆうなぎ","かえで","なずな","よもぎ","はやせ","いさご"];
+  var TYPES = ["古くからの個人店","SNSで話題","チェーン風","新しめの個人店"];
+  function between(r,a,b){ return a+(b-a)*r(); }
+  function genShops(){
+    var r = rng(6202), out=[], used={}, i, t, g, nm, s, tries;
+    for(i=0;i<100;i++){
+      g = GENRES[Math.floor(r()*GENRES.length)];
+      tries=0;
+      do{ nm = g.pre[Math.floor(r()*g.pre.length)]+" "+SUF[Math.floor(r()*SUF.length)]; tries++; }while(used[nm] && tries<50);
+      used[nm]=1;
+      t = r(); t = t<0.32?0:(t<0.56?1:(t<0.76?2:3));
+      s = {id:i+1, name:nm, genre:g.g, type:t, rules:[]};
+      s.walk = 2+Math.floor(r()*22);
+      if(t===0){ s.solo=between(r,.42,.86); s.couple=between(r,.02,.16); s.sns=r()<.75?0:1; s.regular=between(r,.42,.9); s.cnt=Math.round(between(r,6,110)); s.rate=between(r,3.3,4.0); }
+      else if(t===1){ s.solo=between(r,.08,.35); s.couple=between(r,.28,.62); s.sns=r()<.6?3:2; s.regular=between(r,.02,.15); s.cnt=Math.round(between(r,520,2600)); s.rate=between(r,4.3,4.85); }
+      else if(t===2){ s.solo=between(r,.3,.62); s.couple=between(r,.1,.3); s.sns=r()<.5?1:2; s.regular=between(r,.08,.3); s.cnt=Math.round(between(r,180,900)); s.rate=between(r,3.2,3.7); }
+      else { s.solo=between(r,.3,.72); s.couple=between(r,.06,.3); s.sns=Math.floor(r()*3); s.regular=between(r,.1,.48); s.cnt=Math.round(between(r,25,320)); s.rate=between(r,3.5,4.25); }
+      var pr = t===0?.5:(t===1?.08:(t===2?.25:.3));
+      if(r()<(t===2?.6:pr)) s.rules.push("食券");
+      if(r()<pr) s.rules.push("カウンターのみ");
+      if(r()<(t===0?.45:pr*.6)) s.rules.push("私語少なめ");
+      s.price = Math.round(between(r,6,16))*100;
+      s.rate = Math.round(s.rate*10)/10;
+      out.push(s);
+    }
+    return out;
+  }
+  var SAMPLE_SHOPS = genShops();
+
+  /* ---------- 状態 ---------- */
+  var state = {mode:"3", axes:["solo","nosns","rule"], sample:true, own:[], seq:1, rr:{date:"",used:0}, offset:0, tip:0};
+  var chosen = -1;        // 今日はこの店（メモリだけ。記録しない）
+  var dealt = true;       // カードを配り直した直後
+  var persist = true;
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+  function today(){ var d=new Date(); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); }
+  function closestOf(t,sel){ return (t && t.closest) ? t.closest(sel) : null; }
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(!raw) return;
+      var d = JSON.parse(raw);
+      if(!d) return;
+      if(d.mode==="100"||d.mode==="3") state.mode=d.mode;
+      if(Array.isArray(d.axes)) state.axes=d.axes.filter(function(a){return !!axisById(a);}).slice(0,MAX_AX);
+      state.sample = d.sample!==false;
+      if(Array.isArray(d.own)) state.own=d.own.filter(function(s){return s && typeof s.name==="string";}).map(cleanOwn);
+      state.seq = +d.seq||1;
+      if(d.rr && typeof d.rr.date==="string") state.rr={date:d.rr.date, used:clamp(+d.rr.used||0,0,MAX_RR)};
+      state.offset = +d.offset||0;
+      state.tip = d.tip?1:0;
+    }catch(e){ persist=false; }
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ persist=false; } }
+  function cleanOwn(s){
+    return {id:+s.id||0, name:String(s.name).slice(0,30), genre:"自分の候補", type:-1, walk:clamp(Math.round(+s.walk||10),1,60),
+      solo:clamp(+s.solo||0,0,1), couple:clamp(+s.couple||0,0,1), sns:clamp(Math.round(+s.sns||0),0,3), regular:clamp(+s.regular||0,0,1),
+      rules:Array.isArray(s.rules)?s.rules.filter(function(x){return typeof x==="string";}).slice(0,3):[], cnt:null, rate:null, price:null};
+  }
+  function shops(){ return state.sample ? SAMPLE_SHOPS : state.own; }
+  function rrLeft(){ if(state.rr.date!==today()) return MAX_RR; return MAX_RR-state.rr.used; }
+
+  /* ---------- 3軒の決め方 ---------- */
+  function hash(str){ var h=2166136261; for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+  function matched(s, axes){ var n=0; for(var i=0;i<axes.length;i++){ if(axisById(axes[i]).ok(s)) n++; } return n; }
+  function compute(){
+    var all = shops(), ax = state.axes, full=[], part=[], i, s;
+    for(i=0;i<all.length;i++){ s=all[i]; if(matched(s,ax)===ax.length) full.push(s); else part.push(s); }
+    // 同じ判断軸なら同じ順番（固定シードで並べかえ）
+    var r = rng(hash(ax.slice().sort().join(",")+"|"+all.length));
+    for(i=full.length-1;i>0;i--){ var j=Math.floor(r()*(i+1)), t=full[i]; full[i]=full[j]; full[j]=t; }
+    part.sort(function(a,b){ return matched(b,ax)-matched(a,ax) || a.id-b.id; });
+    var show=[];
+    if(full.length>3){
+      var off = state.offset % full.length;
+      for(i=0;i<3;i++) show.push(full[(off+i)%full.length]);
+    }else{
+      show = full.concat(part).slice(0,3);
+    }
+    // 判断軸ごとに何軒残るか（グラフ用）
+    var steps=[{label:"全部", n:all.length}], cur=all;
+    for(i=0;i<ax.length;i++){
+      var a=axisById(ax[i]);
+      cur = cur.filter(function(x){ return a.ok(x); });
+      steps.push({label:"＋"+a.name, n:cur.length});
+    }
+    return {all:all, full:full, show:show, skip:Math.max(0, full.length-3), steps:steps, short:full.length<3};
+  }
+
+  /* ---------- 発車標の数字 ---------- */
+  function flap(el, text){
+    if(!el) return;
+    var prev = el.getAttribute("data-v")||"";
+    if(prev===text && el.innerHTML) return;
+    var h="", i, c;
+    while(prev.length<text.length) prev=" "+prev;
+    for(i=0;i<text.length;i++){ c=text.charAt(i); h+='<span class="fc'+(c!==prev.charAt(prev.length-text.length+i)?' go':'')+'">'+esc(c)+'</span>'; }
+    el.innerHTML=h;
+    el.setAttribute("data-v",text);
+  }
+  function pad(n,w){ var s=String(n); while(s.length<w) s="0"+s; return s; }
+
+  /* ---------- 描画 ---------- */
+  var C = null;
+  function render(){
+    C = compute();
+    if(chosen>=C.show.length) chosen=-1;
+    renderTop(); renderBoard(); renderTabs(); renderTip();
+    renderAxes(); renderThree(); renderMany(); renderOwn(); renderResult(); renderScene(); renderBar();
+  }
+  function renderTop(){
+    $("sampleTag").textContent = state.sample ? "サンプルデータ（架空の店100軒）を表示中" : "自分の候補 "+state.own.length+"軒";
+    $("btnClear").hidden = !state.sample;
+    $("btnSample").hidden = state.sample;
+  }
+  var lastLive="";
+  function renderBoard(){
+    var cand = C.show.length, left=rrLeft();
+    var skip = state.mode==="100" ? 0 : C.skip;
+    flap($("bAx"), String(state.mode==="100"?0:state.axes.length));
+    flap($("bCand"), state.mode==="100" ? pad(C.all.length,3) : String(cand));
+    flap($("bSkip"), pad(skip,2));
+    flap($("bLeft"), String(left));
+    var h=""; for(var i=0;i<MAX_RR;i++) h+='<i class="'+(i<left?'on':'')+'"></i>';
+    $("pips").innerHTML=h;
+    var live = state.mode==="100" ? ("100軒の一覧。候補 "+C.all.length+"軒") : ("判断軸 "+state.axes.length+"つ、候補 "+cand+"軒、見送った "+skip+"軒。別の3つは今日あと"+left+"回");
+    if(live!==lastLive){ $("bLive").textContent=live; lastLive=live; }
+  }
+  function renderTabs(){
+    $("mode100").setAttribute("aria-pressed", state.mode==="100"?"true":"false");
+    $("mode3").setAttribute("aria-pressed", state.mode==="3"?"true":"false");
+    $("view3").hidden = state.mode!=="3";
+    $("view100").hidden = state.mode!=="100";
+  }
+  function renderTip(){
+    $("tip").innerHTML = state.tip ? "" : '<div class="tip" role="note">ここで「100軒から探す」と「3軒だけ」が切りかわります。両方さわって、疲れ方と選んだ感じを比べられます。<button class="xbtn" type="button" id="tipX" aria-label="この案内を閉じる">×</button></div>';
+  }
+  function renderAxes(){
+    var h="", i, a, on, full=state.axes.length>=MAX_AX;
+    for(i=0;i<AXES.length;i++){
+      a=AXES[i]; on=state.axes.indexOf(a.id)>=0;
+      h+='<button type="button" id="ax-'+a.id+'" data-ax="'+a.id+'" aria-pressed="'+(on?'true':'false')+'"'+(!on&&full?' aria-disabled="true"':'')+'>'+esc(a.name)+'<small>'+esc(a.hint)+'</small></button>';
+    }
+    $("axes").innerHTML=h;
+  }
+  function renderThree(){
+    var box=$("threeBox");
+    if(!C.all.length){ box.innerHTML=""; $("hiddenN").innerHTML=""; $("btnReroll").disabled=true; $("rrLeft").textContent=""; return; }
+    var ax = state.axes, i, j, s, h='', rows=[];
+    // 行: 選んだ軸 → 残りの属性 → 口コミ
+    for(i=0;i<ax.length;i++) rows.push({a:axisById(ax[i]), ax:true});
+    for(i=0;i<AXES.length;i++){ if(ax.indexOf(AXES[i].id)<0) rows.push({a:AXES[i], ax:false}); }
+    // 各行で一番よい値に印
+    var best = rows.map(function(r){ var m=-1e9; C.show.forEach(function(s){ m=Math.max(m, r.a.score(s)); }); return m; });
+    var cls = "three"+(chosen>=0?" pick"+chosen:"");
+    h+='<div class="'+cls+'" id="three">';
+    for(j=0;j<C.show.length;j++){
+      s=C.show[j];
+      var cc = "card"+(chosen===j?" chosen":"")+(chosen>=0&&chosen!==j?" dim":"")+(dealt?" deal":"");
+      h+='<div class="'+cc+'"><div><span class="lt">'+"ABC".charAt(j)+'</span><span class="today">今日はこの店</span></div>';
+      h+='<div class="nm">'+esc(s.name)+'</div><div class="gn">'+esc(s.genre)+'・徒歩'+s.walk+'分</div><ul>';
+      for(i=0;i<rows.length;i++){
+        var r=rows[i], v=r.a.val(s), isBest = C.show.length>1 && r.a.score(s)===best[i];
+        var mk = r.ax ? (r.a.ok(s)?'<span class="mk o" aria-label="合う">○</span>':'<span class="mk x" aria-label="合わない">×</span>') : '';
+        h+='<li class="'+(r.ax?'ax':'')+'"><span class="k">'+esc(r.ax?r.a.name:r.a.short)+'</span><span class="v">'+mk+'<span class="val'+(isBest?' best':'')+'">'+esc(v)+'</span></span></li>';
+      }
+      h+='<li><span class="k">口コミ</span><span class="v"><span class="val">'+(s.rate===null?'—':(s.rate.toFixed(1)+' <span class="mono">('+s.cnt+')</span>'))+'</span></span></li>';
+      h+='</ul><button type="button" class="pick" id="pick-'+j+'" data-pick="'+j+'" aria-pressed="'+(chosen===j?'true':'false')+'">'+(chosen===j?'選び直す':'この店にする')+'</button></div>';
+    }
+    h+='</div>';
+    box.innerHTML=h;
+    dealt=false;
+    var hn="";
+    if(!ax.length) hn='判断軸を選ぶと、合う店から3つに絞ります。いまは全'+C.all.length+'軒から3つ。';
+    else if(C.short) hn='すべての判断軸に合う店は <b>'+C.full.length+'</b>軒だけ。残りは合う軸が多い順（×の付いた軸は合っていない）。';
+    else hn='判断軸に合う店は、ほかに <b>'+C.skip+'</b>軒あったが出していない（中身は見せない）。';
+    $("hiddenN").innerHTML=hn;
+    var left=rrLeft(), can = rerollable();
+    $("btnReroll").disabled = !can;
+    $("btnReroll").textContent = "別の3つを見る（あと"+left+"回）";
+    $("rrLeft").textContent = left<=0 ? "今日はもう出せない。明日また3回。" : (can ? "" : "条件に合う店はこれで全部。");
+  }
+  function rerollable(){ var left=rrLeft(); return left>0 && (C.full.length>3); }
+
+  /* 100軒の一覧（わざと情報が多い） */
+  var FILTERS = [
+    {g:"ジャンル", or:true, items:GENRES.map(function(x){ return {id:"f-g-"+x.g, label:x.g, f:function(s){return s.genre===x.g;}}; })},
+    {g:"距離", or:true, items:[5,10,15,20].map(function(m){ return {id:"f-w-"+m, label:"徒歩"+m+"分以内", f:function(s){return s.walk<=m;}}; })},
+    {g:"口コミ評価", or:false, items:[3.5,4.0,4.5].map(function(v){ return {id:"f-r-"+(v*10), label:v.toFixed(1)+"以上", f:function(s){return s.rate!==null&&s.rate>=v;}}; })},
+    {g:"口コミ件数", or:false, items:[50,100,500].map(function(v){ return {id:"f-c-"+v, label:v+"件以上", f:function(s){return s.cnt!==null&&s.cnt>=v;}}; })},
+    {g:"予算", or:true, items:[800,1000,1200,1500].map(function(v){ return {id:"f-p-"+v, label:v+"円以下", f:function(s){return s.price!==null&&s.price<=v;}}; })},
+    {g:"客層", or:false, items:[
+      {id:"f-solo", label:"一人客が多い", f:function(s){return s.solo>=.5;}},
+      {id:"f-fewc", label:"カップル少", f:function(s){return s.couple<=.15;}},
+      {id:"f-old", label:"常連が多い", f:function(s){return s.regular>=.5;}}]},
+    {g:"店のきまり", or:false, items:[
+      {id:"f-ticket", label:"食券", f:function(s){return s.rules.indexOf("食券")>=0;}},
+      {id:"f-counter", label:"カウンター", f:function(s){return s.rules.indexOf("カウンターのみ")>=0;}},
+      {id:"f-quiet", label:"私語少なめ", f:function(s){return s.rules.indexOf("私語少なめ")>=0;}}]},
+    {g:"SNS", or:true, items:SNS.map(function(v,i){ return {id:"f-s-"+i, label:"写真投稿 "+v, f:function(s){return s.sns===i;}}; })}
+  ];
+  var fOn = {};
+  function renderFiltersOnce(){
+    var h="";
+    FILTERS.forEach(function(g){
+      h+='<fieldset><legend>'+esc(g.g)+'</legend><div class="fs">';
+      g.items.forEach(function(it){ h+='<label for="'+it.id+'"><input type="checkbox" id="'+it.id+'" data-f="'+it.id+'">'+esc(it.label)+'</label>'; });
+      h+='</div></fieldset>';
+    });
+    $("filters").innerHTML=h;
+  }
+  function renderMany(){
+    if(state.mode!=="100") return;
+    var list = C.all.filter(function(s){
+      for(var i=0;i<FILTERS.length;i++){
+        var g=FILTERS[i], act=g.items.filter(function(it){return fOn[it.id];});
+        if(!act.length) continue;
+        var hit = g.or ? act.some(function(it){return it.f(s);}) : act.every(function(it){return it.f(s);});
+        if(!hit) return false;
+      }
+      return true;
+    });
+    var k=$("sortSel").value;
+    list = list.slice().sort(function(a,b){
+      if(k==="walk") return a.walk-b.walk || a.id-b.id;
+      if(k==="rate") return (b.rate||0)-(a.rate||0) || a.id-b.id;
+      if(k==="cnt") return (b.cnt||0)-(a.cnt||0) || a.id-b.id;
+      return a.id-b.id;
+    });
+    $("hitN").textContent = list.length;
+    var h="";
+    if(!C.all.length) h='<li><span class="emp">候補がまだありません。下で足すと、ここに並びます。</span></li>';
+    else if(!list.length) h='<li><span class="emp">この絞り込みに合う店はありません。</span></li>';
+    list.forEach(function(s){
+      h+='<li><span class="no">'+pad(s.id,3)+'</span><span class="n">'+esc(s.name)+'</span><span class="r">'+(s.rate===null?'—':('★'+s.rate.toFixed(1)+' ('+s.cnt+')'))+'</span>';
+      h+='<span class="d">'+esc(s.genre)+' / 徒歩'+s.walk+'分'+(s.price?' / '+s.price+'円':'')+' / 一人客'+Math.round(s.solo*100)+'% / カップル'+Math.round(s.couple*100)+'% / 常連'+Math.round(s.regular*100)+'% / SNS '+SNS[s.sns]+(s.rules.length?' / '+esc(s.rules.join('・')):'')+(state.sample?'':'<button type="button" class="del" data-del="'+s.id+'">この候補を消す</button>')+'</span></li>';
+    });
+    $("many").innerHTML=h;
+  }
+  function renderOwn(){
+    $("ownBox").hidden = state.sample;
+    if(state.sample) return;
+    $("emptyBox").innerHTML = state.own.length ? "" :
+      '<div class="empty"><svg viewBox="0 0 170 70" aria-hidden="true">'+
+      '<line class="sc-ground" x1="4" y1="62" x2="166" y2="62"/>'+
+      [20,85,150].map(function(x,i){ return '<rect class="sc-bld" x="'+(x-18)+'" y="22" width="36" height="40" rx="3" stroke-dasharray="3 3"/><rect class="sc-signbg" x="'+(x-9)+'" y="10" width="18" height="12" rx="2"/><text class="sc-signtx" x="'+x+'" y="16.5" font-size="8">'+"ABC".charAt(i)+'</text>'; }).join("")+
+      '</svg>'+
+      '<p>行ってみたい店を<b>呼び方・歩く分数・当てはまること</b>で足すと、上で選んだ判断軸に合う店から<b>3軒だけ</b>がカードで並びます。100軒の一覧にも出ます。</p></div>';
+  }
+  function renderResult(){
+    var fact, st=C.steps, last=st[st.length-1].n;
+    if(!C.all.length) fact="候補がまだないので、絞り込みの数字は出ていない。";
+    else if(state.mode==="100") fact="100軒の一覧には、絞り込みの選択肢が "+FILTERS.reduce(function(n,g){return n+g.items.length;},0)+"個。いま該当 "+$("hitN").textContent+"軒。";
+    else if(!state.axes.length) fact="判断軸 0つ。"+C.all.length+"軒から3軒を出していて、見送った数は数えていない。";
+    else fact="判断軸 "+state.axes.length+"つで、"+C.all.length+"軒が"+last+"軒に。見せているのは"+C.show.length+"軒、見送ったのは"+C.skip+"軒。";
+    $("fact").textContent=fact;
+    var max = Math.max(1, st[0].n), h="";
+    var rows = st.concat([{label:"見せる", n:C.show.length, last:true}]);
+    rows.forEach(function(r){
+      h+='<div class="bl">'+esc(r.label)+'</div><div class="track"><div class="fill'+(r.last?' last':'')+'" data-w="'+(100*r.n/max).toFixed(1)+'"></div></div><div class="bv">'+r.n+'軒</div>';
+    });
+    h+='<div></div><div class="ticks"><span>0</span><span>'+Math.round(max/2)+'</span><span>'+max+'</span></div><div></div>';
+    $("funnel").innerHTML=h;
+    grow();
+  }
+  var raf = (typeof window!=="undefined" && window.requestAnimationFrame) ? function(f){ window.requestAnimationFrame(function(){ window.requestAnimationFrame(f); }); } : function(f){ setTimeout(f,0); };
+  function grow(){
+    raf(function(){
+      var els = $("funnel").querySelectorAll(".fill");
+      for(var i=0;i<els.length;i++) els[i].style.width = els[i].getAttribute("data-w")+"%";
+    });
+  }
+
+  /* 場面イラスト */
+  function person(cx, base, cls, extra){
+    return '<g class="'+(extra||'')+'"><circle class="'+cls+'" cx="'+cx+'" cy="'+(base-20)+'" r="4.6"/><rect class="'+cls+'" x="'+(cx-5)+'" y="'+(base-14.5)+'" width="10" height="14.5" rx="4"/></g>';
+  }
+  function shopFront(x, w, hgt, label, cls){
+    var base=100, top=base-hgt;
+    return '<g class="'+(cls||'')+'"><rect class="sc-bld" x="'+(x-w/2)+'" y="'+top+'" width="'+w+'" height="'+hgt+'" rx="3"/>'+
+      '<rect class="sc-roof" x="'+(x-w/2-3)+'" y="'+(top-4)+'" width="'+(w+6)+'" height="6" rx="2"/>'+
+      '<rect class="sc-door" x="'+(x-w*0.16)+'" y="'+(base-hgt*0.5)+'" width="'+(w*0.32)+'" height="'+(hgt*0.5)+'" rx="2"/>'+
+      '<rect class="sc-signbg" x="'+(x-w*0.3)+'" y="'+(top+5)+'" width="'+(w*0.6)+'" height="'+Math.max(9,hgt*0.2)+'" rx="2"/>'+
+      '<text class="sc-signtx" x="'+x+'" y="'+(top+5+Math.max(9,hgt*0.2)/2)+'" font-size="'+Math.max(7,hgt*0.14)+'">'+esc(label)+'</text></g>';
+  }
+  function renderScene(){
+    var h='<line class="sc-ground" x1="4" y1="100" x2="316" y2="100"/>', cap, i;
+    if(!C.all.length){
+      h+=person(160,112,"sc-me","sc-in")+'<text class="sc-q" x="160" y="62">?</text>';
+      cap="候補がまだない。足すと、ここに店が並ぶ。";
+    }else if(state.mode==="100"){
+      for(i=0;i<20;i++){
+        var x = 14+(i%10)*32, y = i<10?28:64;
+        h+='<rect class="sc-bld tiny sc-in" x="'+(x-12)+'" y="'+y+'" width="24" height="'+(i<10?26:30)+'" rx="2"/><rect class="sc-signbg sc-in" x="'+(x-8)+'" y="'+(y+3)+'" width="16" height="6" rx="1"/>';
+      }
+      h+='<text class="sc-q" x="300" y="22">…</text>';
+      h+=person(160,118,"sc-me","sc-in");
+      h+='<text class="sc-q" x="176" y="92">?</text><text class="sc-q" x="144" y="92">?</text>';
+      cap="<b>"+C.all.length+"軒</b>の看板が並ぶ前で、自分はまだ迷っている。";
+    }else{
+      var xs=[55,160,265];
+      for(i=0;i<C.show.length;i++){
+        var on = chosen===i, dim = chosen>=0 && !on;
+        h+='<path class="sc-path'+(on?' on':'')+(dim?' sc-dim':'')+'" d="M160 116 Q'+((xs[i]+160)/2)+' 108 '+xs[i]+' 102"/>';
+      }
+      for(i=0;i<C.show.length;i++){
+        var on2 = chosen===i, dim2 = chosen>=0 && !on2;
+        h+=shopFront(xs[i], on2?74:52, on2?68:46, "ABC".charAt(i), (dim2?'sc-dim':'')+' sc-in');
+      }
+      if(chosen>=0){
+        // 選んだ店の前の列（その店の客層の比率から想定）
+        var s=C.show[chosen], qx=xs[chosen], n=5, soloN=Math.round(n*s.solo/(s.solo+s.couple*2+0.0001)), dir = chosen===2?-1:1;
+        soloN=clamp(soloN,0,n);
+        var px = qx+dir*44;
+        for(i=0;i<n;i++){
+          if(i<soloN){ h+=person(px,100,"sc-p solo","sc-in"); px+=dir*14; }
+          else { h+=person(px,100,"sc-p","sc-in")+person(px+dir*9,100,"sc-p","sc-in"); px+=dir*22; i++; }
+        }
+        h+=person(px+dir*4,100,"sc-me","sc-in")+'<text class="sc-lab" x="'+(px+dir*4)+'" y="112">自分</text>';
+        cap="今日は<b>"+"ABC".charAt(chosen)+" "+esc(s.name)+"</b>。前に並ぶのは一人客が"+Math.round(s.solo*100)+"%、カップル"+Math.round(s.couple*100)+"%（サンプル値からの想定）。";
+      }else{
+        h+=person(160,118,"sc-me","sc-in");
+        cap="3軒の前。どれにするかは自分で決める。";
+      }
+    }
+    $("scene").innerHTML=h;
+    $("sceneCap").innerHTML=cap;
+  }
+  function renderBar(){
+    var b=$("barBtn"), t=$("barTxt");
+    if(state.mode==="100"){ b.textContent="3軒だけに切りかえる"; b.disabled=false; t.innerHTML="<b>100軒の一覧</b>該当 "+$("hitN").textContent+"軒"; return; }
+    var left=rrLeft();
+    b.textContent="別の3つ（あと"+left+"回）";
+    b.disabled = !rerollable();
+    t.innerHTML = chosen>=0 ? "<b>今日は "+esc(C.show[chosen].name)+"</b>選び直しはカードから" : "<b>3軒から自分で選ぶ</b>見送った "+C.skip+"軒";
+  }
+
+  /* ---------- 操作 ---------- */
+  function setMode(m){ if(state.mode===m) return; state.mode=m; if(m==="3") dealt=true; save(); render(); }
+  function toggleAxis(id){
+    var i=state.axes.indexOf(id), a=axisById(id);
+    if(i>=0){ state.axes.splice(i,1); $("axnote").textContent=a.name+" を外した。"; }
+    else if(state.axes.length>=MAX_AX){ $("axnote").textContent="判断軸は3つまで。どれかを外すと選べる。"; return; }
+    else { state.axes.push(id); $("axnote").textContent=a.name+" を足した（"+state.axes.length+"/3）。"; }
+    state.offset=0; chosen=-1; dealt=true; save(); render();
+  }
+  function reroll(){
+    if(!rerollable()) return;
+    if(state.rr.date!==today()) state.rr={date:today(), used:0};
+    state.rr.used++;
+    state.offset += 3;
+    chosen=-1; dealt=true; save(); render();
+    var nb=$("btnReroll"); if(nb && nb.disabled && $("pick-0") && $("pick-0").focus) $("pick-0").focus();
+  }
+  function pick(j){
+    var prev=chosen;
+    if(chosen===j){ chosen=-1; render(); return; }
+    chosen=j; render();
+    toast("今日はこの店: "+C.show[j].name, prev);
+  }
+
+  var toastTimer=null, toastPrev=null;
+  function toast(msg, prev){
+    toastPrev=prev;
+    $("toastMsg").textContent=msg;
+    $("toast").hidden=false;
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer=setTimeout(hideToast,6000);
+  }
+  function hideToast(){ $("toast").hidden=true; toastPrev=null; toastTimer=null; }
+  function undo(){ if(toastPrev===null) return; chosen=toastPrev; if(toastTimer) clearTimeout(toastTimer); hideToast(); render(); }
+
+  function confirmUI(msg, okLabel, onOk){
+    $("notice").innerHTML='<div class="notice" role="dialog" aria-label="確認"><div>'+esc(msg)+'</div><div class="acts"><button class="btn ng" type="button" id="cfOk">'+esc(okLabel)+'</button><button class="btn" type="button" id="cfNo">やめる</button></div></div>';
+    $("cfOk").onclick=function(){ $("notice").innerHTML=""; onOk(); };
+    $("cfNo").onclick=function(){ $("notice").innerHTML=""; };
+    if($("cfNo").focus) $("cfNo").focus();
+  }
+  function clearSample(){
+    confirmUI("サンプルの100軒を画面から外し、自分で足した候補だけで使う。判断軸と今日の残り回数はそのまま。", "サンプルを消す", function(){
+      state.sample=false; state.offset=0; chosen=-1; dealt=true; save(); render();
+      if($("inName").focus) $("inName").focus();
+    });
+  }
+  function backSample(){
+    confirmUI("架空の100軒に戻す。自分で足した候補（"+state.own.length+"軒）は消える。", "サンプルに戻す", function(){
+      state.sample=true; state.own=[]; state.offset=0; chosen=-1; dealt=true; save(); render();
+    });
+  }
+  function addOwn(){
+    var nm=($("inName").value||"").trim(), w=Math.round(+$("inWalk").value);
+    if(!nm){ $("addErr").textContent="店の呼び方が空です。"; return; }
+    if(!(w>=1&&w<=60)){ $("addErr").textContent="歩く分数は1〜60で入れてください。"; return; }
+    var rules=[];
+    if($("inTicket").checked) rules.push("食券");
+    if($("inCounter").checked) rules.push("カウンターのみ");
+    if($("inQuiet").checked) rules.push("私語少なめ");
+    state.own.push(cleanOwn({id:state.seq++, name:nm, walk:w,
+      solo:$("inSolo").checked?.65:.3, couple:$("inCouple").checked?.4:.1, sns:$("inSns").checked?3:0, regular:$("inOld").checked?.65:.2, rules:rules}));
+    $("addErr").textContent=""; $("inName").value="";
+    ["inSolo","inCouple","inSns","inTicket","inCounter","inQuiet","inOld"].forEach(function(id){ $(id).checked=false; });
+    state.offset=0; chosen=-1; dealt=true; save(); render();
+    toast("候補に足しました: "+nm, null);
+  }
+  function delOwn(id){
+    state.own=state.own.filter(function(s){return s.id!==id;});
+    chosen=-1; save(); render();
+  }
+
+  function bind(){
+    $("mode100").onclick=function(){ setMode("100"); };
+    $("mode3").onclick=function(){ setMode("3"); };
+    $("btnReroll").onclick=reroll;
+    $("barBtn").onclick=function(){ if(state.mode==="100") setMode("3"); else reroll(); };
+    $("btnClear").onclick=clearSample;
+    $("btnSample").onclick=backSample;
+    $("btnAdd").onclick=addOwn;
+    $("toastUndo").onclick=undo;
+    $("sortSel").onchange=function(){ renderMany(); renderResult(); renderBar(); };
+    document.addEventListener("click", function(ev){
+      var t=ev.target, el;
+      if((el=closestOf(t,"[data-ax]"))){ toggleAxis(el.getAttribute("data-ax")); return; }
+      if((el=closestOf(t,"[data-pick]"))){ pick(+el.getAttribute("data-pick")); return; }
+      if((el=closestOf(t,"[data-del]"))){ delOwn(+el.getAttribute("data-del")); return; }
+      if(closestOf(t,"#tipX")){ state.tip=1; save(); renderTip(); return; }
+    });
+    document.addEventListener("change", function(ev){
+      var el=closestOf(ev.target,"[data-f]");
+      if(el){ fOn[el.getAttribute("data-f")]=!!el.checked; renderMany(); renderResult(); renderBar(); }
+    });
+  }
+
+  load();
+  if(state.rr.date!==today()) state.rr={date:today(), used:0};
+  renderFiltersOnce();
+  bind();
+  render();
+  if(typeof window!=="undefined") window.__ik2 = {state:state, compute:compute, toggleAxis:toggleAxis, reroll:reroll, pick:pick, setMode:setMode, undo:undo, addOwn:addOwn};
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ケハイケシ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-size:15px;line-height:1.7}
+.outer{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:12px;padding-bottom:48px}
+.wrap{max-width:560px;margin:0 auto}
+a{color:var(--ink)}
+.back{display:inline-block;font-size:13px;color:var(--muted);margin-bottom:6px;padding:4px 0}
+h1{font-family:var(--font-display);font-size:26px;line-height:1.3;margin:4px 0 10px;font-weight:700}
+h2{font-family:var(--font-display);font-size:16px;margin:22px 0 8px;font-weight:700}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.hyp{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--signal);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.6;color:var(--muted)}
+.hyp p{margin:3px 0}
+.hyp b{color:var(--ink)}
+.hyp .meta{font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
+.hyp .hit b{color:var(--ok)}
+.hyp .miss b{color:var(--ng)}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:14px 12px;display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:8px;font-variant-numeric:tabular-nums}
+.board .lab{font-size:12px;font-family:var(--font-body)}
+.board .num{font-family:var(--font-mono);font-size:38px;font-weight:600;line-height:1.1}
+.board .num .unit{font-size:14px;margin-left:2px}
+.board .big{font-family:var(--font-display);font-size:30px;font-weight:700;line-height:1.2}
+.btn{font:inherit;font-size:14px;font-weight:500;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal-ink);font-weight:700}
+.btn.small{min-height:36px;font-size:12.5px;padding:4px 10px;border-color:var(--line);color:var(--muted)}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.seg .btn{flex:1 1 auto}
+.field{display:grid;grid-template-columns:64px 1fr 62px;gap:8px;align-items:center;margin:6px 0;font-size:14px}
+.field output{font-family:var(--font-mono);font-size:14px;text-align:right}
+input[type=range]{width:100%;accent-color:var(--signal-ink);min-height:32px}
+.note{font-size:12.5px;color:var(--muted);margin:6px 0}
+.st{font-size:13.5px;margin:2px 0;padding-left:10px;border-left:4px solid var(--line)}
+.st.ok{border-left-color:var(--ok)}
+.st.ng{border-left-color:var(--ng)}
+.foot{margin-top:30px;border-top:1px solid var(--line);padding-top:12px;font-size:12.5px;color:var(--muted)}
+.sample{font-family:var(--font-mono);font-size:12px;color:var(--signal-ink);background:var(--signal);display:inline-block;padding:1px 8px;border-radius:4px;margin:0 0 6px}
+.confirm{background:var(--surface);border:2px solid var(--ink);border-radius:8px;padding:10px 12px;margin:10px 0;color:var(--ink)}
+.confirm[hidden]{display:none}
+.verdict{margin-top:14px}
+.verdict .btn{font-size:13px}
+.verdict .n{font-family:var(--font-mono)}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important;scroll-behavior:auto !important}}
+
+.map{width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-bottom:10px}
+.map .me{fill:var(--signal);stroke:var(--ink);stroke-width:2}
+.map .p{fill:var(--muted);stroke:var(--ink);stroke-width:1.5}
+.map .gap{stroke:var(--ink);stroke-width:1.5}
+.map text{font-family:var(--font-mono);font-size:13px;fill:var(--ink);font-weight:600}
+.board .cell{text-align:center}
+.board .num{font-size:34px}
+.meter{margin:6px 0}
+.meter .l{display:flex;justify-content:space-between;font-size:13px}
+.meter .l span:last-child{font-family:var(--font-mono)}
+.bar{height:14px;border:1px solid var(--ink);border-radius:4px;background:var(--surface);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--muted);width:0}
+.bar i.hot{background:var(--ng)}
+.bar i.cool{background:var(--ok)}
+
+</style>
+</head>
+<body>
+<div class="outer"><div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<h1>ケハイケシ</h1>
+<section class="hyp" aria-label="仮説カード">
+<p class="meta">視点: 身体・知覚 ／ 具体 ／ 方向: 後ろ</p>
+<p><b>仮説</b> 後ろの不快の一部は、足音や息づかいなど"気配"の音から来ている。</p>
+<p><b>この試作で確かめること</b></p>
+<p class="hit"><b>当たり</b> ＝ イヤホンで音を流すと後ろが気にならなくなる</p>
+<p class="miss"><b>外れ</b> ＝ 音を消しても近いこと自体が嫌</p>
+</section>
+<h2>後ろの人の気配</h2>
+<svg id="map" class="map" viewBox="0 0 360 250" role="img" aria-label="自分と後ろの人の距離を上から見た図"></svg>
+<div class="board">
+<div class="cell"><div class="lab">気配</div><div class="num" id="b-kehai">0</div></div>
+<div class="cell"><div class="lab">隠れている割合</div><div class="num"><span id="b-hid">0</span><span class="unit">%</span></div></div>
+<div class="cell"><div class="lab">聞こえる気配</div><div class="num" id="b-heard">0</div></div>
+</div>
+<div class="meter"><div class="l"><span>音なしの気配</span><span id="m1-n">0</span></div><div class="bar"><i id="m1" class="hot"></i></div></div>
+<div class="meter"><div class="l"><span id="m2-l">音ありで聞こえる気配</span><span id="m2-n">0</span></div><div class="bar"><i id="m2" class="cool"></i></div></div>
+<p class="note">気配は、後ろの人が近いほど大きくなる値（0〜100）。サンプルの計算式で出しています。</p>
+<h2>イヤホンで流す音</h2>
+<div class="seg" role="group" aria-label="音の種類">
+<button class="btn" id="snd-rain" type="button" aria-pressed="false">雨</button>
+<button class="btn" id="snd-white" type="button" aria-pressed="false">ホワイトノイズ</button>
+<button class="btn" id="snd-kitchen" type="button" aria-pressed="false">厨房の音</button>
+<button class="btn" id="snd-cafe" type="button" aria-pressed="false">カフェの雑踏</button>
+</div>
+<div class="row"><button class="btn" id="snd-stop" type="button">音を止める</button><span class="note" id="state" style="align-self:center;margin:0">停止中</span></div>
+<div class="field"><label for="vol">音量</label><input type="range" id="vol" min="0" max="100" step="1"><output id="vol-o">0</output></div>
+<p class="note">ボタンを押すと再生が始まります。実際の音量は端末の音量にも左右されます。</p>
+<h2>後ろの人との距離</h2>
+<div class="field"><label for="dist">体と体</label><input type="range" id="dist" min="10" max="110" step="1"><output id="dist-o">0cm</output></div>
+<div class="row"><button class="btn primary" id="demo" type="button">デモ: 後ろの人が詰めてくる</button><button class="btn" id="demo-stop" type="button">止める</button></div>
+
+<div class="foot">
+<p id="sample-note" class="sample">サンプルの値で動いています</p>
+<div class="row">
+<button class="btn small" id="btn-clear" type="button">サンプルを消して自分で使う</button>
+<button class="btn small" id="btn-sample" type="button">サンプルに戻す</button>
+</div>
+<div id="confirm" class="confirm" role="alertdialog" aria-labelledby="confirm-msg" hidden>
+<p id="confirm-msg" style="margin:0 0 8px"></p>
+<div class="row" style="margin:0"><button class="btn primary" id="confirm-yes" type="button">実行する</button><button class="btn" id="confirm-no" type="button">やめる</button></div>
+</div>
+<div class="verdict">
+<p style="margin:0 0 4px">触ってみて、仮説は</p>
+<div class="row" style="margin:0">
+<button class="btn" id="v-hit" type="button">当たりに近い <span class="n" id="v-hit-n">0</span></button>
+<button class="btn" id="v-miss" type="button">外れに近い <span class="n" id="v-miss-n">0</span></button>
+</div>
+<p class="note">この端末の中にだけ数えます。</p>
+</div>
+</div>
+</div></div>
+<script>
+'use strict';
+const KEY='hack3-g1-2-v1';
+const $=(s,r)=>(r||document).querySelector(s);
+const $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
+let S=null,_render=null;
+function loadS(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null}catch(e){return null}}
+function saveS(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function paint(){
+  $('#sample-note').hidden=!S.sample;
+  if(_render)_render();
+  $('#v-hit-n').textContent=S.verdict.hit;
+  $('#v-miss-n').textContent=S.verdict.miss;
+}
+function commit(){saveS();paint()}
+function ask(msg,yes){
+  const b=$('#confirm');b.hidden=false;$('#confirm-msg').textContent=msg;
+  $('#confirm-yes').onclick=()=>{b.hidden=true;yes()};
+  $('#confirm-no').onclick=()=>{b.hidden=true};
+  $('#confirm-no').focus();
+}
+function boot(sample,empty,render,onReset){
+  _render=render;
+  try{S=loadS()}catch(e){S=null}
+  if(!S||typeof S!=='object')S=sample();
+  if(!S.verdict)S.verdict={hit:0,miss:0};
+  const redo=fn=>{const v=S.verdict;S=fn();S.verdict=v;if(onReset)onReset();commit()};
+  $('#btn-clear').onclick=()=>ask('サンプルの値を消して、初期状態から使います。よろしいですか。',()=>redo(empty));
+  $('#btn-sample').onclick=()=>ask('サンプルの値に戻します。よろしいですか。',()=>redo(sample));
+  $('#v-hit').onclick=()=>{S.verdict.hit++;commit()};
+  $('#v-miss').onclick=()=>{S.verdict.miss++;commit()};
+  paint();
+}
+
+const NAMES={rain:'雨',white:'ホワイトノイズ',kitchen:'厨房の音',cafe:'カフェの雑踏'};
+const COVER={rain:0.62,white:0.7,kitchen:0.78,cafe:0.85};
+function sampleState(){return{sample:true,sound:'rain',vol:55,dist:40,verdict:{hit:0,miss:0}}}
+function emptyState(){return{sample:false,sound:'rain',vol:40,dist:90,verdict:{hit:0,miss:0}}}
+let ac=null,master=null,nodes=[],timers=[],playing=false,dtm=null;
+function ensureAC(){
+  if(ac)return ac;
+  const C=window.AudioContext||window.webkitAudioContext;
+  if(!C)return null;
+  ac=new C();master=ac.createGain();master.gain.value=0;master.connect(ac.destination);return ac;
+}
+function noiseBuf(kind){
+  const len=ac.sampleRate*2,b=ac.createBuffer(1,len,ac.sampleRate),d=b.getChannelData(0);let last=0;
+  for(let i=0;i<len;i++){const w=Math.random()*2-1;if(kind==='brown'){last=(last+0.02*w)/1.02;d[i]=last*3.5}else d[i]=w}
+  return b;
+}
+function src(kind){const s=ac.createBufferSource();s.buffer=noiseBuf(kind);s.loop=true;s.start();nodes.push(s);return s}
+function gain(v,to){const g=ac.createGain();g.gain.value=v;nodes.push(g);if(to)g.connect(to);return g}
+function filt(type,f,q,from,to){const b=ac.createBiquadFilter();b.type=type;b.frequency.value=f;if(q)b.Q.value=q;nodes.push(b);if(from)from.connect(b);if(to)b.connect(to);return b}
+function every(fn,lo,hi){let stop=false;const tick=()=>{if(stop)return;fn();const id=setTimeout(tick,lo+Math.random()*(hi-lo));timers.push(id)};tick();timers.push({stop:()=>{stop=true}})}
+function clink(bus,vol){
+  const o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime;
+  o.type='sine';o.frequency.value=2200+Math.random()*1400;
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.25);
+  o.connect(g);g.connect(bus);o.start(t);o.stop(t+0.3);
+}
+function buildSound(name){
+  const bus=gain(1,master);
+  if(name==='white'){const g=gain(0.35,bus),s=src('white');s.connect(g)}
+  if(name==='rain'){
+    const s=src('white'),g=gain(0.5,bus),lp=filt('lowpass',7000,0,null,g);filt('highpass',900,0,s,lp);
+    const s2=src('brown');s2.connect(gain(0.25,bus));
+  }
+  if(name==='kitchen'){
+    const s=src('brown');s.connect(gain(0.5,bus));
+    const w=src('white'),g=gain(0.1,bus);filt('bandpass',6000,0.8,w,g);
+    every(()=>{g.gain.setTargetAtTime(0.05+Math.random()*0.3,ac.currentTime,0.05)},120,260);
+    every(()=>clink(bus,0.12+Math.random()*0.1),500,1800);
+  }
+  if(name==='cafe'){
+    const s=src('brown');s.connect(gain(0.45,bus));
+    const w=src('white'),g=gain(0.25,bus),bp=filt('bandpass',700,0.6,w,g);
+    const lfo=ac.createOscillator(),lg=gain(0.12);lfo.frequency.value=0.25;lfo.connect(lg);lg.connect(g.gain);lfo.start();nodes.push(lfo);
+    every(()=>{bp.frequency.setTargetAtTime(350+Math.random()*900,ac.currentTime,0.15)},300,700);
+    every(()=>clink(bus,0.05),2500,6000);
+  }
+}
+function stopSound(){
+  timers.forEach(t=>{if(typeof t==='object')t.stop();else clearTimeout(t)});timers=[];
+  const old=nodes;nodes=[];
+  try{if(master)master.gain.setTargetAtTime(0,ac.currentTime,0.05)}catch(e){}
+  setTimeout(()=>{old.forEach(n=>{try{if(n.stop)n.stop();n.disconnect()}catch(e){}})},300);
+  playing=false;
+}
+function setVol(){if(ac&&master&&playing){try{master.gain.setTargetAtTime(Math.pow(S.vol/100,2)*0.6,ac.currentTime,0.05)}catch(e){}}}
+function play(name){
+  S.sound=name;
+  const a=ensureAC();
+  if(!a){playing=false;commit();return}
+  if(a.state==='suspended'&&a.resume)a.resume();
+  stopSound();
+  buildSound(name);playing=true;setVol();commit();
+}
+function render(){
+  const k=Math.max(0,Math.min(100,Math.round(110-S.dist)));
+  const hid=playing?Math.round(COVER[S.sound]*S.vol):0;
+  const heard=Math.round(k*(1-hid/100));
+  $('#b-kehai').textContent=k;$('#b-hid').textContent=hid;$('#b-heard').textContent=heard;
+  $('#m1').style.width=k+'%';$('#m1-n').textContent=k;
+  $('#m2').style.width=heard+'%';$('#m2-n').textContent=heard;
+  $('#m2-l').textContent=playing?'「'+NAMES[S.sound]+'」で聞こえる気配':'音ありで聞こえる気配（再生していません）';
+  $('#vol').value=S.vol;$('#vol-o').textContent=S.vol;
+  $('#dist').value=S.dist;$('#dist-o').textContent=S.dist+'cm';
+  $('#state').textContent=playing?'再生中: '+NAMES[S.sound]:'停止中';
+  Object.keys(NAMES).forEach(n=>{$('#snd-'+n).setAttribute('aria-pressed',playing&&S.sound===n?'true':'false')});
+  const by=36+24+S.dist*1.2+24;
+  $('#map').innerHTML='<line class="gap" x1="180" x2="180" y1="84" y2="'+(by-24)+'"/><ellipse class="p" cx="180" cy="'+by+'" rx="30" ry="24"/><ellipse class="me" cx="180" cy="60" rx="30" ry="24"/><text x="190" y="'+((84+by-24)/2+4)+'">'+S.dist+'cm</text><text x="12" y="24">前</text><text x="12" y="242">後ろ</text>';
+}
+function stopDemo(){if(dtm){clearInterval(dtm);dtm=null}}
+Object.keys(NAMES).forEach(n=>$('#snd-'+n).addEventListener('click',()=>play(n)));
+$('#snd-stop').addEventListener('click',()=>{stopSound();commit()});
+$('#vol').addEventListener('input',e=>{S.vol=Number(e.target.value);setVol();commit()});
+$('#dist').addEventListener('input',e=>{S.dist=Number(e.target.value);commit()});
+$('#demo').addEventListener('click',()=>{stopDemo();S.dist=110;commit();dtm=setInterval(()=>{S.dist=Math.max(10,S.dist-1);commit();if(S.dist<=10)stopDemo()},90)});
+$('#demo-stop').addEventListener('click',stopDemo);
+boot(sampleState,emptyState,render,()=>{stopDemo();stopSound()});
+
+</script>
+</body>
+</html>

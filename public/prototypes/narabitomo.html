@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ナラビトモ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+.wrap{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:12px;padding-bottom:40px}
+.inner{max-width:560px;margin:0 auto}
+a{color:var(--ink)}
+a:focus-visible,button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.back{font-size:14px;display:inline-block;margin-bottom:10px}
+h1{font-family:var(--font-display);font-size:22px;margin:0 0 6px}
+h2{font-family:var(--font-display);font-size:16px;margin:0 0 8px}
+.hyp{margin:0 0 14px;padding:10px 12px;border-left:4px solid var(--signal);background:var(--surface);font-size:14px;line-height:1.6}
+.hyp b{font-family:var(--font-display)}
+.sample{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin:0 0 14px}
+.sample .tag{border:1px solid var(--line);border-radius:8px;padding:2px 8px}
+.sbtn{font:inherit;font-size:12px;background:none;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-height:32px;cursor:pointer}
+.confirm{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;margin:0 0 14px}
+.confirm .row{display:flex;gap:8px;margin-top:8px}
+.shop{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.shop .name{font-family:var(--font-display);font-weight:700;font-size:18px}
+.shop .qr{font-size:12px;color:var(--muted)}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
+.board .lab{font-size:13px;line-height:1.5}
+.board .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:44px;line-height:1}
+.board .num small{font-size:16px;margin-left:4px}
+.board .cnt{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600}
+.mapbox{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 6px 6px;margin:0 0 12px}
+svg{display:block;width:100%;height:auto}
+.s-door{fill:var(--board);}
+.s-doort{fill:var(--board-ink);font-size:13px;font-weight:700}
+.s-lane{stroke:var(--line);stroke-width:2;stroke-dasharray:3 5}
+.s-p{fill:var(--surface);stroke:var(--muted);stroke-width:1.5}
+.s-p.match{stroke:var(--ok);stroke-width:3}
+.s-me{fill:var(--signal);stroke:var(--signal-ink);stroke-width:2}
+.s-t{fill:var(--ok);font-size:13px;font-weight:700}
+.s-met{fill:var(--signal-ink);font-size:13px;font-weight:700}
+.s-lbl{fill:var(--muted);font-size:10px}
+.s-lbl.strong{fill:var(--ink);font-weight:700;font-size:11px}
+.s-vdot{fill:var(--ok)}
+.legend{font-size:12px;color:var(--muted);margin:4px 8px 4px;line-height:1.6}
+.vote{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0 0 12px}
+.vote .note{font-size:12px;color:var(--muted);margin:0 0 10px}
+.q{margin:0 0 12px;border:0;padding:0}
+.q legend{font-family:var(--font-display);font-weight:700;font-size:14px;margin-bottom:6px;padding:0}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{font:inherit;font-size:14px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 12px;min-height:44px;cursor:pointer}
+.opt[aria-pressed="true"]{background:var(--signal);color:var(--signal-ink);border-color:var(--signal-ink);font-weight:700}
+.facts{margin:0 0 12px;padding:0;list-style:none;font-size:14px;line-height:1.7}
+.facts li{padding:8px 0;border-top:1px solid var(--line)}
+.facts li:first-child{border-top:0}
+.facts .none{color:var(--muted)}
+.demo{border-top:1px dashed var(--line);padding-top:12px}
+.demo p{font-size:12px;color:var(--muted);margin:0 0 8px}
+.primary{font:inherit;font-weight:700;font-size:14px;background:var(--signal);color:var(--signal-ink);border:1px solid var(--signal-ink);border-radius:8px;padding:10px 14px;min-height:44px;cursor:pointer}
+.primary:disabled{opacity:.45;cursor:not-allowed}
+.log{font-size:13px;margin-top:8px;min-height:1.5em}
+.small{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion: no-preference){.s-p,.s-me{transition:stroke .2s}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="inner">
+<a class="back" href="./">← 50の仮説</a>
+<h1>ナラビトモ</h1>
+<p class="hyp"><b>確かめたい仮説</b><br>話さなくても「同じ店のファン」だと分かれば、知らない人の近さが気にならなくなる。</p>
+
+<div class="sample" id="sampleBar">
+  <span class="tag" id="sampleTag">サンプル表示中</span>
+  <button class="sbtn" id="btnClear" type="button">サンプルを消して自分で使う</button>
+  <button class="sbtn" id="btnReset" type="button">サンプルに戻す</button>
+</div>
+<div class="confirm" id="confirmBox" hidden>
+  <div id="confirmText"></div>
+  <div class="row">
+    <button class="sbtn" id="confirmYes" type="button">はい、実行する</button>
+    <button class="sbtn" id="confirmNo" type="button">やめる</button>
+  </div>
+</div>
+
+<div class="shop">
+  <span class="name">らーめん 麺の灯</span>
+  <span class="qr">店先のQRを読んで開始（架空の店）</span>
+</div>
+
+<div class="board" role="status" aria-live="polite">
+  <div class="lab">この列の共通点<br><span class="small" style="color:inherit;opacity:.8">いま並んでいる <span class="cnt" id="cnt">8</span>人</span></div>
+  <div class="num"><span id="shared">0</span><small>つ</small></div>
+</div>
+
+<div class="mapbox">
+  <svg id="map" viewBox="0 0 360 140" role="img" aria-label="列を上から見た図"></svg>
+  <div class="legend" id="legend"></div>
+</div>
+
+<div class="vote">
+  <h2>今日の投票（任意・1タップ）</h2>
+  <p class="note">押さなくても列には並べます。もう一度押すと取り消せます。名前は出ません。</p>
+  <fieldset class="q" id="fsTopping"><legend>推しトッピングは？</legend><div class="opts" id="optsTopping"></div></fieldset>
+  <fieldset class="q" id="fsVisits"><legend>今日は何回目？</legend><div class="opts" id="optsVisits"></div></fieldset>
+</div>
+
+<h2>前後の人との共通点</h2>
+<ul class="facts" id="facts" aria-live="polite"></ul>
+
+<div class="demo">
+  <p>デモ用: 実際の通信はしません。時間が進んだ場合の見え方を試せます。</p>
+  <button class="primary" id="btnAdvance" type="button">時間を進める（前の人が入店）</button>
+  <div class="log" id="log"></div>
+</div>
+</div></div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = "hack-narabitomo-v1";
+  var TOP = ["味玉","チャーシュー増し","ネギ","海苔"];
+  var TOPC = ["味","チ","ネ","海"];
+  var VIS = ["初めて","2〜5回","常連"];
+  var VISL = ["初めて","2〜5回目","常連"];
+  var $ = function(id){ return document.getElementById(id); };
+
+  function sampleState(){
+    return {
+      mode: "sample", seq: 8, last: "",
+      people: [
+        {id:1, me:false, t:0, v:2},
+        {id:2, me:false, t:1, v:2},
+        {id:3, me:false, t:0, v:1},
+        {id:4, me:false, t:3, v:2},
+        {id:0, me:true,  t:-1, v:-1},
+        {id:5, me:false, t:0, v:2},
+        {id:6, me:false, t:2, v:-1},
+        {id:7, me:false, t:1, v:1}
+      ]
+    };
+  }
+  function ownState(){
+    return { mode:"own", seq:1, last:"", people:[{id:0, me:true, t:-1, v:-1}] };
+  }
+  function valid(s){
+    if(!s || typeof s !== "object" || !Array.isArray(s.people) || s.people.length < 1) return false;
+    var me = 0;
+    for(var i=0;i<s.people.length;i++){
+      var p = s.people[i];
+      if(!p || typeof p.t !== "number" || typeof p.v !== "number") return false;
+      if(p.me) me++;
+    }
+    return me === 1 && (s.mode === "sample" || s.mode === "own");
+  }
+  var state;
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(raw){ var s = JSON.parse(raw); if(valid(s)) return s; }
+    }catch(e){}
+    return sampleState();
+  }
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  }
+  function meIndex(){
+    for(var i=0;i<state.people.length;i++) if(state.people[i].me) return i;
+    return 0;
+  }
+
+  function buildOpts(){
+    var a = $("optsTopping"), b = $("optsVisits"), i, btn;
+    for(i=0;i<TOP.length;i++){
+      btn = document.createElement("button");
+      btn.type = "button"; btn.className = "opt"; btn.id = "optTopping" + i;
+      btn.textContent = TOP[i]; btn.setAttribute("aria-pressed","false");
+      (function(k){ btn.addEventListener("click", function(){ vote("t", k); }); })(i);
+      a.appendChild(btn);
+    }
+    for(i=0;i<VIS.length;i++){
+      btn = document.createElement("button");
+      btn.type = "button"; btn.className = "opt"; btn.id = "optVisits" + i;
+      btn.textContent = VIS[i]; btn.setAttribute("aria-pressed","false");
+      (function(k){ btn.addEventListener("click", function(){ vote("v", k); }); })(i);
+      b.appendChild(btn);
+    }
+  }
+  function vote(field, k){
+    var me = state.people[meIndex()];
+    me[field] = (me[field] === k) ? -1 : k;
+    save(); render();
+  }
+
+  function x(i){ return 78 + i * 37; }
+  function drawMap(){
+    var ps = state.people, mi = meIndex(), me = ps[mi], out = "", i, p, cx, match, vmatch;
+    out += '<rect class="s-door" x="6" y="48" width="38" height="52" rx="6"/>';
+    out += '<text class="s-doort" x="25" y="79" text-anchor="middle">店</text>';
+    out += '<line class="s-lane" x1="46" y1="74" x2="354" y2="74"/>';
+    out += '<text class="s-lbl" x="46" y="22">前（入口側）</text>';
+    out += '<text class="s-lbl" x="354" y="22" text-anchor="end">後ろ</text>';
+    for(i=0;i<ps.length;i++){
+      p = ps[i]; cx = x(i);
+      if(p.me){
+        out += '<circle class="s-me" cx="'+cx+'" cy="74" r="17"/>';
+        out += '<text class="s-met" x="'+cx+'" y="79" text-anchor="middle">私</text>';
+        out += '<text class="s-lbl strong" x="'+cx+'" y="112" text-anchor="middle">あなた</text>';
+      }else{
+        match = (me.t >= 0 && p.t === me.t);
+        vmatch = (me.v >= 0 && p.v === me.v);
+        out += '<circle class="s-p'+(match?' match':'')+'" cx="'+cx+'" cy="74" r="15"/>';
+        if(match) out += '<text class="s-t" x="'+cx+'" y="79" text-anchor="middle">'+TOPC[p.t]+'</text>';
+        if(vmatch) out += '<circle class="s-vdot" cx="'+cx+'" cy="100" r="4"/>';
+      }
+    }
+    $("map").innerHTML = out;
+    var lg = "丸は匿名の1人です。";
+    if(me.t < 0 && me.v < 0) lg += "どれか1つ投票すると、同じ答えの人に印が付きます。";
+    else{
+      if(me.t >= 0) lg += "緑の枠と文字は同じトッピング。";
+      if(me.v >= 0) lg += "下の緑の点は同じ来店回数。";
+    }
+    $("legend").textContent = lg;
+  }
+
+  function neighbor(idx, field, mine){
+    var p = state.people[idx];
+    return !!p && !p.me && p[field] === mine;
+  }
+  function facts(){
+    var ps = state.people, mi = meIndex(), me = ps[mi], list = [], i, k, n;
+    var shared = 0;
+    // topping
+    if(me.t >= 0){
+      k = 0;
+      for(i=0;i<ps.length;i++) if(!ps[i].me && ps[i].t === me.t) k++;
+      shared += k;
+      if(neighbor(mi+1,"t",me.t)) list.push("あなたの後ろの人も" + TOP[me.t] + "派");
+      if(neighbor(mi-1,"t",me.t)) list.push("あなたの前の人も" + TOP[me.t] + "派");
+      if(k > 0) list.push("この列に、同じ" + TOP[me.t] + "派があと" + k + "人");
+      else list.push("いまの列に、同じ" + TOP[me.t] + "派はいません");
+    }
+    // visits
+    if(me.v >= 0){
+      k = 0; n = 0;
+      for(i=0;i<ps.length;i++){
+        if(ps[i].v >= 0) n++;
+        if(ps[i].v === me.v) k++;
+      }
+      shared += (k - 1);
+      if(neighbor(mi+1,"v",me.v)) list.push("あなたの後ろの人も" + VISL[me.v]);
+      if(neighbor(mi-1,"v",me.v)) list.push("あなたの前の人も" + VISL[me.v]);
+      list.push("この列の" + n + "人中" + k + "人が" + VISL[me.v]);
+    }
+    return {list:list, shared:shared};
+  }
+
+  function render(){
+    var me = state.people[meIndex()];
+    var i;
+    for(i=0;i<TOP.length;i++) $("optTopping"+i).setAttribute("aria-pressed", me.t === i ? "true" : "false");
+    for(i=0;i<VIS.length;i++) $("optVisits"+i).setAttribute("aria-pressed", me.v === i ? "true" : "false");
+    drawMap();
+    var f = facts();
+    $("cnt").textContent = state.people.length;
+    $("shared").textContent = f.shared;
+    var ul = $("facts");
+    ul.innerHTML = "";
+    if(f.list.length === 0){
+      var li0 = document.createElement("li");
+      li0.className = "none";
+      li0.textContent = "まだ投票していないので、共通点は出ていません。";
+      ul.appendChild(li0);
+    }else{
+      for(i=0;i<f.list.length;i++){
+        var li = document.createElement("li");
+        li.textContent = f.list[i];
+        ul.appendChild(li);
+      }
+    }
+    var own = state.mode === "own";
+    $("sampleTag").textContent = own ? "自分用（ほかの人の投票は集まりません）" : "サンプル表示中（架空の8人）";
+    var btn = $("btnAdvance");
+    var atFront = meIndex() === 0;
+    btn.disabled = own || atFront;
+    var msg = state.last;
+    if(own) msg = "ほかの人の投票はこの画面では集まりません。時間を進める機能はサンプル表示で使えます。";
+    else if(atFront) msg = "次はあなたの番です。デモはここまでです。";
+    $("log").textContent = msg;
+  }
+
+  function rnd(n){ return Math.floor(Math.random() * n); }
+  function advance(){
+    if(state.mode !== "sample" || meIndex() === 0) return;
+    var ps = state.people;
+    ps.shift();
+    var t = Math.random() < 0.8 ? rnd(4) : -1;
+    var v = Math.random() < 0.8 ? rnd(3) : -1;
+    ps.push({id: state.seq++, me:false, t:t, v:v});
+    var me = ps[meIndex()];
+    var what = "前の人が入店し、後ろに1人並びました。";
+    if(t >= 0 && me.t >= 0 && t === me.t) what += "新しい人も" + TOP[t] + "派でした。";
+    else if(t >= 0) what += "新しい人の推しは" + TOP[t] + "でした。";
+    else what += "新しい人は投票していません。";
+    state.last = what;
+    save(); render();
+  }
+
+  var pending = null;
+  function ask(kind){
+    pending = kind;
+    $("confirmText").textContent = kind === "clear"
+      ? "サンプルの8人を消して、自分だけの列にします。よろしいですか。"
+      : "サンプルの状態に戻します。いまの投票は消えます。よろしいですか。";
+    $("confirmBox").hidden = false;
+    $("confirmYes").focus();
+  }
+  function closeAsk(){ pending = null; $("confirmBox").hidden = true; }
+
+  function init(){
+    state = load();
+    buildOpts();
+    $("btnAdvance").addEventListener("click", advance);
+    $("btnClear").addEventListener("click", function(){ ask("clear"); });
+    $("btnReset").addEventListener("click", function(){ ask("reset"); });
+    $("confirmNo").addEventListener("click", closeAsk);
+    $("confirmYes").addEventListener("click", function(){
+      if(pending === "clear") state = ownState();
+      else if(pending === "reset") state = sampleState();
+      closeAsk(); save(); render();
+    });
+    render();
+  }
+  init();
+})();
+</script>
+</body>
+</html>

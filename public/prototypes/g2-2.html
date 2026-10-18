@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>スワレルレツ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0;line-height:1.6;font-size:15px}
+.wrap{max-width:560px;margin:0 auto;padding:12px 16px 56px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.back{display:inline-block;color:var(--muted);font-size:13px;text-decoration:none;padding:6px 0}
+.back:hover{color:var(--ink);text-decoration:underline}
+h1{font-family:var(--font-display);font-size:24px;margin:4px 0 10px;line-height:1.3}
+h2{font-family:var(--font-display);font-size:16px;margin:22px 0 8px}
+p{margin:6px 0}
+.hyp{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-bottom:14px}
+.hyp dl{margin:0;display:grid;gap:3px}
+.hyp dl div{display:grid;grid-template-columns:4.6em 1fr;gap:6px}
+.hyp dt{font-weight:700;color:var(--ink)}
+.hyp dd{margin:0}
+.hyp b.ok{color:var(--ok)} .hyp b.ng{color:var(--ng)}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:12px 14px;margin:12px 0}
+.board .cap{font-size:12px;opacity:.85;margin:0 0 6px}
+.board .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+.board .cell{min-width:0}
+.board .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:34px;line-height:1.1}
+.board .num small{font-size:14px;margin-left:2px}
+.board .lbl{font-size:11.5px;opacity:.85}
+.btn{font:inherit;font-weight:700;font-size:14px;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal)}
+.btn.ghost{background:transparent;font-weight:500;font-size:13px;min-height:40px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.seg button{font:inherit;font-size:14px;font-weight:500;min-height:44px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;flex:1 1 auto}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.board :focus-visible{outline-color:var(--board-ink)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:10px 0}
+svg{display:block;width:100%;height:auto}
+.note{font-size:12.5px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-weight:700;font-size:12.5px;color:var(--muted)}
+td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600}
+.good{color:var(--ok);font-weight:700}.bad{color:var(--ng);font-weight:700}
+label{font-size:13.5px;font-weight:500}
+input[type=range]{width:100%;min-height:32px;accent-color:var(--ink)}
+.samplebar{margin-top:26px;border-top:1px dashed var(--line);padding-top:12px;font-size:12.5px;color:var(--muted)}
+.confirm{background:var(--surface);border:1px solid var(--ink);border-radius:8px;padding:10px 12px;margin-top:8px;color:var(--ink)}
+.tally{display:flex;gap:8px;flex-wrap:wrap}
+.tally .btn{flex:1 1 140px;text-align:left}
+.tally .btn span{display:block;font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--muted)}
+.s-line{stroke:var(--line);fill:none}
+.s-person{fill:var(--muted)}
+.s-me{fill:var(--signal);stroke:var(--ink);stroke-width:2}
+.s-ring{fill:none;stroke:var(--ng);stroke-dasharray:4 3;stroke-width:1.5}
+.s-wall{fill:var(--ink)}
+.s-txt{fill:var(--muted);font-size:11px;font-family:var(--font-body)}
+.s-ng{fill:var(--ng)}.s-ok{fill:var(--ok)}
+.s-obj{fill:var(--ok);stroke:var(--ink)}
+.sr{position:absolute;left:-9999px}
+
+.pp{transition:transform .55s ease,opacity .4s ease}
+.chair{fill:var(--surface);stroke:var(--muted);stroke-width:1.5}
+.sl{display:grid;gap:2px;margin:8px 0}
+.sl label{display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<h1>スワレルレツ</h1>
+<section class="hyp" aria-label="仮説カード"><dl>
+<div><dt>視点</dt><dd>空間設計 ／ 具体 ／ 方向: 後ろ・前</dd></div>
+<div><dt>仮説</dt><dd>座って待つ列は、椅子で距離が固定されるので詰められない。</dd></div>
+<div><dt>確かめること</dt><dd><b class="ok">当たり</b>＝椅子の列なら平気と感じる<br><b class="ng">外れ</b>＝座っても隣や後ろが近いと嫌</dd></div>
+</dl></section>
+
+<div class="panel">
+<svg id="map" role="img" aria-label="立ち列と椅子の列を上から見た図"></svg>
+<p class="note">上から見た図。左が店。黄色が自分。上が立ち列、下が椅子の列です。</p>
+</div>
+<div class="btns">
+<button class="btn primary" type="button" id="call">次の人が呼ばれる（全員1つ進む）</button>
+<button class="btn" type="button" id="rewind">最初から</button>
+</div>
+<div class="board" aria-live="polite">
+<p class="cap" id="bcap"></p>
+<div class="row">
+<div class="cell"><div class="num" id="b-stand">-</div><div class="lbl">立ち列の最短（m）</div></div>
+<div class="cell"><div class="num" id="b-chair">-</div><div class="lbl">椅子の列の最短（m）</div></div>
+<div class="cell"><div class="num" id="b-seat">-</div><div class="lbl">座れる人数 / 並ぶ人数</div></div>
+</div>
+</div>
+<div class="panel">
+<div class="sl"><label for="chairs"><span>椅子の数</span><b id="chairsv"></b></label><input type="range" id="chairs" min="2" max="9" step="1"></div>
+<div class="sl"><label for="cgap"><span>椅子の間隔</span><b id="cgapv"></b></label><input type="range" id="cgap" min="50" max="150" step="10"></div>
+<div class="sl"><label for="stand"><span>立っているときの間隔</span><b id="standv"></b></label><input type="range" id="stand" min="25" max="60" step="5"></div>
+<p class="note" id="diff"></p>
+</div>
+<h2>どちらの列なら</h2>
+<div class="tally">
+<button class="btn" type="button" id="t-easy">椅子の列なら平気そう<span id="t-easy-n"></span></button>
+<button class="btn" type="button" id="t-near">座っても近いと嫌そう<span id="t-near-n"></span></button>
+</div>
+<p class="note">押した回数がここに残ります。</p>
+
+<div class="samplebar">
+<p id="sample-msg"></p>
+<div class="btns"><button class="btn ghost" type="button" id="btn-blank">サンプルを消して自分で使う</button><button class="btn ghost" type="button" id="btn-sample">サンプルに戻す</button></div>
+<div class="confirm" id="confirm" hidden></div>
+</div>
+</div>
+<script>
+const KEY='hack3-g2-2.html-v1';
+const $=s=>document.querySelector(s);
+const REDUCE=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+const NS='http://www.w3.org/2000/svg';
+function load(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null}catch(e){return null}}
+function save(o){try{localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
+function el(tag,attrs,text){const e=document.createElementNS(NS,tag);for(const k in (attrs||{}))e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;return e}
+function h(tag,attrs,text){const e=document.createElement(tag);for(const k in (attrs||{}))e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;return e}
+function initSample(o){
+  function msg(){$('#sample-msg').textContent=o.isSample()?'いま表示しているのはサンプルの設定です。':'いま表示しているのは自分用の設定です（サンプルは消してあります）。'}
+  function ask(text,yes){
+    const c=$('#confirm');c.hidden=false;c.textContent='';
+    c.appendChild(h('p',{},text));
+    const row=h('div',{class:'btns'});
+    const y=h('button',{class:'btn primary',type:'button',id:'confirm-yes'},'はい、実行する');
+    const n=h('button',{class:'btn',type:'button',id:'confirm-no'},'やめる');
+    y.onclick=()=>{c.hidden=true;yes();msg()};n.onclick=()=>{c.hidden=true};
+    row.appendChild(y);row.appendChild(n);c.appendChild(row);y.focus();
+  }
+  $('#btn-blank').onclick=()=>ask('サンプルを消して、初期値から自分で使いますか。',()=>o.reset(o.blank()));
+  $('#btn-sample').onclick=()=>ask('サンプルの設定に戻しますか。いまの設定は消えます。',()=>o.reset(o.sample()));
+  msg();
+}
+
+
+const N=9;
+let S=load()||sample();
+function sample(){return {isSample:true,chairs:4,cgap:90,stand:35,called:0,me:5,easy:2,near:1}}
+function blank(){return {isSample:false,chairs:4,cgap:90,stand:35,called:0,me:5,easy:0,near:0}}
+function xs(mode,n){
+  const a=[];
+  for(let i=0;i<n;i++){
+    if(mode==='stand')a.push(i*S.stand/100);
+    else if(i<S.chairs)a.push(i*S.cgap/100);
+    else a.push((S.chairs-1)*S.cgap/100+0.5+(i-S.chairs)*S.stand/100);
+  }
+  return a;
+}
+function minNb(a,i){
+  const v=[];if(i>0)v.push(a[i]-a[i-1]);if(i<a.length-1)v.push(a[i+1]-a[i]);
+  return v.length?Math.min.apply(null,v):null;
+}
+const sc=60,ROWY=[0,1.9];
+let built=false,gs={stand:[],chair:[]};
+function build(){
+  const svg=$('#map');svg.textContent='';
+  const lay0=el('g',{id:'chairs-layer'}),lay1=el('g',{id:'people-layer'});
+  svg.appendChild(lay0);svg.appendChild(lay1);
+  svg.appendChild(el('text',{class:'s-txt',x:-0.85*sc,y:ROWY[0]*sc-18},'立ち列'));
+  svg.appendChild(el('text',{class:'s-txt',x:-0.85*sc,y:ROWY[1]*sc-18},'椅子の列'));
+  svg.appendChild(el('text',{class:'s-txt',x:-0.85*sc,y:ROWY[0]*sc+4},'店'));
+  svg.appendChild(el('text',{class:'s-txt',x:-0.85*sc,y:ROWY[1]*sc+4},'店'));
+  for(let id=0;id<N;id++){
+    ['stand','chair'].forEach((m,k)=>{
+      const g=el('g',{class:'pp'});
+      g.appendChild(el('circle',{class:id===S.me?'s-me':'s-person',cx:0,cy:0,r:0.2*sc}));
+      lay1.appendChild(g);gs[m][id]=g;
+    });
+  }
+  built=true;
+}
+function render(){
+  if(!built)build();
+  const n=N-S.called;
+  const st=xs('stand',N),ch=xs('chair',N);
+  const maxx=Math.max(st[N-1],ch[N-1],(S.chairs-1)*S.cgap/100);
+  const svg=$('#map');
+  svg.setAttribute('viewBox',(-0.95*sc)+' '+(-0.8*sc)+' '+((maxx+1.7)*sc)+' '+(3.5*sc));
+  const lay=$('#chairs-layer');lay.textContent='';
+  for(let k=0;k<S.chairs;k++)lay.appendChild(el('rect',{class:'chair',x:(k*S.cgap/100-0.24)*sc,y:(ROWY[1]-0.24)*sc,width:0.48*sc,height:0.48*sc,rx:4}));
+  for(let id=0;id<N;id++){
+    const idx=id-S.called,gone=idx<0;
+    const sx=xs('stand',n),cx=xs('chair',n);
+    const a=gs.stand[id],b=gs.chair[id];
+    a.style.opacity=gone?0:1;b.style.opacity=gone?0:1;
+    a.style.transform='translate('+((gone?-0.9:sx[idx])*sc)+'px,'+(ROWY[0]*sc)+'px)';
+    b.style.transform='translate('+((gone?-0.9:cx[idx])*sc)+'px,'+(ROWY[1]*sc)+'px)';
+  }
+  const mi=S.me-S.called;
+  const sx=xs('stand',n),cx=xs('chair',n);
+  const f=v=>v==null?'—':v.toFixed(2);
+  if(mi<0){
+    $('#bcap').textContent='自分が呼ばれました（前から '+(S.me+1)+' 人目だった人）';
+    $('#b-stand').textContent='—';$('#b-chair').textContent='—';
+    $('#diff').textContent='';
+  }else{
+    const a=minNb(sx,mi),b=minNb(cx,mi);
+    $('#bcap').textContent='自分は前から '+(mi+1)+' 人目。前後の人までの近い方。';
+    $('#b-stand').textContent=f(a);$('#b-chair').textContent=f(b);
+    $('#diff').textContent=(a!=null&&b!=null)?'椅子の列は立ち列より '+(b-a>=0?'+':'')+(b-a).toFixed(2)+' m 離れます（この設定の計算）。':'';
+  }
+  $('#b-seat').textContent=Math.min(S.chairs,n)+' / '+n;
+  $('#call').disabled=S.called>=N-1||mi<0;
+  $('#chairs').value=S.chairs;$('#chairsv').textContent=S.chairs+' 脚';
+  $('#cgap').value=S.cgap;$('#cgapv').textContent=(S.cgap/100).toFixed(1)+' m';
+  $('#stand').value=S.stand;$('#standv').textContent=(S.stand/100).toFixed(2)+' m';
+  $('#t-easy-n').textContent=S.easy+' 回';$('#t-near-n').textContent=S.near+' 回';
+  const m=$('#sample-msg');if(m)m.textContent=S.isSample?'いま表示しているのはサンプルの設定です。':'いま表示しているのは自分用の設定です（サンプルは消してあります）。';
+}
+function upd(){save(S);render();}
+(function(){
+  $('#call').onclick=()=>{if(S.called<N-1){S.called++;upd();}};
+  $('#rewind').onclick=()=>{S.called=0;upd();};
+  $('#chairs').addEventListener('input',e=>{S.chairs=parseInt(e.target.value,10);upd();});
+  $('#cgap').addEventListener('input',e=>{S.cgap=parseInt(e.target.value,10);upd();});
+  $('#stand').addEventListener('input',e=>{S.stand=parseInt(e.target.value,10);upd();});
+  $('#t-easy').onclick=()=>{S.easy++;upd();};
+  $('#t-near').onclick=()=>{S.near++;upd();};
+  initSample({isSample:()=>S.isSample,sample:sample,blank:blank,reset:n=>{S=n;upd();}});
+  render();
+})();
+</script>
+</body>
+</html>

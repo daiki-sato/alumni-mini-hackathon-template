@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>マエノタノシミ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-size:15px;line-height:1.7}
+.outer{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:12px;padding-bottom:48px}
+.wrap{max-width:560px;margin:0 auto}
+a{color:var(--ink)}
+.back{display:inline-block;font-size:13px;color:var(--muted);margin-bottom:6px;padding:4px 0}
+h1{font-family:var(--font-display);font-size:26px;line-height:1.3;margin:4px 0 10px;font-weight:700}
+h2{font-family:var(--font-display);font-size:16px;margin:22px 0 8px;font-weight:700}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.hyp{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--signal);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.6;color:var(--muted)}
+.hyp p{margin:3px 0}
+.hyp b{color:var(--ink)}
+.hyp .meta{font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
+.hyp .hit b{color:var(--ok)}
+.hyp .miss b{color:var(--ng)}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:14px 12px;display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:8px;font-variant-numeric:tabular-nums}
+.board .lab{font-size:12px;font-family:var(--font-body)}
+.board .num{font-family:var(--font-mono);font-size:38px;font-weight:600;line-height:1.1}
+.board .num .unit{font-size:14px;margin-left:2px}
+.board .big{font-family:var(--font-display);font-size:30px;font-weight:700;line-height:1.2}
+.btn{font:inherit;font-size:14px;font-weight:500;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal-ink);font-weight:700}
+.btn.small{min-height:36px;font-size:12.5px;padding:4px 10px;border-color:var(--line);color:var(--muted)}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.seg .btn{flex:1 1 auto}
+.field{display:grid;grid-template-columns:64px 1fr 62px;gap:8px;align-items:center;margin:6px 0;font-size:14px}
+.field output{font-family:var(--font-mono);font-size:14px;text-align:right}
+input[type=range]{width:100%;accent-color:var(--signal-ink);min-height:32px}
+.note{font-size:12.5px;color:var(--muted);margin:6px 0}
+.st{font-size:13.5px;margin:2px 0;padding-left:10px;border-left:4px solid var(--line)}
+.st.ok{border-left-color:var(--ok)}
+.st.ng{border-left-color:var(--ng)}
+.foot{margin-top:30px;border-top:1px solid var(--line);padding-top:12px;font-size:12.5px;color:var(--muted)}
+.sample{font-family:var(--font-mono);font-size:12px;color:var(--signal-ink);background:var(--signal);display:inline-block;padding:1px 8px;border-radius:4px;margin:0 0 6px}
+.confirm{background:var(--surface);border:2px solid var(--ink);border-radius:8px;padding:10px 12px;margin:10px 0;color:var(--ink)}
+.confirm[hidden]{display:none}
+.verdict{margin-top:14px}
+.verdict .btn{font-size:13px}
+.verdict .n{font-family:var(--font-mono)}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important;scroll-behavior:auto !important}}
+
+.stage{margin-top:12px}
+.board{--cols:2}
+.board .cell{text-align:center}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-top:10px;padding:14px;min-height:250px}
+.card svg{display:block;width:100%;max-width:300px;height:auto;margin:0 auto 8px}
+.card h3{font-family:var(--font-display);font-size:20px;margin:0 0 4px}
+.card p{margin:2px 0;font-size:14px}
+.card .tag{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.card .s1{fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round}
+.card .s2{fill:var(--signal);stroke:var(--ink);stroke-width:2}
+.card .s3{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+.card .s4{fill:var(--muted);stroke:var(--ink);stroke-width:2}
+.card text{font-family:var(--font-mono);font-size:12px;fill:var(--ink)}
+.dots{display:flex;gap:6px;justify-content:center;margin:8px 0}
+.dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--ink)}
+.blank{background:var(--surface);border:1px dashed var(--line);border-radius:8px;margin-top:10px;padding:14px;min-height:250px;color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center}
+.tap{margin-top:22px;border-top:1px solid var(--line);padding-top:12px}
+.tap .row .btn{flex:1}
+.sum .r{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:13px;margin:3px 0}
+.sum b{font-family:var(--font-mono)}
+
+</style>
+</head>
+<body>
+<div class="outer"><div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<h1>マエノタノシミ</h1>
+<section class="hyp" aria-label="仮説カード">
+<p class="meta">視点: 身体・知覚 ／ 具体 ／ 方向: 後ろ・横</p>
+<p><b>仮説</b> 注意が前の"楽しみ"（これから食べる一杯）に向いていると、後ろや横の近さを感じにくい。</p>
+<p><b>この試作で確かめること</b></p>
+<p class="hit"><b>当たり</b> ＝ メニューや仕込みの様子を見ていると近さを忘れる</p>
+<p class="miss"><b>外れ</b> ＝ 見ていても後ろが気になる</p>
+</section>
+<div class="stage" id="stage">
+<div class="board">
+<div class="cell"><div class="lab">スープが変わるまで</div><div class="num"><span id="b-left">0</span><span class="unit">杯</span></div></div>
+<div class="cell"><div class="lab">次のスープ</div><div class="big" id="b-next" style="font-size:22px">-</div></div>
+</div>
+<div id="card"></div>
+<div class="dots" id="dots" aria-hidden="true"></div>
+</div>
+<p class="note">列で見るだけの画面です。操作は要りません。カードは数秒ごとに自動で切り替わります。店は架空の「麺屋 ひだまり」です。</p>
+<div class="tap">
+<h2 style="margin-top:0">いま後ろが気になる度（任意）</h2>
+<div class="row">
+<button class="btn" id="lv-0" type="button">気にならない</button>
+<button class="btn" id="lv-1" type="button">少し</button>
+<button class="btn" id="lv-2" type="button">かなり</button>
+</div>
+<div class="row"><button class="btn small" id="hide" type="button" aria-pressed="false">カードを隠して比べる</button></div>
+<div class="sum" id="sum"></div>
+</div>
+
+<div class="foot">
+<p id="sample-note" class="sample">サンプルの値で動いています</p>
+<div class="row">
+<button class="btn small" id="btn-clear" type="button">サンプルを消して自分で使う</button>
+<button class="btn small" id="btn-sample" type="button">サンプルに戻す</button>
+</div>
+<div id="confirm" class="confirm" role="alertdialog" aria-labelledby="confirm-msg" hidden>
+<p id="confirm-msg" style="margin:0 0 8px"></p>
+<div class="row" style="margin:0"><button class="btn primary" id="confirm-yes" type="button">実行する</button><button class="btn" id="confirm-no" type="button">やめる</button></div>
+</div>
+<div class="verdict">
+<p style="margin:0 0 4px">触ってみて、仮説は</p>
+<div class="row" style="margin:0">
+<button class="btn" id="v-hit" type="button">当たりに近い <span class="n" id="v-hit-n">0</span></button>
+<button class="btn" id="v-miss" type="button">外れに近い <span class="n" id="v-miss-n">0</span></button>
+</div>
+<p class="note">この端末の中にだけ数えます。</p>
+</div>
+</div>
+</div></div>
+<script>
+'use strict';
+const KEY='hack3-g1-5-v1';
+const $=(s,r)=>(r||document).querySelector(s);
+const $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
+let S=null,_render=null;
+function loadS(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null}catch(e){return null}}
+function saveS(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function paint(){
+  $('#sample-note').hidden=!S.sample;
+  if(_render)_render();
+  $('#v-hit-n').textContent=S.verdict.hit;
+  $('#v-miss-n').textContent=S.verdict.miss;
+}
+function commit(){saveS();paint()}
+function ask(msg,yes){
+  const b=$('#confirm');b.hidden=false;$('#confirm-msg').textContent=msg;
+  $('#confirm-yes').onclick=()=>{b.hidden=true;yes()};
+  $('#confirm-no').onclick=()=>{b.hidden=true};
+  $('#confirm-no').focus();
+}
+function boot(sample,empty,render,onReset){
+  _render=render;
+  try{S=loadS()}catch(e){S=null}
+  if(!S||typeof S!=='object')S=sample();
+  if(!S.verdict)S.verdict={hit:0,miss:0};
+  const redo=fn=>{const v=S.verdict;S=fn();S.verdict=v;if(onReset)onReset();commit()};
+  $('#btn-clear').onclick=()=>ask('サンプルの値を消して、初期状態から使います。よろしいですか。',()=>redo(empty));
+  $('#btn-sample').onclick=()=>ask('サンプルの値に戻します。よろしいですか。',()=>redo(sample));
+  $('#v-hit').onclick=()=>{S.verdict.hit++;commit()};
+  $('#v-miss').onclick=()=>{S.verdict.miss++;commit()};
+  paint();
+}
+
+const LV=['気にならない','少し','かなり'];
+function sampleState(){return{sample:true,blank:false,taps:[
+ {c:'v',l:0},{c:'v',l:0},{c:'v',l:1},{c:'v',l:0},{c:'v',l:1},{c:'v',l:0},{c:'v',l:0},{c:'v',l:1},
+ {c:'b',l:1},{c:'b',l:2},{c:'b',l:2},{c:'b',l:1},{c:'b',l:2}],verdict:{hit:0,miss:0}}}
+function emptyState(){return{sample:false,blank:false,taps:[],verdict:{hit:0,miss:0}}}
+const bowl='<svg viewBox="0 0 300 150" role="img" aria-label="湯気の立つ一杯のイラスト"><path class="s1" d="M110 38c-8 10 8 16 0 28M150 32c-8 10 8 16 0 30M190 38c-8 10 8 16 0 28"/><ellipse class="s2" cx="150" cy="86" rx="92" ry="18"/><path class="s3" d="M58 86c0 46 40 58 92 58s92-12 92-58z"/><circle class="s4" cx="120" cy="84" r="8"/><circle class="s4" cx="150" cy="88" r="8"/><circle class="s4" cx="182" cy="84" r="8"/></svg>';
+const tl='<svg viewBox="0 0 300 110" role="img" aria-label="仕込みの時間帯"><line class="s1" x1="20" y1="50" x2="280" y2="50"/><rect class="s2" x="20" y="40" width="40" height="20"/><rect class="s2" x="60" y="40" width="150" height="20"/><rect class="s3" x="210" y="40" width="50" height="20"/><text x="12" y="85">21:00</text><text x="110" y="85">火入れ</text><text x="196" y="85">6:00</text><text x="248" y="85">10:30</text><text x="20" y="28">下茹で</text><text x="210" y="28">仕上げ</text></svg>';
+const noodle='<svg viewBox="0 0 300 120" role="img" aria-label="麺のイラスト"><path class="s1" d="M40 40c40 20 80-20 120 0s80 20 100 0M40 62c40 20 80-20 120 0s80 20 100 0M40 84c40 20 80-20 120 0s80 20 100 0"/></svg>';
+const egg='<svg viewBox="0 0 300 130" role="img" aria-label="半熟卵の断面"><ellipse class="s3" cx="150" cy="65" rx="60" ry="48"/><circle class="s2" cx="150" cy="68" r="26"/></svg>';
+const gauge='<svg viewBox="0 0 300 80" role="img" aria-label="スープが変わるまでの目盛り"><rect class="s3" x="20" y="30" width="260" height="22" rx="4"/><rect id="gbar" class="s2" x="20" y="30" width="0" height="22" rx="4"/><text x="20" y="22">0</text><text x="262" y="22">60杯</text></svg>';
+const CARDS=[
+ {t:'今日の一杯',tag:'限定 20食',svg:bowl,p:['鶏白湯 塩 煮干しの香り','焼いた長ねぎと、粗挽きの黒こしょう。','1,000円']},
+ {t:'スープの仕込み',tag:'合計 14時間',svg:tl,p:['前日 21:00 に鶏ガラを下茹で。','弱火で一晩。朝 6:00 に煮干しを入れます。','10:30 に味を決めて仕上げ。']},
+ {t:'スープが変わる',tag:'60杯ごと',svg:gauge,p:['1回の仕込みで 60杯。','ここまでは濃厚、次の釜は淡麗です。']},
+ {t:'自家製麺',tag:'太さ 1.6mm',svg:noodle,p:['小麦 3種のブレンド。','茹で 45秒。','手もみで、縮れを付けています。']},
+ {t:'煮卵',tag:'6分30秒',svg:egg,p:['沸騰後 6分30秒で氷水へ。','タレに一晩。黄身はとろりと半熟。']}
+];
+let idx=0,left=23,tm=null;
+function avg(c){const a=S.taps.filter(t=>t.c===c);return a.length?{n:a.length,v:(a.reduce((s,t)=>s+t.l,0)/a.length).toFixed(1)}:null}
+function render(){
+  $('#b-left').textContent=left;$('#b-next').textContent='淡麗 塩';
+  const g=$('#gbar');if(g)g.setAttribute('width',String(Math.round(260*(60-left)/60)));
+  $('#hide').setAttribute('aria-pressed',S.blank?'true':'false');
+  $('#hide').textContent=S.blank?'カードを戻す':'カードを隠して比べる';
+  const c=CARDS[idx];
+  $('#card').innerHTML=S.blank?'<div class="blank">（いま何も表示していません）</div>'
+   :'<div class="card">'+c.svg+'<p class="tag">'+c.tag+'</p><h3>'+c.t+'</h3>'+c.p.map(x=>'<p>'+x+'</p>').join('')+'</div>';
+  $('#dots').innerHTML=CARDS.map((_,i)=>'<i class="'+(i===idx?'on':'')+'"></i>').join('');
+  if(S.blank){$('#dots').innerHTML=''}
+  const a=avg('v'),b=avg('b');
+  $('#sum').innerHTML='<p class="note" style="margin-bottom:2px">気になり度の平均（0 気にならない 〜 2 かなり）</p>'
+   +'<div class="r"><span>カードを見ている時</span><b>'+(a?a.v+'（'+a.n+'回）':'—')+'</b></div>'
+   +'<div class="r"><span>カードを隠している時</span><b>'+(b?b.v+'（'+b.n+'回）':'—')+'</b></div>';
+}
+[0,1,2].forEach(l=>$('#lv-'+l).addEventListener('click',()=>{S.taps.push({c:S.blank?'b':'v',l});if(S.taps.length>200)S.taps.shift();commit()}));
+$('#hide').addEventListener('click',()=>{S.blank=!S.blank;commit()});
+boot(sampleState,emptyState,render);
+tm=setInterval(()=>{idx=(idx+1)%CARDS.length;paint()},5000);
+setInterval(()=>{left=left>1?left-1:60;paint()},14000);
+
+</script>
+</body>
+</html>

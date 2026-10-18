@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>キョリメーター</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-size:15px;line-height:1.7}
+.outer{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:12px;padding-bottom:48px}
+.wrap{max-width:560px;margin:0 auto}
+a{color:var(--ink)}
+.back{display:inline-block;font-size:13px;color:var(--muted);margin-bottom:6px;padding:4px 0}
+h1{font-family:var(--font-display);font-size:26px;line-height:1.3;margin:4px 0 10px;font-weight:700}
+h2{font-family:var(--font-display);font-size:16px;margin:22px 0 8px;font-weight:700}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.hyp{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--signal);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.6;color:var(--muted)}
+.hyp p{margin:3px 0}
+.hyp b{color:var(--ink)}
+.hyp .meta{font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
+.hyp .hit b{color:var(--ok)}
+.hyp .miss b{color:var(--ng)}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:14px 12px;display:grid;grid-template-columns:repeat(var(--cols,3),1fr);gap:8px;font-variant-numeric:tabular-nums}
+.board .lab{font-size:12px;font-family:var(--font-body)}
+.board .num{font-family:var(--font-mono);font-size:38px;font-weight:600;line-height:1.1}
+.board .num .unit{font-size:14px;margin-left:2px}
+.board .big{font-family:var(--font-display);font-size:30px;font-weight:700;line-height:1.2}
+.btn{font:inherit;font-size:14px;font-weight:500;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal-ink);font-weight:700}
+.btn.small{min-height:36px;font-size:12.5px;padding:4px 10px;border-color:var(--line);color:var(--muted)}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.seg .btn{flex:1 1 auto}
+.field{display:grid;grid-template-columns:64px 1fr 62px;gap:8px;align-items:center;margin:6px 0;font-size:14px}
+.field output{font-family:var(--font-mono);font-size:14px;text-align:right}
+input[type=range]{width:100%;accent-color:var(--signal-ink);min-height:32px}
+.note{font-size:12.5px;color:var(--muted);margin:6px 0}
+.st{font-size:13.5px;margin:2px 0;padding-left:10px;border-left:4px solid var(--line)}
+.st.ok{border-left-color:var(--ok)}
+.st.ng{border-left-color:var(--ng)}
+.foot{margin-top:30px;border-top:1px solid var(--line);padding-top:12px;font-size:12.5px;color:var(--muted)}
+.sample{font-family:var(--font-mono);font-size:12px;color:var(--signal-ink);background:var(--signal);display:inline-block;padding:1px 8px;border-radius:4px;margin:0 0 6px}
+.confirm{background:var(--surface);border:2px solid var(--ink);border-radius:8px;padding:10px 12px;margin:10px 0;color:var(--ink)}
+.confirm[hidden]{display:none}
+.verdict{margin-top:14px}
+.verdict .btn{font-size:13px}
+.verdict .n{font-family:var(--font-mono)}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important;scroll-behavior:auto !important}}
+
+.map{width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-bottom:10px}
+.map .me{fill:var(--signal);stroke:var(--ink);stroke-width:2}
+.map .p{fill:var(--muted);stroke:var(--ink);stroke-width:1.5}
+.map .p.ng{fill:var(--ng)}
+.map .th{stroke:var(--ok);stroke-width:2;stroke-dasharray:5 4}
+.map .gap{stroke:var(--ink);stroke-width:1.5}
+.map text{font-family:var(--font-mono);font-size:13px;fill:var(--ink);font-weight:600}
+.map text.sm{font-size:11px;fill:var(--muted);font-weight:500}
+.board .cell{text-align:center}
+
+</style>
+</head>
+<body>
+<div class="outer"><div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<h1>キョリメーター</h1>
+<section class="hyp" aria-label="仮説カード">
+<p class="meta">視点: 身体・知覚 ／ 具体 ／ 方向: 後ろ・横・前</p>
+<p><b>仮説</b> 近さが数字で分かると、得体の知れない不快が減る。</p>
+<p><b>この試作で確かめること</b></p>
+<p class="hit"><b>当たり</b> ＝ 数字を見て「この数字なら平気」「思ったより離れている」と感じる</p>
+<p class="miss"><b>外れ</b> ＝ 数字が出ても嫌さは変わらない</p>
+</section>
+<h2>上から見た列（自分が中心）</h2>
+<svg id="map" class="map" viewBox="0 0 360 360" role="img" aria-label="自分と、前・横・後ろの人との距離を上から見た図"></svg>
+<div class="board" aria-label="いまの距離">
+<div class="cell"><div class="lab">前の人</div><div class="num"><span id="n-f">0</span><span class="unit">cm</span></div></div>
+<div class="cell"><div class="lab">横の人</div><div class="num"><span id="n-s">0</span><span class="unit">cm</span></div></div>
+<div class="cell"><div class="lab">後ろの人</div><div class="num"><span id="n-b">0</span><span class="unit">cm</span></div></div>
+</div>
+<div id="status" style="margin-top:10px"></div>
+<p class="note">数字は体と体のあいだ。緑の点線が、自分で決めた「平気な距離」。</p>
+<h2>デモ</h2>
+<div class="row">
+<button class="btn primary" id="demo" type="button">デモ: 後ろの人が詰めてくる</button>
+<button class="btn" id="demo-stop" type="button">止める</button>
+</div>
+<h2>いまの距離を動かす</h2>
+<div id="sl-d"></div>
+<h2>自分で決めた「平気な距離」</h2>
+<div id="sl-t"></div>
+
+<div class="foot">
+<p id="sample-note" class="sample">サンプルの値で動いています</p>
+<div class="row">
+<button class="btn small" id="btn-clear" type="button">サンプルを消して自分で使う</button>
+<button class="btn small" id="btn-sample" type="button">サンプルに戻す</button>
+</div>
+<div id="confirm" class="confirm" role="alertdialog" aria-labelledby="confirm-msg" hidden>
+<p id="confirm-msg" style="margin:0 0 8px"></p>
+<div class="row" style="margin:0"><button class="btn primary" id="confirm-yes" type="button">実行する</button><button class="btn" id="confirm-no" type="button">やめる</button></div>
+</div>
+<div class="verdict">
+<p style="margin:0 0 4px">触ってみて、仮説は</p>
+<div class="row" style="margin:0">
+<button class="btn" id="v-hit" type="button">当たりに近い <span class="n" id="v-hit-n">0</span></button>
+<button class="btn" id="v-miss" type="button">外れに近い <span class="n" id="v-miss-n">0</span></button>
+</div>
+<p class="note">この端末の中にだけ数えます。</p>
+</div>
+</div>
+</div></div>
+<script>
+'use strict';
+const KEY='hack3-g1-1-v1';
+const $=(s,r)=>(r||document).querySelector(s);
+const $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
+let S=null,_render=null;
+function loadS(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null}catch(e){return null}}
+function saveS(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function paint(){
+  $('#sample-note').hidden=!S.sample;
+  if(_render)_render();
+  $('#v-hit-n').textContent=S.verdict.hit;
+  $('#v-miss-n').textContent=S.verdict.miss;
+}
+function commit(){saveS();paint()}
+function ask(msg,yes){
+  const b=$('#confirm');b.hidden=false;$('#confirm-msg').textContent=msg;
+  $('#confirm-yes').onclick=()=>{b.hidden=true;yes()};
+  $('#confirm-no').onclick=()=>{b.hidden=true};
+  $('#confirm-no').focus();
+}
+function boot(sample,empty,render,onReset){
+  _render=render;
+  try{S=loadS()}catch(e){S=null}
+  if(!S||typeof S!=='object')S=sample();
+  if(!S.verdict)S.verdict={hit:0,miss:0};
+  const redo=fn=>{const v=S.verdict;S=fn();S.verdict=v;if(onReset)onReset();commit()};
+  $('#btn-clear').onclick=()=>ask('サンプルの値を消して、初期状態から使います。よろしいですか。',()=>redo(empty));
+  $('#btn-sample').onclick=()=>ask('サンプルの値に戻します。よろしいですか。',()=>redo(sample));
+  $('#v-hit').onclick=()=>{S.verdict.hit++;commit()};
+  $('#v-miss').onclick=()=>{S.verdict.miss++;commit()};
+  paint();
+}
+
+const DIRS=[['f','前'],['s','横'],['b','後ろ']];
+function sampleState(){return{sample:true,d:{f:45,s:38,b:30},t:{f:60,s:45,b:50},verdict:{hit:0,miss:0}}}
+function emptyState(){return{sample:false,d:{f:100,s:100,b:100},t:{f:50,s:50,b:50},verdict:{hit:0,miss:0}}}
+const C=180,R0=18,NS='http://www.w3.org/2000/svg';
+let tm=null;
+function build(box,pre,key){
+  let h='';
+  DIRS.forEach(([k,n])=>{h+='<div class="field"><label for="'+pre+'-'+k+'">'+n+'</label><input type="range" id="'+pre+'-'+k+'" min="0" max="120" step="1"><output id="'+pre+'o-'+k+'">0cm</output></div>'});
+  $(box).innerHTML=h;
+  DIRS.forEach(([k])=>{$('#'+pre+'-'+k).addEventListener('input',e=>{S[key][k]=Number(e.target.value);commit()})});
+}
+function person(cx,cy,ng){return '<circle class="p'+(ng?' ng':'')+'" cx="'+cx+'" cy="'+cy+'" r="'+R0+'"/>'}
+function render(){
+  const d=S.d,t=S.t;
+  let h='';
+  // front
+  const fy=C-2*R0-d.f, by=C+2*R0+d.b, sx=C+2*R0+d.s;
+  h+='<line class="th" x1="140" x2="220" y1="'+(C-R0-t.f)+'" y2="'+(C-R0-t.f)+'"/>';
+  h+='<line class="th" x1="140" x2="220" y1="'+(C+R0+t.b)+'" y2="'+(C+R0+t.b)+'"/>';
+  h+='<line class="th" y1="140" y2="220" x1="'+(C+R0+t.s)+'" x2="'+(C+R0+t.s)+'"/>';
+  h+='<line class="gap" x1="'+C+'" x2="'+C+'" y1="'+(C-R0)+'" y2="'+(C-R0-d.f)+'"/>';
+  h+='<line class="gap" x1="'+C+'" x2="'+C+'" y1="'+(C+R0)+'" y2="'+(C+R0+d.b)+'"/>';
+  h+='<line class="gap" y1="'+C+'" y2="'+C+'" x1="'+(C+R0)+'" x2="'+(C+R0+d.s)+'"/>';
+  h+=person(C,fy,d.f<t.f)+person(C,by,d.b<t.b)+person(sx,C,d.s<t.s);
+  h+='<circle class="me" cx="'+C+'" cy="'+C+'" r="'+R0+'"/>';
+  h+='<text x="'+(C+8)+'" y="'+(C-R0-d.f/2+4)+'">'+d.f+'</text>';
+  h+='<text x="'+(C+8)+'" y="'+(C+R0+d.b/2+4)+'">'+d.b+'</text>';
+  h+='<text x="'+(C+R0+d.s/2-8)+'" y="'+(C-8)+'">'+d.s+'</text>';
+  h+='<text class="sm" x="10" y="20">前</text><text class="sm" x="10" y="350">後ろ</text><text class="sm" x="322" y="20">横</text>';
+  $('#map').innerHTML=h;
+  let st='';
+  DIRS.forEach(([k,n])=>{
+    $('#n-'+k).textContent=d[k];
+    $('#d-'+k).value=d[k];$('#do-'+k).textContent=d[k]+'cm';
+    $('#t-'+k).value=t[k];$('#to-'+k).textContent=t[k]+'cm';
+    const diff=d[k]-t[k];
+    if(diff<0)st+='<div class="st ng">'+n+': 平気な距離より '+(-diff)+'cm 近い</div>';
+    else st+='<div class="st ok">'+n+': 平気な距離まで '+diff+'cm の余裕</div>';
+  });
+  $('#status').innerHTML=st;
+}
+function stopDemo(){if(tm){clearInterval(tm);tm=null}}
+build('#sl-d','d','d');build('#sl-t','t','t');
+$('#demo').addEventListener('click',()=>{
+  stopDemo();S.d.b=90;commit();
+  tm=setInterval(()=>{S.d.b=Math.max(4,S.d.b-1);commit();if(S.d.b<=4)stopDemo()},90);
+});
+$('#demo-stop').addEventListener('click',stopDemo);
+boot(sampleState,emptyState,render,stopDemo);
+
+</script>
+</body>
+</html>

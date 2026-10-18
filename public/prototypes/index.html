@@ -1,0 +1,547 @@
+<title>行列と距離の50仮説</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* layout: 仮説の木（抽象→具体）→ 絞り込み → 50枚のカード（仮説・試作へのリンク・投票）→ 集計 */
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --mid:#7A8580;
+  --board:#1F2A26; --board-ink:#F6C343; --board-sub:#C9D4CF; --board-line:#34423C;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --mid:#8C9893;
+  --board:#0B0F0D; --board-ink:#F6C343; --board-sub:#AEBBB5; --board-line:#26302C; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --mid:#8C9893;
+  --board:#0B0F0D; --board-ink:#F6C343; --board-sub:#AEBBB5; --board-line:#26302C; color-scheme:dark;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);line-height:1.7}
+.wrap{max-width:1040px;margin:0 auto;padding-block:32px 64px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.eyebrow{font-family:var(--font-mono);font-size:.78rem;letter-spacing:.12em;color:var(--muted);margin:0}
+h1{font-family:var(--font-display);font-weight:700;font-size:clamp(1.7rem,5vw,2.5rem);line-height:1.25;margin:6px 0 10px;text-wrap:balance}
+h2{font-family:var(--font-display);font-weight:700;font-size:1.25rem;margin:40px 0 10px;text-wrap:balance}
+.lead{max-width:66ch;margin:0}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:18px 0 0;padding:0;list-style:none;counter-reset:s}
+.steps li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:.88rem;counter-increment:s}
+.steps li::before{content:counter(s);font-family:var(--font-mono);font-weight:600;color:var(--signal);margin-right:8px}
+/* tree */
+.root{background:var(--board);color:var(--board-sub);border-radius:10px;padding:14px 18px}
+.root .lbl{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;color:var(--board-ink)}
+.root p{margin:4px 0 0;font-size:1rem;color:var(--board-sub)}
+.branches{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:10px}
+.br{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.br:hover{border-color:var(--signal)}
+.br:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.br .k{font-family:var(--font-mono);font-size:.75rem;color:var(--muted)}
+.br b{display:block;font-family:var(--font-display);font-size:.98rem}
+.br small{color:var(--muted);font-size:.8rem}
+/* filters */
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.filters select{font:inherit;font-size:.88rem;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.count{font-family:var(--font-mono);font-size:.85rem;color:var(--muted);margin-left:auto}
+.status{font-size:.82rem;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:8px;padding:8px 12px;margin:0 0 12px}
+/* cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card .top{display:flex;align-items:baseline;gap:10px}
+.card .no{font-family:var(--font-mono);font-weight:600;font-size:1.1rem;color:var(--signal-ink);background:var(--board-ink);border-radius:4px;padding:0 6px;font-variant-numeric:tabular-nums}
+.card h3{margin:0;font-family:var(--font-display);font-size:1.08rem;line-height:1.3}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{font-size:.72rem;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--muted)}
+.tag.abs{border-color:var(--ink);color:var(--ink)}
+.hyp{margin:0;font-size:.9rem}
+.open{align-self:flex-start;font-size:.85rem;color:var(--ink);text-decoration:none;border-bottom:2px solid var(--signal);font-weight:500}
+.open:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.vote{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+.vote button{font:inherit;font-size:.8rem;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:3px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.vote button .n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--muted)}
+.vote button[aria-pressed="true"].hit{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.vote button[aria-pressed="true"].miss{background:var(--ng);border-color:var(--ng);color:var(--surface)}
+.vote button[aria-pressed="true"].unsure{background:var(--mid);border-color:var(--mid);color:var(--surface)}
+.vote button[aria-pressed="true"] .n{color:inherit}
+.vote button:focus-visible,.cmt input:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.bar{height:6px;border-radius:3px;background:var(--line);display:flex;overflow:hidden}
+.bar i{display:block;height:100%}
+.cmt{display:flex;gap:6px}
+.cmt input{flex:1;min-width:0;font:inherit;font-size:.82rem;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.cmts{margin:0;padding-left:1em;font-size:.8rem;color:var(--muted)}
+/* summary */
+.sum{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.sum table{border-collapse:collapse;width:100%;min-width:560px;font-size:.86rem}
+.sum th,.sum td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left}
+.sum th{color:var(--muted);font-weight:600}
+.sum td.num{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.copybar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.btn{font:inherit;font-size:.88rem;border:0;border-radius:8px;padding:8px 14px;background:var(--signal);color:var(--signal-ink);font-weight:700;cursor:pointer}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+#copyOut{width:100%;min-height:80px;font-family:var(--font-mono);font-size:.78rem;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:8px}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:.88rem}
+.prio{display:inline-block;font-size:.75rem;font-weight:700;border-radius:4px;padding:1px 8px}
+.prio.A{background:var(--ok);color:var(--surface)}
+.prio.B{background:var(--signal);color:var(--signal-ink)}
+.prio.X,.prio.H{background:var(--line);color:var(--muted)}
+.why{margin:0;font-size:.78rem;color:var(--muted)}
+.card.out{opacity:.55}
+.tally{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tally button{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 12px;cursor:pointer}
+.tally button b{font-family:var(--font-mono);margin-left:6px}
+.tally button:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.br small.when,.feat small.when{display:block;margin-top:4px;font-family:var(--font-mono);font-size:.74rem;color:var(--ink)}
+.feat{display:block;margin-top:10px;background:var(--surface);border:2px solid var(--signal);border-radius:12px;padding:14px 18px;text-decoration:none;color:inherit}
+.feat:hover{background:color-mix(in srgb,var(--signal) 8%,var(--surface))}
+.feat:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.feat .k{font-family:var(--font-mono);font-size:.75rem;color:var(--muted)}
+.feat b{display:block;font-family:var(--font-display);font-size:1.2rem}
+.feat small{display:block;color:var(--muted);font-size:.85rem}
+.foot{margin-top:28px;font-size:.82rem;color:var(--muted);max-width:66ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">POSSE ALUMNI HACKATHON 2026 / TEAM A / 第3版</p>
+  <h1>行列と距離の50仮説</h1>
+  <p class="lead">行列で知らない人が近い不快に、まだ決め手がない。だから答えを1つに決める前に、いろいろな角度の仮説を「動くもの」にした。1本ずつ触って、仮説が当たっていそうかを投票する。明日の話し合いのゴールは、仮説を絞ること。</p>
+  <ol class="steps">
+    <li>気になるカードを開いて、2〜3分触る</li>
+    <li>カードに戻り「当たりそう／外れそう／分からない」を押す。一言コメントも残せる</li>
+    <li>下の集計で「当たりそう」が多い仮説から話し合う</li>
+  </ol>
+
+  <h2>最新：行く前に使う5本（第5版）</h2>
+  <p class="lead">第4版を触った感想で分かったこと：アプリを使うのは店に行く前だけ。嫌だったことを記録して数値にする機能は要らない。前後の人を仲間と思えるのは、その人も「自分の意思で、人があまり選ばない店を選んで来た」と思えるとき。一人客は安心で、カップルやグループは嫌。選択肢は多すぎると疲れる。</p>
+  <div class="root" style="margin-top:10px">
+    <span class="lbl">根の仮説（第5版）</span>
+    <p>行く前に「自分の意思で選ぶ人が集まる店」を、少ない選択肢の中から自分で選べれば、そこに並ぶ人を仲間と思えて、行列の近さが平気になる。</p>
+  </div>
+  <a class="feat" href="ik-1.html"><span class="k">61 統合版・本命</span><b>ジブンマップ</b><small>自分版のGoogleマップ。店ごとの「選ばれ方」（口コミの怪しさ・一人客の多さ・SNSでの露出・選ぶ人の少なさ）が地図で見え、条件に合う「今日の3軒」だけが浮かび上がる。</small><small class="when">使うとき：行く前だけ</small></a>
+  <div class="branches">
+    <a class="br" href="ik-2.html" style="text-decoration:none"><span class="k">62 制約</span><b>ミッツダケ</b><small>候補を3つに絞って出し、最後の1つは自分で選ぶ。100個から探すより疲れずに満足できる</small><small class="when">使うとき：行く前だけ</small></a>
+    <a class="br" href="ik-3.html" style="text-decoration:none"><span class="k">63 客層</span><b>キャクソウヨホウ</b><small>一人客が多くカップルが少ない店と時間帯を選べば、後ろに誰が来ても安心できる</small><small class="when">使うとき：行く前だけ</small></a>
+    <a class="br" href="ik-4.html" style="text-decoration:none"><span class="k">64 口コミの裏</span><b>クチコミウラヨミ</b><small>SNSやSEOで選ばれている店を口コミの中身から見分ければ、自分の意思で選んでいない人が多い列を避けられる</small><small class="when">使うとき：行く前だけ</small></a>
+    <a class="br" href="ik-5.html" style="text-decoration:none"><span class="k">65 同じ少数派</span><b>ショウスウハレーダー</b><small>人があまり選ばない店を選ぶと、そこにいる人も同じ少数派に見えて仲間だと思える</small><small class="when">使うとき：行く前だけ</small></a>
+  </div>
+
+  <h2>仲間認識の5本（第4版）</h2>
+  <p class="lead">チームでの議論で分かったこと：嫌なのは「近さ」そのものではなく、仲間だと思えない人との近さ。同じ距離でも、相手を仲間と認識できれば平気になる。</p>
+  <div class="root" style="margin-top:10px">
+    <span class="lbl">根の仮説</span>
+    <p>行列の近さが嫌なのは、近くの人を仲間と認識できないから。共通の敵・共通の好き・同じ少数派・同じ作法のどれかが見えれば、同じ距離でも相手は仲間になる。</p>
+  </div>
+  <div class="branches">
+    <a class="br" href="nk-1.html" style="text-decoration:none"><span class="k">A1 共通の敵</span><b>キョウツウノテキ</b><small>列の全員が同じ敵と戦っていると意識できると、前後の人が戦友に見える</small><small class="when">使うとき：並ぶ直前〜並んでいる時（見るだけ）</small></a>
+    <a class="br" href="nk-2.html" style="text-decoration:none"><span class="k">A2 共通の好き</span><b>ナカマノシルシ</b><small>その店を大事にしている証拠を探すと、周りの多くが仲間だと気づく</small><small class="when">使うとき：並んでいる時（1タップ）</small></a>
+    <a class="br" href="nk-3.html" style="text-decoration:none"><span class="k">A3 同じ少数派</span><b>トクベツチズ</b><small>自分が特別だと思える少数派の場所では、周りを仲間と感じる</small><small class="when">使うとき：家で、行く店を考える時・行った後の振り返り（列では使わない）</small></a>
+    <a class="br" href="nk-4.html" style="text-decoration:none"><span class="k">B1 熱量の差</span><b>ネツリョウメーター</b><small>目的への熱量が高いほど、周りが仲間に見えて近さが平気になる</small><small class="when">使うとき：行く前（熱量）＋並んだ後（記録）</small></a>
+    <a class="br" href="nk-5.html" style="text-decoration:none"><span class="k">C1 作法を知る</span><b>サホウノシオリ</b><small>作法を知って並ぶと、守る人は仲間・乱す人は外の人と割り切れる</small><small class="when">使うとき：行く前（しおりを読む）＋並んでいる時（見るだけ）</small></a>
+  </div>
+  <p class="lead" style="margin-top:10px;font-size:.88rem;color:var(--muted)">作るときの原則：誰でも入れるコミュニティにしない／少数派だけが分かる合図にする／他人は変えない。D1「出来事と会話で仲間になる」は今回は作っていない。</p>
+
+  <h2>優先する仮説（自分の認識を変える）</h2>
+  <p class="lead">他人や店を変えるものと、ハードウェア寄りのものは対象外にした。優先するのは、自分の受け取り方を変える方向。</p>
+  <div class="root" style="margin-top:10px">
+    <span class="lbl">優先する仮説</span>
+    <p>他人も環境も変えられない。でも、自分の受け取り方は変えられる。行列の不快は「体の反応」と「頭の解釈」でできていて、頭の解釈の部分を変えれば、近さを受け入れられるようになる。</p>
+  </div>
+  <div class="branches" id="hypos"></div>
+  <div class="tally" id="tally"></div>
+
+  <h2>仮説の木（全体）</h2>
+  <div class="root">
+    <span class="lbl">いちばん上の仮説</span>
+    <p>行列が嫌なのは、目的（その店）は代えられないのに、手段（並ぶ）の中で、知らない人に理由なく自分の空間へ入ってこられるから。どこか1か所を変えれば、嫌さは減る。どこを変えるのが一番効くか？</p>
+  </div>
+  <div class="branches" id="branches"></div>
+
+  <h2>60の仮説と試作</h2>
+  <div class="filters">
+    <select id="fTarget" aria-label="変える対象で絞り込む"><option value="">変える対象：すべて</option><option value="A">優先A：自分の認識</option><option value="B">優先B：自分の行動・選択</option><option value="AB">優先A＋B</option><option value="XH">対象外だけ</option></select>
+    <label class="chk"><input type="checkbox" id="hideOut" checked> 対象外を隠す</label>
+    <select id="fView" aria-label="視点で絞り込む"><option value="">視点：すべて</option></select>
+    <select id="fKind" aria-label="具体か抽象かで絞り込む"><option value="">具体・抽象：すべて</option><option>具体</option><option>抽象</option></select>
+    <select id="fDir" aria-label="近さの方向で絞り込む"><option value="">方向：すべて</option><option value="後">後ろ</option><option value="横">横</option><option value="前">前</option><option value="全">全方向</option></select>
+    <select id="fScope" aria-label="対象で絞り込む"><option value="">対象：すべて</option><option value="行列">行列</option><option value="その他">行列以外</option></select>
+    <select id="fSort" aria-label="並べ方"><option value="prio">優先度順</option><option value="no">番号順</option><option value="hit">当たりそうが多い順</option><option value="miss">外れそうが多い順</option><option value="none">まだ誰も投票していない順</option></select>
+    <span class="count" id="count"></span>
+  </div>
+  <p class="status" id="status">投票の保存先に接続しています…（つながらなくても、この端末には保存されます）</p>
+  <div class="grid" id="grid"></div>
+
+  <h2>集計</h2>
+  <p class="lead" id="sumLead">視点ごとの投票の合計。投票した人数：<b id="voters">0</b>人</p>
+  <div class="sum"><table>
+    <thead><tr><th>視点</th><th>本数</th><th>当たりそう</th><th>外れそう</th><th>分からない</th><th>一番「当たりそう」が多い仮説</th></tr></thead>
+    <tbody id="sumBody"></tbody>
+  </table></div>
+  <div class="copybar">
+    <button class="btn" id="copyBtn" type="button">自分の票をコピー（Discordに貼る用）</button>
+    <span id="copyMsg" class="count" style="margin-left:0"></span>
+  </div>
+  <textarea id="copyOut" readonly hidden aria-label="自分の票"></textarea>
+
+  <p class="foot">どの試作も、データは開いた人のブラウザの中にだけ保存される。投票は名前を出さずに数だけを集計する。シミュレーションの数字は仮の前提で、本当の効果を示すものではない。</p>
+</div>
+
+<script>
+(function(){
+  var VIEWS={
+    v0:{n:"時間・手段（第2版）",b:"E",d:"行く時間・並ぶ以外の手段を変える"},
+    v1:{n:"身体・知覚",b:"A",d:"近さの感じ方（数字・音・見え方）を変える"},
+    v5:{n:"認知・感情",b:"A",d:"「生理的に無理」との付き合い方を変える"},
+    v2:{n:"空間設計",b:"B",d:"列の形・物で距離を固定する"},
+    v3:{n:"関係・自他境界",b:"C",d:"話さずに相手を自分側にする"},
+    v4:{n:"詰める側",b:"D",d:"詰める理由を消して相手の行動を変える"},
+    v7:{n:"ビジネス・店側",b:"D",d:"店が直す動機を作る"},
+    v6:{n:"仕組み・テック",b:"E",d:"並ぶルールそのものを変える"},
+    v8:{n:"自己理解",b:"F",d:"自分の境界と制御できる範囲を知る"},
+    v9:{n:"行列以外の悩み",b:"G",d:"同じ構造の別の悩みに広げる"},
+    v10:{n:"仲間認識（第4版）",b:"C",d:"相手を仲間と認識できる材料を見つける"},
+    v11:{n:"行く前（第5版）",b:"E",d:"自分の意思で選ぶ人が集まる店を、行く前に選ぶ"}
+  };
+  var BR={
+    A:["感じ方を変えれば減る","近さは同じでも、体と頭の受け取り方を変える","v1,v5"],
+    B:["空間を変えれば減る","列の形や物で、距離そのものを固定する","v2"],
+    C:["相手との関係を変えれば減る","他人を、話さずに自分側に近づける","v3"],
+    D:["相手の行動を変えれば減る","詰める人の理由を消す・店が直す","v4,v7"],
+    E:["並ぶルールを変えれば減る","時間・順番・手段を変え、並ぶこと自体を減らす","v6,v0"],
+    F:["自分の境界を知れば受け入れ方が見つかる","不快な距離、制御できる範囲、手段と目的を知る","v8"],
+    G:["行列以外にも同じ構造がある","待たされる・選べない・雑に入ってこられる","v9"]
+  };
+  // [id, file, name, view, kind, dir, scope, hypothesis]
+  var P=[
+    ["01","gyoretsumap.html","ギョウレツマップ","v0","具体","全","行列","店は変えなくても、列が空いている時間が分かれば、行く時間は変える"],
+    ["02","tsumerare.html","ツメラレログ","v0","具体","後","行列","自分のデータから出た数字なら、指示ではなく参考値として受け入れて、行く時間を変える"],
+    ["03","narabitomo.html","ナラビトモ","v0","具体","全","行列","話さなくても同じ店のファンだと分かれば、知らない人の近さが気にならなくなる"],
+    ["04","mamoriline.html","マモリライン","v0","具体","後前","行列","自分では変えられない近さも、店が足元マークで間隔を決めれば変えられる"],
+    ["05","betsuroute.html","ベツルート","v0","具体","-","行列","同じ店の味に、並ばずにたどり着く方法があれば、そちらを選ぶ"],
+    ["06","g1-1.html","キョリメーター","v1","具体","後横前","行列","近さが数字で分かると、得体の知れない不快が減る"],
+    ["07","g1-2.html","ケハイケシ","v1","具体","後","行列","後ろの不快の一部は、足音や息づかいなど気配の音から来ている"],
+    ["08","g1-3.html","ウチュウフク","v1","具体","全","行列","自分の空間が目に見えると、入られても境界が保たれている感覚になる"],
+    ["09","g1-4.html","セナカノタテ","v1","具体","後","行列","背中に物（バッグ）の緩衝があれば、後ろからの近さを許容できる"],
+    ["10","g1-5.html","マエノタノシミ","v1","具体","後横","行列","注意が前の楽しみ（これから食べる一杯）に向いていると、後ろや横の近さを感じにくい"],
+    ["11","g2-1.html","レツノカタチ","v2","具体","後横前","行列","列の形を変えるだけで、3方向の近さが変わる"],
+    ["12","g2-2.html","スワレルレツ","v2","具体","後前","行列","座って待つ列は、椅子で距離が固定されるので詰められない"],
+    ["13","g2-3.html","アイダニモノ","v2","具体","後前","行列","人と人の間に物（ポール・植木）があると、人は詰めない"],
+    ["14","g2-4.html","ブンサンマチ","v2","具体","全","行列","1か所に固まらずに待てれば、近さの問題そのものが消える"],
+    ["15","g2-5.html","ヨコノフチ","v2","具体","横","行列","横の不快は、列の端（へり）がはっきりしないことから来る"],
+    ["16","g3-1.html","キョウノオダイ","v3","具体","全","行列","相手について1つだけ情報があると、その人は知らない人でなくなる"],
+    ["17","g3-2.html","ジョウレンバッジ","v3","具体","全","行列","同じ店のファンという所属が見えると、近さが気にならない"],
+    ["18","g3-3.html","ヒトコトダケ","v3","具体","全","行列","一言だけでも話すと相手は自分側になり、近さが平気になる"],
+    ["19","g3-4.html","キョウカイノダンカイ","v3","抽象","全","行列","近さが平気になる境目は、名前を知るより手前（同じ店に来ている）にある"],
+    ["20","g3-5.html","イチレツチーム","v3","抽象","全","行列","列が1つのチームに見えると、前後の人を敵と感じなくなる"],
+    ["21","g4-1.html","ナゼツメル","v4","抽象","後","行列","詰める人の理由が想像できると、腹が立ちにくくなる"],
+    ["22","g4-2.html","ジュンバンホショウ","v4","具体","後","行列","人が詰めるのは順番を失う不安から。順番が保証されていれば詰めない"],
+    ["23","g4-3.html","ススムヨホウ","v4","具体","後前","行列","先が分からないから少しずつ詰める。進むタイミングが分かれば詰めない"],
+    ["24","g4-4.html","ナカガミエル","v4","具体","後前","行列","中の様子が見えないと人は前に詰める。見えれば落ち着く"],
+    ["25","g4-5.html","マモルノガフツウ","v4","具体","後","行列","間隔を守るのが普通だと分かると、人は合わせる"],
+    ["26","g5-1.html","ナヅケル","v5","抽象","全","行列","感情に名前をつけるだけで、その強さが下がる"],
+    ["27","g5-2.html","アタマノソト","v5","抽象","全","行列","考える必要のないことを頭の外に出せば、考え続けない"],
+    ["28","g5-3.html","ピークトオワリ","v5","抽象","全","行列","列の嫌さは、実際より思い出の中で大きくなっている"],
+    ["29","g5-4.html","マツカチ","v5","具体","全","行列","待つ価値（それでも並ぶ理由）が言葉になっていると、近さを受け入れられる"],
+    ["30","g5-5.html","カラダトアタマ","v5","抽象","全","行列","生理的な反応は変えられないが、解釈の部分は変えられる。その割合で打ち手が決まる"],
+    ["31","g6-1.html","ジカンシテイケン","v6","具体","全","行列","並ぶ代わりに入店時刻が決まれば、店は変えずに近さだけを消せる"],
+    ["32","g6-2.html","チュウセンニュウテン","v6","具体","全","行列","早い者勝ちをやめれば、早く来て並ぶ必要も詰める理由も消える"],
+    ["33","g6-3.html","スキマトク","v6","具体","全","行列","空いている時間に特典があれば、時間をずらす人が増えて列がゆったりする"],
+    ["34","g6-4.html","イチジリダツ","v6","具体","全","行列","順番を保ったまま一度離れられると分かっていれば、近さに耐えられる"],
+    ["35","g6-5.html","コウタイデナラブ","v6","具体","全","行列","並ぶ時間を誰かと分け合えれば、近さに耐えられる長さになる"],
+    ["36","g7-1.html","レツノカルテ","v7","具体","全","行列","店は、列の不快が売上に響いていると数字で分かれば対策する"],
+    ["37","g7-2.html","ユッタリマーク","v7","具体","全","行列","客はゆったり並べる店を選ぶ（店選びの新しい軸になる）"],
+    ["38","g7-3.html","コエカケタイミング","v7","具体","後横","行列","店員の一言で、列は整う"],
+    ["39","g7-4.html","モトガトレルカ","v7","具体","全","行列","列の対策は、店にとって元が取れる"],
+    ["40","g7-5.html","ナラビゴコチ","v7","具体","全","行列","客は1タップなら列の居心地を評価する。その声が届けば店は直す"],
+    ["41","g8-1.html","マイパーソナルスペース","v8","抽象","後横前","行列","不快に感じる距離は方向によって違う（後ろが一番広い）"],
+    ["42","g8-2.html","セイギョマップ","v8","抽象","-","その他","本当に困っているのは、制御できない×自分にとって重要な一部だけ"],
+    ["43","g8-3.html","シュダンカモクテキカ","v8","抽象","-","その他","悩みを手段か目的かに分けると、解決の方向が見える"],
+    ["44","g8-4.html","イヤノヘンセン","v8","抽象","-","その他","時間で消える嫌と残る嫌があり、残る方が本丸"],
+    ["45","g8-5.html","ウケイレノカケザン","v8","抽象","-","その他","受け入れられるかは条件の掛け算で決まり、1つでも0があると受け入れられない"],
+    ["46","g9-1.html","マチアワセノルール","v9","具体","-","その他","待ち合わせの嫌さは、何分待てばいいか分からないことから来る"],
+    ["47","g9-2.html","ハンダンジク","v9","具体","-","その他","選ぶのに疲れるのは選択肢の多さではなく、判断軸がないから"],
+    ["48","g9-3.html","テイネイホンヤク","v9","具体","-","その他","不快なのは内容ではなく形式（あいさつなし・雑さ）"],
+    ["49","g9-4.html","カンジョウノニモツ","v9","抽象","-","その他","相手の感情を背負わされるのは、相手の荷物と自分の荷物が混ざっているから"],
+    ["50","g9-5.html","キリカエリスト","v9","具体","-","その他","予定を崩される嫌さは、急にできた空白の時間から来る"],
+    ["51","nk-1.html","キョウツウノテキ","v10","具体","全","行列","列の全員が同じ敵と戦っていると意識できると、前後の人が戦友に見えて近さが平気になる"],
+    ["52","nk-2.html","ナカマノシルシ","v10","具体","全","行列","その店を大事にしている証拠を探しにいくと、周りの多くが仲間だと気づき、近さが平気になる"],
+    ["53","nk-3.html","トクベツチズ","v10","抽象","全","行列","自分が特別だと思える少数派の場所では、周りを仲間と感じて近さが平気になる"],
+    ["54","nk-4.html","ネツリョウメーター","v10","抽象","全","行列","目的への熱量が高いほど、周りが仲間に見えて近さが平気になる"],
+    ["55","nk-5.html","サホウノシオリ","v10","具体","全","行列","作法を知って並ぶと、守る人は仲間・乱す人は外の人と割り切れて、近さが気にならない"],
+    ["61","ik-1.html","ジブンマップ（統合）","v11","具体","全","行列","自分版の地図に店の選ばれ方が見えれば、自分の意思で選ぶ人が集まる店を行く前に選べて、並ぶ人を仲間と思える"],
+    ["62","ik-2.html","ミッツダケ","v11","具体","全","行列","候補を3つに絞って出してもらう方が、100個から探すより疲れずに選べて満足できる"],
+    ["63","ik-3.html","キャクソウヨホウ","v11","具体","後","行列","一人客が多くカップルが少ない店と時間帯を選べば、後ろに誰が来ても安心できる"],
+    ["64","ik-4.html","クチコミウラヨミ","v11","具体","全","行列","SNSやSEOで選ばれている店を口コミの中身から見分ければ、自分の意思で選んでいない人が多い列を避けられる"],
+    ["65","ik-5.html","ショウスウハレーダー","v11","抽象","全","行列","人があまり選ばない店を選ぶと、そこにいる人も同じ少数派に見えて仲間だと思える"]
+  ];
+  // 変える対象: A=自分の認識（優先） B=自分の行動・選択 X=他人・店を変える（対象外） H=ハードウェア寄り（対象外）
+  var TG={
+    A:{n:"優先A：自分の認識",s:"認識",r:1},
+    B:{n:"優先B：自分の行動・選択",s:"行動",r:2},
+    X:{n:"対象外：他人・店を変える",s:"他人",r:3},
+    H:{n:"対象外：ハードウェア寄り",s:"ハード",r:4}
+  };
+  var LB={
+    "01":["B","空いている時間を選んで行く。他人は変えない"],
+    "02":["B","自分の記録から行く時間を変える"],
+    "03":["X","前後の人が投票しないと成り立たない"],
+    "04":["X","店が足元マークを貼る必要がある"],
+    "05":["B","並ばずに同じ味に行く手段を自分で選ぶ"],
+    "06":["H","距離を測るセンサーが要る"],
+    "07":["A","手持ちのイヤホンで、気配の受け取り方を変える"],
+    "08":["H","宇宙服・AR表示など専用の機器が要る"],
+    "09":["B","自分の持ち方だけで緩衝を作る"],
+    "10":["A","注意を前の楽しみに向けて、近さの感じ方を変える"],
+    "11":["X","店が列の形を変える必要がある"],
+    "12":["X","店が椅子を置く必要がある"],
+    "13":["X","店が物を置く必要がある"],
+    "14":["X","店の呼び出しの仕組みが要る"],
+    "15":["X","店が列のへりを作る必要がある"],
+    "16":["X","店がお題シールを配る必要がある"],
+    "17":["X","前後の人がバッジを付けている必要がある"],
+    "18":["B","自分から一言話す"],
+    "19":["A","どこから平気になるかを知り、自分の見方を変える"],
+    "20":["X","店がみんなで表示を出す必要がある"],
+    "21":["A","相手は変えず、詰める理由を想像して解釈を変える"],
+    "22":["X","店が順番保証の仕組みを入れる必要がある"],
+    "23":["X","店が進む予告を出す必要がある"],
+    "24":["X","店が中の様子を見せる必要がある"],
+    "25":["X","店がサインを出して、他人の行動を変える"],
+    "26":["A","感情に名前をつけて強さを下げる"],
+    "27":["A","考えなくていいことを頭の外に出す"],
+    "28":["A","実際の嫌さと思い出の嫌さの差に気づく"],
+    "29":["A","並ぶ理由を言葉にして受け入れる"],
+    "30":["A","体の反応と頭の解釈を分けて、変えられる所を知る"],
+    "31":["X","店が時間指定券を出す必要がある"],
+    "32":["X","店が抽選を導入する必要がある"],
+    "33":["X","店が特典を出す必要がある"],
+    "34":["X","店が一時離脱の仕組みを入れる必要がある"],
+    "35":["X","店の交代ルールと、一緒に並ぶ相手が要る"],
+    "36":["X","店主に対策してもらう前提"],
+    "37":["X","店が認証を取る前提"],
+    "38":["X","店員が声をかける前提"],
+    "39":["X","店が投資する前提"],
+    "40":["X","店が声を受けて直す前提"],
+    "41":["A","自分の快適な距離を方向別に知る"],
+    "42":["A","制御できる／できないを仕分けて、困りごとを絞る"],
+    "43":["A","手段か目的かで考え方を切りかえる"],
+    "44":["A","消えた嫌と残る嫌を知る"],
+    "45":["A","受け入れられる条件を掛け算で理解する"],
+    "46":["B","自分で待つ上限を決める（相手は変えない）"],
+    "47":["B","判断軸を先に決めて選ぶ"],
+    "48":["A","届いた文の受け取り方を変える"],
+    "49":["A","相手の荷物と自分の荷物を分けて受け取る"],
+    "50":["B","空いた時間の候補を先に持っておく"],
+    "51":["A","列の共通の敵を意識して、前後の人の見え方を変える"],
+    "52":["A","仲間の証拠を自分で探して、周りの見え方を変える"],
+    "53":["A","自分にとって特別な場所かどうかで、周りの見え方を知る"],
+    "54":["A","自分の熱量と、周りが仲間に見えるかの関係を知る"],
+    "55":["A","作法を知り、守る人は仲間・乱す人は外の人と見分ける"],
+    "61":["B","行く前に店を選ぶ。他人は変えない"],
+    "62":["B","行く前に、絞られた3つから自分で選ぶ"],
+    "63":["B","行く前に、客層の合う店と時間帯を選ぶ"],
+    "64":["A","口コミの見方を変えて、店の選ばれ方を見抜く"],
+    "65":["A","少数派の店を選び、そこにいる人の見え方を変える"]
+  };
+  var DIRN={"後":"後ろ","横":"横","前":"前","全":"全方向"};
+  var LKEY="hack3-index-v1";
+  var mine={v:{},c:{}}; // my votes and comments
+  var all={}; // uid -> {v:{},c:{}}
+  var myId=null, db=null, shared=false;
+  function ls(get,val){try{if(get)return JSON.parse(localStorage.getItem(LKEY)||"null");localStorage.setItem(LKEY,JSON.stringify(val));}catch(e){return null;}}
+  var saved=ls(true); if(saved&&saved.v)mine=saved;
+  var $=function(id){return document.getElementById(id);};
+
+  // branches
+  var bh="";
+  Object.keys(BR).forEach(function(k){
+    var b=BR[k];
+    var views=b[2].split(",").map(function(v){return VIEWS[v].n;}).join("・");
+    bh+='<button type="button" class="br" data-views="'+b[2]+'"><span class="k">分岐 '+k+'</span><b>'+b[0]+'</b><small>'+b[1]+'（'+views+'）</small></button>';
+  });
+  $("branches").innerHTML=bh;
+  $("branches").addEventListener("click",function(e){
+    var t=e.target.closest(".br"); if(!t)return;
+    var v=t.getAttribute("data-views").split(",")[0];
+    $("fView").value=v; render();
+    $("grid").scrollIntoView({behavior:"smooth",block:"start"});
+  });
+  ["v11","v10","v0","v1","v2","v3","v4","v5","v6","v7","v8","v9"].forEach(function(v){
+    var o=document.createElement("option");o.value=v;o.textContent=VIEWS[v].n;$("fView").appendChild(o);
+  });
+
+  // 優先する仮説（自分の認識を変える）の下位仮説
+  var HY=[
+    ["H8","行く前に選ぶ","自分の意思で選ぶ人が集まる店を、少ない選択肢から自分で選べれば、並ぶ人を仲間と思える（第5版の本命）",["61","62","63","64","65"]],
+    ["H7","仲間認識","近くの人を仲間と認識できれば、同じ距離でも近さが平気になる（第4版）",["51","52","53","54","55"]],
+    ["H1","知覚","不快の一部は、近さそのものではなく感じ方（気配の音・注意の向き）から来ている",["07","10"]],
+    ["H2","感情","「生理的に無理」は消せないが、名前をつけたり頭の外に出したりすると弱まる",["26","27","30"]],
+    ["H3","記憶","列の嫌さは、実際より思い出の中で大きくなっている",["28","44"]],
+    ["H4","意味づけ","並ぶ理由や、相手が詰める理由が言葉になると、近さを受け入れられる",["29","21"]],
+    ["H5","境界の理解","自分の境界（快適な距離・平気になる関係・受け入れられる条件）を知ると、受け入れ方が見つかる",["41","19","45","42","43"]],
+    ["H6","ほかの悩み","届いた言葉や相手の感情も、受け取り方を変えれば重さが変わる",["48","49"]]
+  ];
+  var onlyIds=null, onlyKey=null;
+  $("hypos").innerHTML=HY.map(function(h){
+    return '<button type="button" class="br" data-h="'+h[0]+'"><span class="k">'+h[0]+'　'+h[1]+'</span><b>'+h[2]+'</b><small>試作：'+h[3].map(function(id){var p=P.filter(function(x){return x[0]===id;})[0];return id+' '+p[2];}).join('、')+'</small></button>';
+  }).join("");
+  $("hypos").addEventListener("click",function(e){
+    var t=e.target.closest(".br"); if(!t)return;
+    var k=t.getAttribute("data-h"), h=HY.filter(function(x){return x[0]===k;})[0];
+    if(onlyKey===k){onlyIds=null;onlyKey=null;}else{onlyIds=h[3];onlyKey=k;}
+    render(); if(onlyIds)$("grid").scrollIntoView({behavior:"smooth",block:"start"});
+  });
+  $("tally").addEventListener("click",function(e){
+    var t=e.target.closest("button"); if(!t)return;
+    var v=t.getAttribute("data-t");
+    $("fTarget").value=v; $("hideOut").checked=(v!=="XH"); onlyIds=null; onlyKey=null; render();
+    $("grid").scrollIntoView({behavior:"smooth",block:"start"});
+  });
+  (function(){
+    var c={A:0,B:0,X:0,H:0}; P.forEach(function(p){c[LB[p[0]][0]]++;});
+    $("tally").innerHTML='<button type="button" data-t="A">優先A 自分の認識<b>'+c.A+'</b></button>'+
+      '<button type="button" data-t="B">優先B 自分の行動・選択<b>'+c.B+'</b></button>'+
+      '<button type="button" data-t="XH">対象外（他人・店 '+c.X+'／ハード '+c.H+'）<b>'+(c.X+c.H)+'</b></button>';
+  })();
+
+  function tally(){
+    var t={}; P.forEach(function(p){t[p[0]]={hit:0,miss:0,unsure:0,c:[]};});
+    var src=Object.assign({},all);
+    if(myId)src[myId]=mine; else src.__me=mine;
+    Object.keys(src).forEach(function(u){
+      var d=src[u]||{}; var v=d.v||{}, c=d.c||{};
+      Object.keys(v).forEach(function(pid){ if(t[pid]&&t[pid][v[pid]]!==undefined)t[pid][v[pid]]++; });
+      Object.keys(c).forEach(function(pid){ if(t[pid]&&c[pid])t[pid].c.push(String(c[pid]).slice(0,80)); });
+    });
+    return {t:t,voters:Object.keys(src).filter(function(u){return Object.keys((src[u]||{}).v||{}).length>0;}).length};
+  }
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+  function render(){
+    var T=tally(), t=T.t;
+    var fv=$("fView").value,fk=$("fKind").value,fd=$("fDir").value,fs=$("fScope").value,so=$("fSort").value;
+    var ft=$("fTarget").value, ho=$("hideOut").checked;
+    var list=P.filter(function(p){
+      var tg=LB[p[0]][0];
+      if(onlyIds)return onlyIds.indexOf(p[0])>=0;
+      if(ho&&(tg==="X"||tg==="H"))return false;
+      if(ft&&ft.indexOf(tg)<0)return false;
+      return (!fv||p[3]===fv)&&(!fk||p[4]===fk)&&(!fd||p[5].indexOf(fd)>=0)&&(!fs||p[6]===fs);
+    });
+    if(so==="prio")list.sort(function(a,b){
+      var fa=a[3]==="v11"?0:1, fb=b[3]==="v11"?0:1; if(fa!==fb)return fa-fb;
+      var ra=TG[LB[a[0]][0]].r, rb=TG[LB[b[0]][0]].r;
+      if(ra!==rb)return ra-rb;
+      var rk={v11:0,v10:1}, na=a[3] in rk?rk[a[3]]:2, nb=b[3] in rk?rk[b[3]]:2; if(na!==nb)return na-nb;
+      var qa=a[6]==="行列"?0:1, qb=b[6]==="行列"?0:1;
+      return qa-qb||t[b[0]].hit-t[a[0]].hit||a[0]-b[0];
+    });
+    if(so==="hit")list.sort(function(a,b){return t[b[0]].hit-t[a[0]].hit||a[0]-b[0];});
+    if(so==="miss")list.sort(function(a,b){return t[b[0]].miss-t[a[0]].miss||a[0]-b[0];});
+    if(so==="none")list.sort(function(a,b){var x=t[a[0]],y=t[b[0]];return (x.hit+x.miss+x.unsure)-(y.hit+y.miss+y.unsure)||a[0]-b[0];});
+    $("count").textContent=list.length+" / "+P.length+" 本"+(onlyKey?"（仮説"+onlyKey+"の試作だけ。もう一度押すと解除）":"");
+    var h="";
+    list.forEach(function(p){
+      var c=t[p[0]], tot=c.hit+c.miss+c.unsure, my=mine.v[p[0]], lb=LB[p[0]], tg=TG[lb[0]];
+      var dirs=p[5]==="-"?"":p[5].split("").map(function(d){return '<span class="tag">'+DIRN[d]+'</span>';}).join("");
+      h+='<article class="card'+(lb[0]==="X"||lb[0]==="H"?" out":"")+'" data-id="'+p[0]+'">'+
+        '<div class="top"><span class="no">'+p[0]+'</span><h3>'+esc(p[2])+'</h3></div>'+
+        '<div><span class="prio '+lb[0]+'">'+tg.n+'</span></div><p class="why">'+esc(lb[1])+'</p>'+
+        '<div class="tags"><span class="tag">'+VIEWS[p[3]].n+'</span><span class="tag'+(p[4]==="抽象"?" abs":"")+'">'+p[4]+'</span>'+dirs+(p[6]==="その他"?'<span class="tag">行列以外</span>':"")+'</div>'+
+        '<p class="hyp">'+esc(p[7])+'</p>'+
+        '<a class="open" href="'+p[1]+'">試作を開く →</a>'+
+        '<div class="bar" aria-hidden="true">'+(tot?'<i style="width:'+(c.hit/tot*100)+'%;background:var(--ok)"></i><i style="width:'+(c.miss/tot*100)+'%;background:var(--ng)"></i><i style="width:'+(c.unsure/tot*100)+'%;background:var(--mid)"></i>':"")+'</div>'+
+        '<div class="vote" role="group" aria-label="この仮説への投票">'+
+          '<button type="button" class="hit" data-v="hit" aria-pressed="'+(my==="hit")+'">当たりそう <span class="n">'+c.hit+'</span></button>'+
+          '<button type="button" class="miss" data-v="miss" aria-pressed="'+(my==="miss")+'">外れそう <span class="n">'+c.miss+'</span></button>'+
+          '<button type="button" class="unsure" data-v="unsure" aria-pressed="'+(my==="unsure")+'">分からない <span class="n">'+c.unsure+'</span></button>'+
+        '</div>'+
+        '<form class="cmt"><input id="c'+p[0]+'" maxlength="80" placeholder="一言（例：後ろには効くが横は無理）" value="'+esc(mine.c[p[0]]||"")+'" aria-label="'+esc(p[2])+'への一言"></form>'+
+        (c.c.length?'<ul class="cmts">'+c.c.map(function(x){return "<li>"+esc(x)+"</li>";}).join("")+'</ul>':"")+
+      '</article>';
+    });
+    $("grid").innerHTML=h||'<p class="status">条件に合う仮説はありません。絞り込みを変えてください。</p>';
+    // summary
+    var sh="";
+    ["v11","v10","v0","v1","v2","v3","v4","v5","v6","v7","v8","v9"].forEach(function(v){
+      var ps=P.filter(function(p){return p[3]===v;});
+      var a={hit:0,miss:0,unsure:0}, best=null;
+      ps.forEach(function(p){var c=t[p[0]];a.hit+=c.hit;a.miss+=c.miss;a.unsure+=c.unsure;if(c.hit>0&&(!best||c.hit>t[best[0]].hit))best=p;});
+      sh+="<tr><td>"+VIEWS[v].n+"</td><td class='num'>"+ps.length+"</td><td class='num'>"+a.hit+"</td><td class='num'>"+a.miss+"</td><td class='num'>"+a.unsure+"</td><td>"+(best?best[0]+" "+esc(best[2]):"—")+"</td></tr>";
+    });
+    $("sumBody").innerHTML=sh;
+    $("voters").textContent=T.voters;
+  }
+
+  var writing=false, pending=false;
+  function persist(){
+    ls(false,mine);
+    if(!shared||!db||!myId)return;
+    if(writing){pending=true;return;}
+    writing=true;
+    db.doc("votes/"+myId).set({v:mine.v,c:mine.c,t:Date.now()}).catch(function(e){
+      if(e&&e.code==="invalid_argument"){shared=false;setStatus("local");}
+    }).then(function(){writing=false;if(pending){pending=false;persist();}});
+  }
+  function setStatus(mode){
+    var s=$("status");
+    if(mode==="shared")s.textContent="チームの投票を集計中。押した票はすぐ全員の数字に反映されます（名前は出ません）。";
+    else if(mode==="readonly")s.textContent="このページを見る権限だけなので、チームの集計に票を入れられません。票はこの端末に保存されます。下の「自分の票をコピー」でDiscordに貼ってください。";
+    else s.textContent="チームの集計に接続できないため、票はこの端末にだけ保存されます。下の「自分の票をコピー」でDiscordに貼ってください。";
+  }
+
+  $("grid").addEventListener("click",function(e){
+    var b=e.target.closest(".vote button"); if(!b)return;
+    var id=b.closest(".card").getAttribute("data-id"), v=b.getAttribute("data-v");
+    if(mine.v[id]===v)delete mine.v[id]; else mine.v[id]=v;
+    persist(); render();
+    var nb=document.querySelector('.card[data-id="'+id+'"] .vote button[data-v="'+v+'"]'); if(nb)nb.focus();
+  });
+  var cTimer=null;
+  $("grid").addEventListener("input",function(e){
+    var inp=e.target.closest(".cmt input"); if(!inp)return;
+    var id=inp.closest(".card").getAttribute("data-id");
+    var val=inp.value.trim(); if(val)mine.c[id]=val; else delete mine.c[id];
+    clearTimeout(cTimer); cTimer=setTimeout(persist,800);
+  });
+  $("grid").addEventListener("submit",function(e){e.preventDefault();persist();render();});
+  ["fTarget","hideOut","fView","fKind","fDir","fScope","fSort"].forEach(function(id){$(id).addEventListener("change",function(){onlyIds=null;onlyKey=null;render();});});
+
+  $("copyBtn").addEventListener("click",function(){
+    var lab={hit:"当たりそう",miss:"外れそう",unsure:"分からない"};
+    var lines=["【50仮説 投票】"];
+    P.forEach(function(p){ if(mine.v[p[0]]||mine.c[p[0]]) lines.push(p[0]+" "+p[2]+"："+(lab[mine.v[p[0]]]||"-")+(mine.c[p[0]]?"／"+mine.c[p[0]]:"")); });
+    if(lines.length===1)lines.push("（まだ投票していません）");
+    var txt=lines.join("\n"), out=$("copyOut");
+    out.value=txt; out.hidden=false;
+    var done=function(ok){$("copyMsg").textContent=ok?"コピーしました":"下の枠を選択してコピーしてください";if(!ok){out.focus();out.select();}};
+    try{navigator.clipboard.writeText(txt).then(function(){done(true);},function(){done(false);});}catch(err){done(false);}
+  });
+
+  render();
+
+  // shared voting via db
+  if(window.claude&&typeof window.claude.use==="function"){
+    Promise.all([window.claude.use("db"),window.claude.use("user")]).then(function(r){
+      db=r[0]; var user=r[1];
+      if(!db||!user){setStatus("local");return;}
+      return Promise.all([user.id(),user.can("data.write")]).then(function(x){
+        myId=x[0]; var canW=x[1];
+        db.collection("votes").onSnapshot(function(snap){
+          var next={};
+          snap.docs.forEach(function(d){ if(d.exists) next[d.id]=d.data()||{}; });
+          if(myId&&next[myId]&&!Object.keys(mine.v).length&&!Object.keys(mine.c).length){
+            var m=next[myId]; mine={v:Object.assign({},m.v||{}),c:Object.assign({},m.c||{})}; ls(false,mine);
+          }
+          if(myId)delete next[myId];
+          all=next; render();
+        },function(){setStatus("local");});
+        if(myId&&canW!==false){shared=true;setStatus("shared");}
+        else setStatus("readonly");
+      });
+    }).catch(function(){setStatus("local");});
+  } else {
+    setStatus("local");
+  }
+})();
+</script>

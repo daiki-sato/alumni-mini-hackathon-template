@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ショウスウハレーダー</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+  --raised:#FFFFFF; --sunk:#E7EAE5;
+  --shadow-1:0 1px 2px rgba(26,35,32,.08),0 1px 1px rgba(26,35,32,.04);
+  --shadow-2:0 6px 18px rgba(26,35,32,.14),0 2px 4px rgba(26,35,32,.06);
+  --radius:12px; --flap:rgba(255,255,255,.07); --board-rule:rgba(246,195,67,.28);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --raised:#232A26; --sunk:#151A18;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 8px 22px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.3);}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;
+  --raised:#232A26; --sunk:#151A18;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 8px 22px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.3);}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+.wrap{max-width:560px;margin:0 auto;padding-top:12px;padding-bottom:48px;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a{color:var(--ink)}
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.back{display:inline-block;font-size:14px;margin:4px 0 12px;color:var(--muted)}
+h1{font-family:var(--font-display);font-size:30px;letter-spacing:-.02em;margin:0 0 12px;font-weight:700;line-height:1.2}
+h2{font-family:var(--font-display);font-size:19px;letter-spacing:-.01em;margin:30px 0 10px;font-weight:700}
+h2 .step{font-family:var(--font-mono);font-size:12px;color:var(--muted);font-weight:600;margin-right:8px;letter-spacing:0}
+.sub{font-size:13px;color:var(--muted);margin:-4px 0 10px;line-height:1.6}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+/* 仮説カード */
+.hyp{border:1px solid var(--line);border-left:4px solid var(--signal);background:var(--surface);border-radius:var(--radius);font-size:13px;line-height:1.6}
+.hyp summary{cursor:pointer;padding:9px 12px;list-style:none;display:flex;gap:8px;align-items:baseline}
+.hyp summary::-webkit-details-marker{display:none}
+.hyp summary::after{content:"開く";margin-left:auto;font-size:11px;color:var(--muted);flex:none}
+.hyp[open] summary::after{content:"たたむ"}
+.hyp .pos{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.hyp .body{padding:0 12px 10px}
+.hyp p{margin:4px 0 0}
+
+.sample{font-size:12px;color:var(--muted);margin:12px 0 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-size:14px;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.main{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+.btn.small{min-height:36px;font-size:12px;padding:0 10px}
+.btn.ng{color:var(--ng);border-color:var(--ng)}
+.notice{background:var(--raised);border:1px solid var(--ink);border-radius:var(--radius);padding:12px;margin-top:10px;font-size:14px;box-shadow:var(--shadow-2)}
+.notice .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+/* 場面イラスト */
+.scene{margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 10px 8px;box-shadow:var(--shadow-1)}
+.scene svg{display:block;width:100%;height:auto}
+.scene .cap{font-size:12px;color:var(--muted);margin:6px 2px 0;line-height:1.5;word-break:break-all}
+.scene .cap b{color:var(--ink);font-weight:700}
+.sc-ground{stroke:var(--line);stroke-width:2}
+.sc-bld{fill:var(--raised);stroke:var(--muted);stroke-width:1}
+.sc-roof{fill:var(--board)}
+.sc-door{fill:var(--board)}
+.sc-win{fill:var(--sunk);stroke:var(--muted);stroke-width:.8}
+.sc-win.lit{fill:var(--signal);opacity:.85}
+.sc-signbg{fill:var(--board)}
+.sc-signtx{fill:var(--board-ink);font-family:var(--font-display);font-weight:700;text-anchor:middle;dominant-baseline:central}
+.sc-p{fill:var(--muted)}
+.sc-p.mate{fill:var(--ok)}
+.sc-cane{stroke:var(--muted);stroke-width:1.4;stroke-linecap:round}
+.sc-phone{fill:var(--ink)}
+.sc-link{fill:none;stroke:var(--ok);stroke-width:1.4;stroke-dasharray:2 2}
+.sc-me{fill:var(--signal)}
+.sc-melab{fill:var(--ink);font-size:8px;font-family:var(--font-body);text-anchor:middle}
+.sc-buzz{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-linecap:round}
+.sc-empty{fill:var(--muted);font-size:9px;font-family:var(--font-body)}
+
+/* ボード */
+.board{background:var(--board);color:var(--board-ink);border-radius:var(--radius);padding:14px 16px 12px;margin-top:12px;box-shadow:var(--shadow-1)}
+.board .cap{font-size:12px;opacity:.85;margin-bottom:6px}
+.board .row{display:flex;align-items:flex-end;gap:10px}
+.board .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:46px;line-height:1.1;display:flex;gap:3px}
+.board .unit{font-family:var(--font-display);font-size:18px;font-weight:700;padding-bottom:6px}
+.board .of{font-family:var(--font-mono);font-size:13px;opacity:.8;padding-bottom:9px;margin-left:auto;text-align:right}
+.fc{display:inline-block;min-width:.66em;text-align:center;background:var(--flap);border-radius:4px;padding:0 2px;position:relative}
+.board .diff{margin-top:10px;font-size:13px;border-top:1px solid var(--board-rule);padding-top:8px;opacity:.95;line-height:1.6}
+
+/* 好みチップ */
+.prefbox{position:relative}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:inherit;font-size:14px;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;text-align:left;line-height:1.35}
+.chip[aria-pressed="true"]{background:var(--board);color:var(--board-ink);border-color:var(--board);font-weight:700}
+.chip[aria-pressed="true"]::before{content:"✓ ";font-family:var(--font-mono)}
+.chip:disabled{opacity:.45;cursor:not-allowed}
+.pcount{font-size:12px;color:var(--muted);margin-top:8px}
+.tip{position:relative;background:var(--board);color:var(--board-ink);border-radius:var(--radius);padding:10px 44px 10px 12px;font-size:13px;line-height:1.5;box-shadow:var(--shadow-2);margin-bottom:12px}
+.tip::after{content:"";position:absolute;left:28px;bottom:-6px;width:12px;height:12px;background:var(--board);transform:rotate(45deg)}
+.xbtn{position:absolute;top:4px;right:4px;width:36px;height:36px;border:0;background:none;color:var(--board-ink);font:inherit;font-size:18px;cursor:pointer;border-radius:8px}
+
+/* モード切りかえ */
+.seg{display:flex;gap:6px}
+.seg button{flex:1;min-width:44px;min-height:44px;font:inherit;font-size:14px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--board);color:var(--board-ink);border-color:var(--board);font-weight:700}
+.town{font-size:12px;color:var(--muted);margin:8px 2px 10px}
+
+/* レーダー */
+.radarbox{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px;box-shadow:var(--shadow-1)}
+#radar{display:block;width:100%;height:auto;max-width:440px;margin:0 auto}
+.r-bg{fill:var(--sunk)}
+.r-inner{fill:var(--ok);opacity:.12}
+.r-ring{fill:none;stroke:var(--line);stroke-width:1}
+.r-ring.in{stroke:var(--ok);stroke-dasharray:3 3;stroke-width:1.2}
+.r-axis{stroke:var(--line);stroke-width:.8}
+.r-lab{fill:var(--muted);font-size:9px;font-family:var(--font-body);text-anchor:middle}
+.r-lab.in{fill:var(--ok);font-weight:700}
+.r-sweepline{stroke:var(--ok);stroke-width:1.6;opacity:.7}
+.r-wedge{fill:var(--ok);opacity:.1}
+.r-me{fill:var(--signal);stroke:var(--surface);stroke-width:2}
+.r-melab{fill:var(--signal-ink);font-size:8px;font-weight:700;font-family:var(--font-body);text-anchor:middle;dominant-baseline:central}
+.pt{cursor:pointer;outline:none}
+.pt .hit{fill:transparent}
+.ping{opacity:0}
+.pt .dot{fill:var(--muted);stroke:var(--surface);stroke-width:1.5}
+.pt.in .dot{fill:var(--ok)}
+.pt.sel .dot{stroke:var(--ink);stroke-width:2.6}
+.pt:focus-visible .dot{stroke:var(--signal);stroke-width:3}
+.pt .no{fill:var(--surface);font-family:var(--font-mono);font-size:8px;font-weight:600;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.pt .nm{fill:var(--ink);font-size:8.5px;font-family:var(--font-body);pointer-events:none}
+.pt.out .nm{fill:var(--muted)}
+.legend{font-size:12px;color:var(--muted);margin:8px 2px 0;line-height:1.7}
+.sw{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px;margin-right:3px}
+.sw.a{background:var(--ok)}.sw.b{background:var(--muted)}
+.empty{position:absolute;inset:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px;background:var(--surface);border-radius:10px;opacity:.97}
+.empty svg{width:140px;height:auto}
+.empty p{font-size:13px;line-height:1.7;color:var(--muted);margin:8px 0 10px;max-width:290px}
+.empty p b{color:var(--ink)}
+
+/* 一覧 */
+.list{list-style:none;margin:12px 0 0;padding:0;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden;box-shadow:var(--shadow-1)}
+.list li{border-bottom:1px solid var(--line)}
+.list li:last-child{border-bottom:0}
+.list button{all:unset;box-sizing:border-box;width:100%;min-height:48px;padding:6px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px}
+.list button:focus-visible{outline:3px solid var(--signal);outline-offset:-3px}
+.list li.sel{background:var(--sunk)}
+.list .no{font-family:var(--font-mono);font-size:12px;color:var(--muted);width:18px;flex:none}
+.list .nm2{flex:1;min-width:0;word-break:break-all}
+.list .rg{font-size:11px;flex:none;color:var(--muted)}
+.list .rg.in{color:var(--ok);font-weight:700}
+.list .sh{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;flex:none;width:52px;text-align:right}
+.list .emp{padding:14px;font-size:13px;color:var(--muted)}
+
+/* 店カード */
+.card{background:var(--raised);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow-2)}
+.card .nm{font-family:var(--font-display);font-weight:700;font-size:21px;letter-spacing:-.01em;line-height:1.3;word-break:break-all}
+.card .kd{font-size:12px;color:var(--muted);margin-top:2px}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:6px;border:1px solid var(--line);color:var(--muted);margin-top:8px}
+.tag.in{color:var(--ok);border-color:var(--ok)}
+.rare{margin-top:14px;background:var(--board);color:var(--board-ink);border-radius:10px;padding:10px 12px}
+.rare .l{font-size:12px;opacity:.85}
+.rare .v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:28px;line-height:1.2}
+.rare .v small{font-size:13px;font-family:var(--font-body);font-weight:500;opacity:.9;margin-left:4px}
+.card h3{font-family:var(--font-display);font-size:15px;margin:16px 0 6px;font-weight:700}
+.feat{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-size:13px}
+.feat .tr{height:10px;background:var(--sunk);border-radius:5px;overflow:hidden}
+.feat .tr i{display:block;height:100%;width:0;background:var(--muted);border-radius:5px}
+.feat .tr i.hi{background:var(--ok)}
+.feat .pv{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;text-align:right;min-width:40px}
+.why{margin:0;padding:0;list-style:none}
+.why li{font-size:14px;line-height:1.6;padding:6px 0 6px 18px;border-top:1px solid var(--line);position:relative}
+.why li:first-child{border-top:0}
+.why li::before{content:"";position:absolute;left:2px;top:14px;width:8px;height:8px;border-radius:2px;background:var(--ok)}
+.why li.no::before{background:var(--line)}
+.why li small{display:block;font-size:11px;color:var(--muted)}
+.rev{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.6}
+.rev b{color:var(--ink);font-family:var(--font-mono)}
+
+/* 結果パネル */
+.result{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow-1)}
+.fact{font-family:var(--font-display);font-size:16px;font-weight:700;line-height:1.55;letter-spacing:-.01em;margin:0 0 12px}
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center}
+.bars .bl{font-size:13px;line-height:1.3;grid-column:1/-1;margin-top:8px;font-weight:700}
+.bars .gl{font-size:12px;color:var(--muted);width:38px}
+.track{position:relative;height:14px;background:var(--sunk);border-radius:6px;overflow:hidden}
+.fill{height:100%;width:0;border-radius:6px;background:var(--muted)}
+.fill.in{background:var(--ok)}
+.bars .bv{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;text-align:right;min-width:40px}
+.ticks{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--muted);grid-column:2;margin-top:2px}
+
+/* 足すフォーム */
+.add{margin-top:14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
+.add summary{cursor:pointer;padding:12px;font-size:14px;font-weight:700;list-style:none}
+.add summary::-webkit-details-marker{display:none}
+.add .in{padding:0 12px 14px}
+.field{margin:12px 0 0}
+.field>label,.field>.fl{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input[type=text]{font:inherit;font-size:16px;min-height:44px;width:100%;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+.checks{display:grid;grid-template-columns:1fr;gap:4px}
+.checks label{display:flex;align-items:center;gap:8px;min-height:40px;font-size:14px;cursor:pointer}
+.checks input{width:20px;height:20px;accent-color:var(--ok)}
+.seg.mono button{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:13px}
+.note{font-size:12px;color:var(--muted);line-height:1.7;margin-top:14px}
+
+/* トースト・下部バー */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--board);color:var(--board-ink);border-radius:var(--radius);box-shadow:var(--shadow-2);padding:6px 6px 6px 16px;display:flex;align-items:center;gap:10px;font-size:14px;z-index:20;max-width:calc(100% - 32px)}
+.toast[hidden]{display:none}
+.toast button{font:inherit;font-size:14px;font-weight:700;min-height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--board-ink);background:none;color:var(--board-ink);cursor:pointer}
+.bar{display:none}
+@media (max-width:600px){
+  .wrap{padding-bottom:calc(130px + env(safe-area-inset-bottom, 0px))}
+  .bar{display:block;position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--raised);border-top:1px solid var(--line);box-shadow:var(--shadow-2);padding:8px max(12px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px))}
+  .bar .bt{font-size:11px;color:var(--muted);margin:0 2px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar .bt b{color:var(--ink)}
+  .bar .brow{display:flex;gap:6px}
+  .bar .seg{flex:1.4}
+  .bar .btn{flex:1;padding:0 8px;font-size:13px}
+  .toast{bottom:calc(100px + env(safe-area-inset-bottom, 0px))}
+  .modetop{display:none}
+  h1{font-size:27px}
+  .board .num{font-size:40px}
+}
+
+@media (prefers-reduced-motion: no-preference){
+  .btn,.seg button,.chip,.list button,.xbtn,.toast button{transition:transform .15s ease,background-color .2s ease,color .2s ease}
+  .btn:active,.seg button:active,.chip:active,.list button:active,.toast button:active{transform:scale(.96)}
+  .fc.go{animation:flip .26s ease-out}
+  @keyframes flip{0%{transform:rotateX(90deg);opacity:.2}100%{transform:rotateX(0);opacity:1}}
+  .r-sweep{animation:spin 7s linear infinite;transform-box:view-box;transform-origin:160px 160px}
+  @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  .pt{transition:transform .3s cubic-bezier(.3,.7,.4,1)}
+  .pt .dot{transition:fill .25s ease}
+  .pt:active .dot{transform:scale(.85);transform-box:fill-box;transform-origin:center}
+  .ping{animation:ping .5s ease-out forwards;transform-box:fill-box;transform-origin:center}
+  @keyframes ping{0%{transform:scale(.6);opacity:.7}100%{transform:scale(2.2);opacity:0}}
+  .card,.tip,.notice{animation:pop .22s ease-out}
+  @keyframes pop{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
+  .toast:not([hidden]){animation:toastin .22s ease-out}
+  @keyframes toastin{0%{opacity:0;transform:translate(-50%,10px)}100%{opacity:1;transform:translate(-50%,0)}}
+  .fill,.feat .tr i{transition:width .5s cubic-bezier(.3,.7,.4,1)}
+  .sc-in{animation:scin .3s ease-out both}
+  @keyframes scin{0%{opacity:0;transform:translateY(5px)}100%{opacity:1;transform:translateY(0)}}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">← 一覧へ</a>
+  <h1>ショウスウハレーダー</h1>
+
+  <details class="hyp" open aria-label="仮説カード">
+    <summary><span class="pos">65 同じ少数派を選んだ人どうし</span></summary>
+    <div class="body">
+      <p><b>仮説</b> 人があまり選ばない店を自分で選ぶと、そこにいる人も「同じものを選んだ少数派」に見えて、仲間だと思える（海外で日本のアニメの話ができる人と仲良くなれたのと同じ）。</p>
+      <p><b>確かめること</b></p>
+      <p>当たり＝「この店を選ぶ人は少ない」と分かると、そこにいる人に親しみがわきそう</p>
+      <p>外れ＝少数派の店でも、知らない人は知らない人</p>
+    </div>
+  </details>
+
+  <div class="sample" id="sampleBar">
+    <span id="sampleTag">サンプルデータ（架空の店）。実際はGoogleマップ等の公開情報から作る想定</span>
+    <button class="btn small" id="btnClear" type="button">サンプルを消して自分で使う</button>
+    <button class="btn small" id="btnSample" type="button">サンプルに戻す</button>
+  </div>
+  <div id="notice" role="status" aria-live="polite"></div>
+
+  <section class="scene" aria-label="選んだ店の列の様子">
+    <svg id="scene" viewBox="0 0 320 108" aria-hidden="true"></svg>
+    <div class="cap" id="sceneCap"></div>
+  </section>
+
+  <section class="board" aria-label="レーダーの内側の店の数">
+    <div class="cap">レーダーの内側（同じ少数派が集まる店）</div>
+    <div class="row">
+      <div class="num" id="bNum" aria-hidden="true"></div>
+      <div class="unit">軒</div>
+      <div class="of" id="bOf">全0軒中</div>
+    </div>
+    <div class="diff" id="bDiff"></div>
+    <span class="sr" id="bLive" aria-live="polite"></span>
+  </section>
+
+  <h2><span class="step">1</span>自分の少数派の好みを選ぶ</h2>
+  <p class="sub">3つまで。選ぶとレーダーの点が並びかわります。</p>
+  <div class="prefbox">
+    <div id="tip"></div>
+    <div class="chips" id="chips" role="group" aria-label="少数派の好み（3つまで）"></div>
+    <div class="pcount" id="pcount" aria-live="polite"></div>
+  </div>
+
+  <h2><span class="step">2</span>レーダーで店を見る</h2>
+  <div class="seg modetop" role="group" aria-label="街の切りかえ">
+    <button type="button" id="modeHome" aria-pressed="true">近所の街</button>
+    <button type="button" id="modeTrip" aria-pressed="false">旅行先の街</button>
+  </div>
+  <div class="town" id="townName"></div>
+  <div class="radarbox" id="radarbox">
+    <svg id="radar" viewBox="0 0 320 320" role="group" aria-label="レーダー。中心が自分。中心に近いほど自分と同じ好みの少数派が集まる店、外側ほどみんなが行く店。点を選ぶと下に店の説明が出る">
+      <g id="rBase"></g><g id="rSweep" class="r-sweep"></g><g id="rPts"></g><g id="rMe"></g>
+    </svg>
+    <div id="empty"></div>
+  </div>
+  <div class="legend"><span class="sw a"></span>内側（同じ少数派が集まる店）　<span class="sw b"></span>中間・外側（みんなが行く店に近い）　／　点の数字は下の一覧の番号</div>
+  <ul class="list" id="list" aria-label="中心に近い順の店"></ul>
+
+  <details class="add" id="addBox">
+    <summary>行く候補の店を足す（この画面を閉じると消えます）</summary>
+    <div class="in">
+      <div class="field">
+        <label for="addName">店の呼び方</label>
+        <input type="text" id="addName" maxlength="24" autocomplete="off">
+      </div>
+      <div class="field">
+        <span class="fl" id="addTLab">当てはまること</span>
+        <div class="checks" id="addTraits" role="group" aria-labelledby="addTLab"></div>
+      </div>
+      <div class="field">
+        <span class="fl" id="addSLab">この街で週に行く人の割合（だいたい）</span>
+        <div class="seg mono" id="addShare" role="group" aria-labelledby="addSLab"></div>
+      </div>
+      <div style="margin-top:14px"><button class="btn main" id="addBtn" type="button">レーダーに足す</button></div>
+    </div>
+  </details>
+
+  <h2><span class="step">3</span>選んだ店について分かること</h2>
+  <div id="card"></div>
+
+  <h2>いまのデータで分かること</h2>
+  <div class="result">
+    <p class="fact" id="fact" aria-live="polite"></p>
+    <div class="bars" id="bars"></div>
+  </div>
+
+  <p class="note">サンプルデータ。店名・数字はすべて架空です。実際はGoogleマップ等の公開情報（口コミの数・評価・投稿の数など）から作る想定。覚えておくのは選んだ好みと街の切りかえだけで、この端末の中に保存されます。</p>
+</div>
+
+<div class="bar" id="bar">
+  <div class="bt" id="barTxt"></div>
+  <div class="brow">
+    <div class="seg" role="group" aria-label="街の切りかえ">
+      <button type="button" id="barHome" aria-pressed="true">近所</button>
+      <button type="button" id="barTrip" aria-pressed="false">旅行先</button>
+    </div>
+    <button class="btn main" type="button" id="barNext">内側の次の店</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden><span id="toastMsg">変えました</span><button type="button" id="toastUndo">取り消す</button></div>
+
+<script>
+(function(){
+  var KEY = "hack5-ik-5-v1";
+  var CX = 160, CY = 160, R0 = 24, R = 136;
+  var IN_SCORE = 0.67, MID_SCORE = 0.4;
+
+  var PREFS = [
+    {id:"old", label:"古い個人店が好き", short:"古い個人店"},
+    {id:"elder", label:"年配の常連が多い店が好き", short:"年配の常連"},
+    {id:"quiet", label:"静かな店が好き", short:"静か"},
+    {id:"rule", label:"作法のある店が好き", short:"作法"},
+    {id:"offline", label:"ネットにあまり出ていない店が好き", short:"ネットに出ていない"},
+    {id:"local", label:"海外では現地の人の店に行く", short:"現地・地元の人の店"}
+  ];
+  var TOWNS = {
+    home: "近所の街：架空の商店街（駅から徒歩10分の範囲・9軒）",
+    trip: "旅行先の街：架空の港町（旧市街の範囲・9軒）"
+  };
+  var SHARES = [1, 3, 8, 20];
+
+  function S(o){ return o; }
+  var SAMPLE = {
+    home: [
+      S({name:"喫茶 しずく堂", kind:"喫茶店", share:1.2, rev:14, star:3.5, elder:.75, solo:.7, group:.1, net:.05,
+        t:{old:1, elder:1, quiet:.9, rule:.4, offline:1, local:.9},
+        f:{old:"創業1971年。店主夫婦の2人で営業", elder:"常連の7割が60代以上", quiet:"BGMなし。新聞をめくる音が聞こえる程度", offline:"公式サイトなし。SNSの投稿は年に数件", local:"客の9割が歩いて来る近所の人"}}),
+      S({name:"中華そば 一灯", kind:"ラーメン", share:3.5, rev:210, star:3.8, elder:.3, solo:.8, group:.1, net:.25,
+        t:{old:.8, elder:.4, quiet:.6, rule:1, offline:.5, local:.6},
+        f:{old:"創業1988年。2代目が一人で作る", quiet:"カウンター7席。私語が少ない", rule:"食券なし。注文は座ってから口頭で一度だけ", local:"客の6割が近所の人"}}),
+      S({name:"麺屋 映え丸", kind:"ラーメン", share:18, rev:2400, star:4.6, elder:.05, solo:.2, group:.65, net:.75,
+        t:{old:0, elder:0, quiet:.1, rule:.1, offline:0, local:.15}, f:{},
+        revNote:"開店1年半で口コミ2,400件。投稿の多くに同じ角度の写真"}),
+      S({name:"定食 まるや", kind:"定食", share:4.2, rev:95, star:3.6, elder:.6, solo:.65, group:.2, net:.1,
+        t:{old:.7, elder:.9, quiet:.5, rule:.3, offline:.8, local:1},
+        f:{old:"創業1979年。メニューは壁の手書き札だけ", elder:"昼の客の6割が60代以上", offline:"店の発信なし。口コミは常連の短い投稿だけ", local:"客のほぼ全員が近所で働く人か住む人"}}),
+      S({name:"鮨 しの田", kind:"寿司", share:0.8, rev:41, star:3.9, elder:.5, solo:.35, group:.3, net:.1,
+        t:{old:.8, elder:.6, quiet:1, rule:1, offline:.9, local:.5},
+        f:{old:"創業1966年。親方は2代目", elder:"常連の半分が60代以上", quiet:"カウンター6席。2人客も小声", rule:"おまかせのみ。写真は親方に一声かけてから", offline:"予約は電話だけ。ネットの予約サイトに出ていない"}}),
+      S({name:"牛丼 はやめし（チェーン）", kind:"牛丼", share:26, rev:380, star:3.2, elder:.2, solo:.7, group:.15, net:.05,
+        t:{old:0, elder:.2, quiet:.3, rule:0, offline:.3, local:.4}, f:{},
+        revNote:"一人客は多いが、街の4人に1人が行く店"}),
+      S({name:"焼き菓子 ルミエ", kind:"カフェ", share:9, rev:860, star:4.8, elder:.05, solo:.15, group:.7, net:.8,
+        t:{old:.1, elder:0, quiet:.3, rule:0, offline:0, local:.1}, f:{},
+        revNote:"開店2年で口コミ860件・評価4.8。来店特典つきの投稿が多い"}),
+      S({name:"立ち飲み たつや", kind:"立ち飲み", share:2.4, rev:22, star:3.4, elder:.7, solo:.85, group:.1, net:.05,
+        t:{old:.9, elder:1, quiet:.2, rule:.7, offline:1, local:.9},
+        f:{old:"創業1975年。酒屋の奥の角打ち", elder:"夕方の客の7割が60代以上", rule:"注文と支払いはその都度。長居しないのが決まり", offline:"店名で検索しても地図以外ほぼ出ない", local:"客の9割が近所の人"}}),
+      S({name:"蕎麦 ゆきの", kind:"蕎麦", share:1.9, rev:63, star:3.7, elder:.55, solo:.6, group:.2, net:.15,
+        t:{old:.9, elder:.7, quiet:.9, rule:.6, offline:.7, local:.6},
+        f:{old:"創業1958年。手打ちは朝だけ", elder:"常連の半分以上が60代以上", quiet:"BGMなし。一人客がほとんど黙って食べる", rule:"そばが切れたら閉店。並び直しはしない", offline:"公式サイトなし。口コミは月に1件ほど", local:"客の6割が近所の人"}})
+    ],
+    trip: [
+      S({name:"寿司バー SAKURA", kind:"日本人観光客向け", share:14, rev:1900, star:4.6, elder:.05, solo:.1, group:.75, net:.85,
+        t:{old:0, elder:0, quiet:.2, rule:0, offline:0, local:0}, f:{},
+        revNote:"口コミの8割が日本語。日本語メニューあり"}),
+      S({name:"ラーメン 東京屋", kind:"日本人観光客向け", share:11, rev:1200, star:4.4, elder:.05, solo:.25, group:.6, net:.8,
+        t:{old:0, elder:0, quiet:.2, rule:0, offline:0, local:.05}, f:{},
+        revNote:"旅行サイトの「日本の味」特集に毎年掲載"}),
+      S({name:"バル・セントラル", kind:"ガイド本に載るバル", share:22, rev:3100, star:4.5, elder:.1, solo:.15, group:.7, net:.7,
+        t:{old:.4, elder:.1, quiet:.1, rule:.1, offline:0, local:.1}, f:{},
+        revNote:"3か国語のガイド本に掲載。口コミ3,100件"}),
+      S({name:"市場の食堂 カーザ・ミーニャ", kind:"現地の人の食堂", share:2.0, rev:30, star:3.9, elder:.5, solo:.6, group:.25, net:.05,
+        t:{old:.8, elder:.6, quiet:.2, rule:.5, offline:.9, local:1},
+        f:{old:"市場の2階で50年続く", elder:"昼は市場で働く年配の人が中心", offline:"メニューは黒板だけ。ネットに写真がほとんどない", local:"客の9割が地元の人。英語のメニューなし"}}),
+      S({name:"立ち飲み タベルナ・ド・ポルト", kind:"現地の人の立ち飲み", share:1.4, rev:12, star:3.8, elder:.8, solo:.8, group:.1, net:.03,
+        t:{old:1, elder:1, quiet:.3, rule:.7, offline:1, local:1},
+        f:{old:"港の倉庫街で3代続く", elder:"客の8割が年配の港の常連", rule:"カウンターで頼み、その場で払う。席はない", offline:"看板が小さく、地図アプリに写真が1枚だけ", local:"観光客は週に数人"}}),
+      S({name:"パン屋 パダリア・ヴェーリャ", kind:"老舗のパン屋", share:3.0, rev:75, star:4.0, elder:.6, solo:.7, group:.15, net:.1,
+        t:{old:1, elder:.7, quiet:.6, rule:.6, offline:.7, local:.9},
+        f:{old:"創業1930年代の石窯", elder:"朝の客の6割が年配の近所の人", quiet:"朝は注文の声だけ", rule:"番号札を取って順番を待つ", offline:"公式サイトなし", local:"客の9割が歩いて来る地元の人"}}),
+      S({name:"食堂 オ・セルジオ", kind:"家族経営の食堂", share:2.6, rev:40, star:4.1, elder:.4, solo:.3, group:.5, net:.1,
+        t:{old:.7, elder:.5, quiet:.5, rule:.3, offline:.8, local:.9},
+        f:{old:"家族で40年営業", offline:"予約は店先で口頭のみ", local:"客の大半が近所の家族連れ"}}),
+      S({name:"カフェ ナタ・ナタ", kind:"SNSで話題の菓子店", share:17, rev:2600, star:4.7, elder:.05, solo:.15, group:.7, net:.9,
+        t:{old:.3, elder:0, quiet:.1, rule:0, offline:0, local:.1}, f:{},
+        revNote:"動画投稿で話題。口コミ2,600件・評価4.7"}),
+      S({name:"ワインバー カイシュ", kind:"港の小さなワインバー", share:1.1, rev:18, star:4.0, elder:.4, solo:.55, group:.35, net:.1,
+        t:{old:.6, elder:.4, quiet:1, rule:.5, offline:.8, local:.8},
+        f:{old:"漁師小屋を改装して30年", quiet:"音楽なし。2人客も小声", offline:"SNSの公式アカウントなし", local:"客の8割が地元の人"}})
+    ]
+  };
+
+  var state = {
+    prefs: ["old","elder"],
+    mode: "home",
+    tip: true,
+    data: null,
+    sel: { home: -1, trip: -1 },
+    cleared: false,
+    addTraits: {},
+    addShare: 1
+  };
+
+  /* ---------- 保存（好み・街・吹き出しだけ） ---------- */
+  function load(){
+    try{
+      var raw = window.localStorage && window.localStorage.getItem(KEY);
+      if(!raw) return;
+      var d = JSON.parse(raw);
+      if(d && Object.prototype.toString.call(d.prefs)==="[object Array]"){
+        state.prefs = d.prefs.filter(function(p){ return prefById(p); }).slice(0,3);
+      }
+      if(d && (d.mode==="home" || d.mode==="trip")) state.mode = d.mode;
+      if(d && d.tip===false) state.tip = false;
+    }catch(e){}
+  }
+  function save(){
+    try{
+      if(window.localStorage) window.localStorage.setItem(KEY, JSON.stringify({prefs:state.prefs, mode:state.mode, tip:state.tip}));
+    }catch(e){}
+  }
+
+  /* ---------- 小道具 ---------- */
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+  function pct(v){ return Math.round(v*100); }
+  function prefById(id){ for(var i=0;i<PREFS.length;i++) if(PREFS[i].id===id) return PREFS[i]; return null; }
+  function fmtShare(s){ return (s<10 ? s.toFixed(1) : String(Math.round(s))) + "%"; }
+  function fmtNum(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+  function shops(){ return state.data[state.mode]; }
+
+  /* ---------- 距離の計算 ---------- */
+  function rarity(s){ return clamp(1 - Math.log(Math.max(s.share,1)) / Math.log(30), 0, 1); }
+  function match(s){
+    if(!state.prefs.length) return null;
+    var sum=0;
+    for(var i=0;i<state.prefs.length;i++) sum += (s.t[state.prefs[i]]||0);
+    return sum/state.prefs.length;
+  }
+  function score(s){
+    var m = match(s), r = rarity(s);
+    return m===null ? r : 0.65*m + 0.35*r;
+  }
+  function ring(sc){ return sc>=IN_SCORE ? "in" : (sc>=MID_SCORE ? "mid" : "out"); }
+  function ringLabel(rg){ return rg==="in" ? "内側" : (rg==="mid" ? "中間" : "外側"); }
+  function radius(sc){ return R0 + (1-sc)*(R-R0); }
+  function angleOf(i, n){ n = Math.max(n,1); return (-90 + i*(360/n) + (n%2===0 ? 180/n : 0)) * Math.PI/180; }
+  function ranked(){
+    var list = shops().map(function(s,i){ return {s:s, i:i, sc:score(s)}; });
+    list.sort(function(a,b){ return b.sc-a.sc; });
+    return list;
+  }
+
+  /* ---------- 発車標の数字 ---------- */
+  function flap(el, text){
+    if(!el) return;
+    var prev = el.getAttribute("data-v")||"";
+    if(prev===text && el.innerHTML) return;
+    var h="", i, c;
+    for(i=0;i<text.length;i++){
+      c=text.charAt(i);
+      h+='<span class="fc'+(c!==prev.charAt(i)?' go':'')+'">'+esc(c)+'</span>';
+    }
+    el.innerHTML=h;
+    el.setAttribute("data-v",text);
+  }
+
+  /* ---------- 好みチップ ---------- */
+  function drawChips(){
+    var h="", full = state.prefs.length>=3;
+    PREFS.forEach(function(p){
+      var on = state.prefs.indexOf(p.id)>=0;
+      h += '<button type="button" class="chip" id="pref-'+p.id+'" data-p="'+p.id+'" aria-pressed="'+on+'"'+(full && !on ? ' disabled' : '')+'>'+esc(p.label)+'</button>';
+    });
+    $("chips").innerHTML = h;
+    $("pcount").textContent = state.prefs.length ? ("選んだ好み "+state.prefs.length+"/3"+(full ? "（外すと別のを選べます）" : "")) : "好みを選んでいない間は、行く人の少なさだけで並びます。";
+    drawTip();
+  }
+  function drawTip(){
+    if(!state.tip){ $("tip").innerHTML=""; return; }
+    $("tip").innerHTML = '<div class="tip" role="note">ここを押すと、レーダーの点が並びかわります<button type="button" class="xbtn" id="tipClose" aria-label="吹き出しを閉じる">×</button></div>';
+  }
+  function togglePref(id){
+    var snap = state.prefs.slice();
+    var k = state.prefs.indexOf(id);
+    if(k>=0) state.prefs.splice(k,1);
+    else if(state.prefs.length<3) state.prefs.push(id);
+    else return;
+    save();
+    drawChips(); renderAll(true);
+    var b = $("pref-"+id); if(b && b.focus) b.focus();
+    toast(k>=0 ? "好みを外しました" : "好みを足しました", function(){ state.prefs = snap; save(); drawChips(); renderAll(true); });
+  }
+
+  /* ---------- レーダー ---------- */
+  function drawBase(){
+    var rIn = radius(IN_SCORE), rMid = radius(MID_SCORE), h="";
+    h += '<circle class="r-bg" cx="'+CX+'" cy="'+CY+'" r="'+R+'"/>';
+    h += '<circle class="r-inner" cx="'+CX+'" cy="'+CY+'" r="'+rIn.toFixed(1)+'"/>';
+    h += '<circle class="r-ring" cx="'+CX+'" cy="'+CY+'" r="'+R+'"/>';
+    h += '<circle class="r-ring" cx="'+CX+'" cy="'+CY+'" r="'+rMid.toFixed(1)+'"/>';
+    h += '<circle class="r-ring in" cx="'+CX+'" cy="'+CY+'" r="'+rIn.toFixed(1)+'"/>';
+    h += '<line class="r-axis" x1="'+(CX-R)+'" y1="'+CY+'" x2="'+(CX+R)+'" y2="'+CY+'"/>';
+    h += '<line class="r-axis" x1="'+CX+'" y1="'+(CY-R)+'" x2="'+CX+'" y2="'+(CY+R)+'"/>';
+    h += '<text class="r-lab in" x="'+CX+'" y="'+(CY+rIn-5).toFixed(1)+'">同じ少数派</text>';
+    h += '<text class="r-lab" x="'+CX+'" y="'+(CY+rMid-5).toFixed(1)+'">中間</text>';
+    h += '<text class="r-lab" x="'+CX+'" y="'+(CY+R-6)+'">みんなが行く店</text>';
+    $("rBase").innerHTML = h;
+    var a = 38*Math.PI/180;
+    $("rSweep").innerHTML =
+      '<path class="r-wedge" d="M'+CX+','+CY+' L'+CX+','+(CY-R)+' A'+R+','+R+' 0 0,0 '+(CX-R*Math.sin(a)).toFixed(1)+','+(CY-R*Math.cos(a)).toFixed(1)+' Z"/>'+
+      '<line class="r-sweepline" x1="'+CX+'" y1="'+CY+'" x2="'+CX+'" y2="'+(CY-R)+'"/>';
+    $("rMe").innerHTML = '<circle class="r-me" cx="'+CX+'" cy="'+CY+'" r="13"/><text class="r-melab" x="'+CX+'" y="'+CY+'">自分</text>';
+  }
+  function shortName(n){ n = n.replace(/（.*?）/g,""); return n.length>9 ? n.slice(0,8)+"…" : n; }
+  function drawPoints(ping){
+    var list = shops(), n = list.length, rk = ranked(), order = {}, h = "";
+    rk.forEach(function(o,k){ order[o.i] = k+1; });
+    list.forEach(function(s,i){
+      var sc = score(s), rg = ring(sc), r = radius(sc), a = angleOf(i,n);
+      var x = CX + r*Math.cos(a), y = CY + r*Math.sin(a);
+      var left = Math.cos(a) < -0.2;
+      var lx = left ? -11 : 11;
+      h += '<g class="pt '+rg+(state.sel[state.mode]===i?' sel':'')+'" data-i="'+i+'" tabindex="0" role="button" '+
+        'aria-label="'+esc(s.name)+'、'+ringLabel(rg)+'、週に行く人のうち'+fmtShare(s.share)+'" '+
+        'style="transform:translate('+x.toFixed(1)+'px,'+y.toFixed(1)+'px)">'+
+        (ping && rg==="in" ? '<circle class="ping r-inner" r="9"/>' : '')+
+        '<circle class="hit" r="18"/><circle class="dot" r="9"/><text class="no">'+order[i]+'</text>'+
+        '<text class="nm" x="'+lx+'" y="-11" text-anchor="'+(left?'end':'start')+'">'+esc(shortName(s.name))+'</text></g>';
+    });
+    $("rPts").innerHTML = h;
+    var e = $("empty");
+    if(!n){
+      e.innerHTML = '<div class="empty"><svg viewBox="0 0 140 90" aria-hidden="true">'+
+        '<circle cx="70" cy="45" r="40" class="r-ring"/><circle cx="70" cy="45" r="20" class="r-ring in"/>'+
+        '<circle cx="70" cy="45" r="7" class="r-me"/><circle cx="100" cy="22" r="5" class="sc-p"/><circle cx="54" cy="60" r="5" class="sc-p mate"/></svg>'+
+        '<p>行く候補の店を<b>下の「行く候補の店を足す」</b>から入れると、ここに点が出ます。選んだ好みと重なり、行く人が少ない店ほど<b>中心の近く</b>に来ます。</p>'+
+        '<button class="btn small" type="button" id="emptyAdd">店を足す欄を開く</button></div>';
+    }else e.innerHTML = "";
+  }
+
+  /* ---------- 一覧 ---------- */
+  function drawList(){
+    var rk = ranked(), h = "";
+    if(!rk.length){ $("list").innerHTML = '<li class="emp">まだ店がありません。</li>'; return; }
+    rk.forEach(function(o,k){
+      var rg = ring(o.sc);
+      h += '<li class="'+(state.sel[state.mode]===o.i?'sel':'')+'"><button type="button" data-i="'+o.i+'" id="shop-'+state.mode+'-'+o.i+'">'+
+        '<span class="no">'+(k+1)+'</span><span class="nm2">'+esc(o.s.name)+'</span>'+
+        '<span class="rg '+(rg==="in"?'in':'')+'">'+ringLabel(rg)+'</span><span class="sh">'+fmtShare(o.s.share)+'</span></button></li>';
+    });
+    $("list").innerHTML = h;
+  }
+
+  /* ---------- ボード ---------- */
+  function drawBoard(announce){
+    var list = shops(), inn = 0, names = [];
+    list.forEach(function(s){ if(ring(score(s))==="in"){ inn++; } });
+    flap($("bNum"), String(inn));
+    $("bOf").textContent = "全"+list.length+"軒中";
+    state.prefs.forEach(function(p){ names.push(prefById(p).short); });
+    $("bDiff").textContent = (state.mode==="home" ? "近所の街" : "旅行先の街") + "／好み：" + (names.length ? names.join("・") : "なし（行く人の少なさだけで判定）");
+    if(announce) $("bLive").textContent = "レーダーの内側は"+inn+"軒、全"+list.length+"軒中";
+  }
+
+  /* ---------- 場面イラスト ---------- */
+  function person(x, cls, opt){
+    var y = opt.elder ? 3 : 0, h = "";
+    h += '<g class="sc-in" style="animation-delay:'+(opt.k*40)+'ms">';
+    h += '<circle class="sc-p '+cls+'" cx="'+x+'" cy="'+(62+y)+'" r="5.5"/>';
+    h += '<rect class="sc-p '+cls+'" x="'+(x-6.5)+'" y="'+(69+y)+'" width="13" height="'+(26-y)+'" rx="5"/>';
+    if(opt.elder) h += '<line class="sc-cane" x1="'+(x+9)+'" y1="'+(80)+'" x2="'+(x+11)+'" y2="95"/>';
+    if(opt.net) h += '<rect class="sc-phone" x="'+(x+5)+'" y="'+(64+y)+'" width="4" height="7" rx="1"/>';
+    h += '</g>';
+    return h;
+  }
+  function drawScene(){
+    var list = shops(), i = state.sel[state.mode], s = list[i], h = "";
+    h += '<line class="sc-ground" x1="0" y1="96" x2="320" y2="96"/>';
+    h += '<rect class="sc-bld" x="236" y="26" width="80" height="70"/><rect class="sc-roof" x="230" y="20" width="92" height="9" rx="2"/>';
+    h += '<rect class="sc-door" x="270" y="62" width="20" height="34" rx="2"/>';
+    h += '<rect class="sc-win'+(s?' lit':'')+'" x="244" y="64" width="20" height="16" rx="2"/><rect class="sc-win'+(s?' lit':'')+'" x="296" y="64" width="14" height="16" rx="2"/>';
+    var nm = s ? shortName(s.name) : "どの店？";
+    h += '<rect class="sc-signbg" x="240" y="34" width="72" height="22" rx="3"/><text class="sc-signtx" x="276" y="45" font-size="'+(nm.length>6?8:10)+'">'+esc(nm)+'</text>';
+    var meX = 34;
+    if(!s){
+      h += '<text class="sc-empty" x="60" y="40">店を選ぶと、列の様子が出ます</text>';
+      h += '<circle class="sc-me" cx="'+meX+'" cy="62" r="6"/><rect class="sc-me" x="'+(meX-7)+'" y="69" width="14" height="26" rx="5"/><text class="sc-melab" x="'+meX+'" y="106">自分</text>';
+      $("scene").innerHTML = h;
+      $("sceneCap").textContent = list.length ? "レーダーの点か一覧の店を選ぶと、その店に並ぶ人の様子がここに出ます。" : "店を足すと、その店に並ぶ人の様子がここに出ます。";
+      return;
+    }
+    var known = (typeof s.solo === "number");
+    var solo = known ? s.solo : .5, grp = known ? s.group : .3, eld = known ? s.elder : .3, net = known ? s.net : .3;
+    var pairN = Math.round(grp*6/2), soloN = 6 - pairN*2;
+    var units = [], a = soloN, b = pairN, turn = 0;
+    while(a>0 || b>0){
+      if((turn%2===0 && a>0) || b===0){ units.push(1); a--; } else { units.push(2); b--; }
+      turn++;
+    }
+    var people = [];
+    units.forEach(function(u){ for(var q=0;q<u;q++) people.push({pair:u===2, first:q===0}); });
+    var eldN = Math.round(eld*6), netN = Math.round(net*6), k;
+    for(k=0;k<people.length && eldN>0;k++) if(!people[k].pair){ people[k].elder=true; eldN--; }
+    for(k=0;k<people.length && eldN>0;k++) if(!people[k].elder){ people[k].elder=true; eldN--; }
+    for(k=0;k<people.length && netN>0;k++) if(people[k].pair){ people[k].net=true; netN--; }
+    for(k=people.length-1;k>=0 && netN>0;k--) if(!people[k].net){ people[k].net=true; netN--; }
+    var inner = ring(score(s))==="in";
+    var x = 252, mates = [], cntSolo=0, cntEld=0, cntNet=0, cntMate=0;
+    people.forEach(function(p, k2){
+      x -= (p.pair && !p.first) ? 15 : 28;
+      var mate = known && inner && !p.pair && !p.net;
+      if(mate){ mates.push(x); cntMate++; }
+      if(!p.pair) cntSolo++;
+      if(p.elder) cntEld++;
+      if(p.net) cntNet++;
+      h += person(x, mate ? "mate" : "", {elder:p.elder, net:p.net, k:k2});
+      if(p.pair && !p.first) h += '<path class="sc-buzz sc-in" d="M'+(x+3)+',50 q4,-5 8,0 q4,-5 8,0"/>';
+    });
+    meX = Math.max(20, x - 28);
+    mates.forEach(function(mx){ h += '<path class="sc-link sc-in" d="M'+meX+',54 Q'+((meX+mx)/2)+',30 '+mx+',54"/>'; });
+    h += '<circle class="sc-me" cx="'+meX+'" cy="62" r="6"/><rect class="sc-me" x="'+(meX-7)+'" y="69" width="14" height="26" rx="5"/><text class="sc-melab" x="'+meX+'" y="106">自分</text>';
+    $("scene").innerHTML = h;
+    if(!known){
+      $("sceneCap").innerHTML = "<b>"+esc(s.name)+"</b> の列（想定）。自分で足した店なので、来る人の特徴のデータはありません。";
+      return;
+    }
+    $("sceneCap").innerHTML = "<b>"+esc(s.name)+"</b> の列（データからの想定）。前の6人のうち 一人客 "+cntSolo+"人・年配 "+cntEld+"人・ネットを見て来た人 "+cntNet+"人。"+
+      (inner ? "緑は「同じ選び方をしていそうな一人客」" + cntMate + "人。" : "この店はレーダーの"+ringLabel(ring(score(s)))+"。");
+  }
+
+  /* ---------- 店カード ---------- */
+  function drawCard(){
+    var list = shops(), i = state.sel[state.mode], s = list[i];
+    if(!s){
+      $("card").innerHTML = '<div class="card"><div class="kd">'+(list.length ? "レーダーの点か一覧の店を選ぶと、ここに説明が出ます。" : "店がまだありません。")+'</div></div>';
+      return;
+    }
+    var sc = score(s), rg = ring(sc), known = (typeof s.solo === "number"), h = "";
+    h += '<div class="card" aria-live="polite"><div class="nm">'+esc(s.name)+'</div><div class="kd">'+esc(s.kind||"自分で足した店")+'</div>';
+    h += '<span class="tag '+(rg==="in"?'in':'')+'">レーダーの'+ringLabel(rg)+(rg==="in"?'（同じ少数派が集まる店）':'')+'</span>';
+    h += '<div class="rare"><div class="l">この店を選ぶ人の少なさ</div><div class="v">'+fmtShare(s.share)+'<small>（この街で週に外食する人のうち、ここに行く人）</small></div></div>';
+    if(known){
+      h += '<h3>ここに来る人の特徴</h3><div class="feat">';
+      [["一人客", s.solo, true], ["年配の常連", s.elder, true], ["ネットを見て来た人", s.net, false], ["カップル・グループ", s.group, false]].forEach(function(r){
+        h += '<span>'+r[0]+'</span><div class="tr"><i class="'+(r[2]?'hi':'')+'" data-w="'+pct(r[1])+'"></i></div><span class="pv">'+pct(r[1])+'%</span>';
+      });
+      h += '</div>';
+      h += '<div class="rev">口コミ <b>'+fmtNum(s.rev)+'</b>件・評価 <b>'+s.star.toFixed(1)+'</b>'+(s.revNote ? '<br>'+esc(s.revNote) : '')+'</div>';
+    }else{
+      h += '<div class="rev">自分で足した店なので、来る人の特徴・口コミのデータはありません。</div>';
+    }
+    h += '<h3>あなたと同じ選び方をしている人がいそうな理由</h3><ul class="why">';
+    var reasons = [];
+    state.prefs.forEach(function(p){
+      if((s.t[p]||0) >= 0.6){
+        var txt = (s.f && s.f[p]) ? s.f[p] : "当てはまる（自分で足した情報）";
+        reasons.push('<li>'+esc(txt)+'<small>好み「'+esc(prefById(p).short)+'」と重なる事実</small></li>');
+      }
+    });
+    if(s.share < 5) reasons.push('<li>この街で週に行く人のうち'+fmtShare(s.share)+'。わざわざ選ばないと来ない店<small>行く人の少なさ</small></li>');
+    if(known && s.net <= 0.15) reasons.push('<li>ネットを見て来た人は'+pct(s.net)+'%。多くの人は自分で知って来ている<small>来る人の特徴</small></li>');
+    if(!reasons.length){
+      reasons.push('<li class="no">選んだ好みと重なる事実は、この店では見つかりません'+(s.share>=10 ? '。週に行く人のうち'+fmtShare(s.share)+'が行く、みんなが行く店' : '')+'<small>重なりなし</small></li>');
+    }
+    h += reasons.join("") + '</ul></div>';
+    $("card").innerHTML = h;
+    growLater("#card .feat .tr i");
+  }
+  function growLater(sel){
+    var els = document.querySelectorAll(sel);
+    var run = function(){ for(var k=0;k<els.length;k++) els[k].style.width = els[k].getAttribute("data-w")+"%"; };
+    if(window.requestAnimationFrame) window.requestAnimationFrame(function(){ window.requestAnimationFrame(run); });
+    else run();
+  }
+
+  /* ---------- 結果パネル ---------- */
+  function drawResult(){
+    var list = shops().filter(function(s){ return typeof s.solo === "number"; });
+    var A = [], B = [];
+    list.forEach(function(s){ (ring(score(s))==="in" ? A : B).push(s); });
+    function avg(arr, k){ if(!arr.length) return 0; var t=0; arr.forEach(function(s){ t+=s[k]; }); return t/arr.length; }
+    if(!A.length || !B.length){
+      $("fact").textContent = !list.length ? "来る人の特徴のデータがある店がないため、比べられません。" :
+        (!A.length ? "いまの好みでは、レーダーの内側に店がありません。" : "いまの好みでは、すべての店がレーダーの内側です。");
+      $("bars").innerHTML = "";
+      return;
+    }
+    $("fact").innerHTML = '内側の<span class="mono">'+A.length+'</span>軒は一人客が平均<span class="mono">'+pct(avg(A,"solo"))+'%</span>、ネットを見て来た人<span class="mono">'+pct(avg(A,"net"))+'%</span>。それ以外の<span class="mono">'+B.length+'</span>軒は一人客<span class="mono">'+pct(avg(B,"solo"))+'%</span>、ネット<span class="mono">'+pct(avg(B,"net"))+'%</span>。';
+    var h = "";
+    [["一人客","solo"],["年配の常連","elder"],["ネットを見て来た人","net"],["カップル・グループ","group"]].forEach(function(m){
+      h += '<div class="bl">'+m[0]+'</div>';
+      h += '<span class="gl">内側</span><div class="track"><div class="fill in" data-w="'+pct(avg(A,m[1]))+'"></div></div><span class="bv">'+pct(avg(A,m[1]))+'%</span>';
+      h += '<span class="gl">それ以外</span><div class="track"><div class="fill" data-w="'+pct(avg(B,m[1]))+'"></div></div><span class="bv">'+pct(avg(B,m[1]))+'%</span>';
+    });
+    h += '<div class="ticks"><span>0</span><span>50</span><span>100%</span></div>';
+    $("bars").innerHTML = h;
+    growLater("#bars .fill");
+  }
+
+  /* ---------- モード ---------- */
+  function drawMode(){
+    var home = state.mode==="home";
+    ["modeHome","barHome"].forEach(function(id){ $(id).setAttribute("aria-pressed", String(home)); });
+    ["modeTrip","barTrip"].forEach(function(id){ $(id).setAttribute("aria-pressed", String(!home)); });
+    $("townName").textContent = TOWNS[state.mode] + (state.cleared ? "（サンプルなし）" : "");
+  }
+  function setMode(m){
+    if(state.mode===m) return;
+    state.mode = m; save();
+    if(state.sel[m] < 0 || state.sel[m] >= shops().length) state.sel[m] = topIndex();
+    renderAll(true);
+  }
+  function topIndex(){ var rk = ranked(); return rk.length ? rk[0].i : -1; }
+
+  function drawBar(){
+    var s = shops()[state.sel[state.mode]];
+    $("barTxt").innerHTML = s ? "選んだ店：<b>"+esc(s.name)+"</b>（"+ringLabel(ring(score(s)))+"・"+fmtShare(s.share)+"）" : "店を選ぶと、ここに出ます";
+  }
+  function nextInner(){
+    var rk = ranked().filter(function(o){ return ring(o.sc)==="in"; });
+    if(!rk.length){ toast("内側に店がありません", null); return; }
+    var cur = state.sel[state.mode], k = -1;
+    rk.forEach(function(o,j){ if(o.i===cur) k=j; });
+    select(rk[(k+1)%rk.length].i);
+  }
+
+  function select(i){
+    state.sel[state.mode] = i;
+    drawPoints(false); drawList(); drawScene(); drawCard(); drawBar();
+  }
+
+  function renderAll(ping){
+    drawMode(); drawPoints(ping); drawList(); drawBoard(true); drawScene(); drawCard(); drawResult(); drawBar();
+  }
+
+  /* ---------- 足すフォーム ---------- */
+  function drawAddForm(){
+    var h = "";
+    PREFS.forEach(function(p){
+      h += '<label for="addT-'+p.id+'"><input type="checkbox" id="addT-'+p.id+'" data-t="'+p.id+'"'+(state.addTraits[p.id]?' checked':'')+'>'+esc(p.short)+'</label>';
+    });
+    $("addTraits").innerHTML = h;
+    var labs = ["1%ほど","3%ほど","8%ほど","20%以上"], g = "";
+    SHARES.forEach(function(v,k){ g += '<button type="button" id="addShare-'+k+'" data-k="'+k+'" aria-pressed="'+(state.addShare===k)+'">'+labs[k]+'</button>'; });
+    $("addShare").innerHTML = g;
+  }
+  function addShop(){
+    var nm = ($("addName").value||"").trim();
+    if(!nm){ $("addName").focus(); toast("店の呼び方を入れると足せます", null); return; }
+    var t = {};
+    PREFS.forEach(function(p){ t[p.id] = state.addTraits[p.id] ? 1 : 0; });
+    var list = shops();
+    list.push({name:nm, kind:"", share:SHARES[state.addShare], t:t, f:{}, mine:true});
+    var idx = list.length-1, prevSel = state.sel[state.mode], mode = state.mode;
+    state.sel[state.mode] = idx;
+    $("addName").value = ""; state.addTraits = {}; drawAddForm();
+    renderAll(true);
+    toast("レーダーに足しました", function(){
+      var l = state.data[mode]; l.splice(idx,1);
+      state.sel[mode] = prevSel < l.length ? prevSel : -1;
+      renderAll(false);
+    });
+  }
+
+  /* ---------- サンプル操作（ページ内確認） ---------- */
+  function ask(msg, okLabel, fn){
+    $("notice").innerHTML = '<div class="notice"><div>'+esc(msg)+'</div><div class="acts"><button type="button" class="btn ng" id="nOk">'+esc(okLabel)+'</button><button type="button" class="btn" id="nNo">やめる</button></div></div>';
+    $("nOk").addEventListener("click", function(){ $("notice").innerHTML=""; fn(); });
+    $("nNo").addEventListener("click", function(){ $("notice").innerHTML=""; });
+  }
+  function clearSample(){
+    state.data = {home:[], trip:[]}; state.sel = {home:-1, trip:-1}; state.cleared = true;
+    $("sampleTag").textContent = "サンプルを消しました。行く候補の店を足して使えます";
+    renderAll(false);
+  }
+  function restoreSample(){
+    state.data = clone(SAMPLE); state.cleared = false;
+    state.sel = {home:-1, trip:-1};
+    state.sel[state.mode] = topIndex();
+    $("sampleTag").textContent = "サンプルデータ（架空の店）。実際はGoogleマップ等の公開情報から作る想定";
+    renderAll(true);
+  }
+
+  /* ---------- トースト ---------- */
+  var toastTimer = null, toastUndo = null;
+  function toast(msg, undo){
+    toastUndo = undo;
+    $("toastMsg").textContent = msg;
+    $("toastUndo").hidden = !undo;
+    $("toast").hidden = false;
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 6000);
+  }
+  function hideToast(){ $("toast").hidden = true; toastUndo = null; toastTimer = null; }
+
+  /* ---------- イベント ---------- */
+  function closest(el, sel){
+    while(el && el.nodeType===1){
+      if(el.matches && el.matches(sel)) return el;
+      el = el.parentNode;
+    }
+    return null;
+  }
+  function bind(){
+    $("chips").addEventListener("click", function(e){
+      var b = closest(e.target, ".chip"); if(!b || b.disabled) return;
+      togglePref(b.getAttribute("data-p"));
+    });
+    $("tip").addEventListener("click", function(e){
+      if(closest(e.target, "#tipClose")){ state.tip = false; save(); drawTip(); }
+    });
+    $("rPts").addEventListener("click", function(e){
+      var g = closest(e.target, ".pt"); if(g) select(+g.getAttribute("data-i"));
+    });
+    $("rPts").addEventListener("keydown", function(e){
+      if(e.key!=="Enter" && e.key!==" ") return;
+      var g = closest(e.target, ".pt"); if(!g) return;
+      e.preventDefault();
+      var i = +g.getAttribute("data-i");
+      select(i);
+      var again = document.querySelector('#rPts .pt[data-i="'+i+'"]'); if(again && again.focus) again.focus();
+    });
+    $("list").addEventListener("click", function(e){
+      var b = closest(e.target, "button"); if(!b) return;
+      var i = +b.getAttribute("data-i"); select(i);
+      var again = $("shop-"+state.mode+"-"+i); if(again && again.focus) again.focus();
+    });
+    $("empty").addEventListener("click", function(e){
+      if(closest(e.target, "#emptyAdd")){ $("addBox").open = true; $("addName").focus(); }
+    });
+    $("modeHome").addEventListener("click", function(){ setMode("home"); });
+    $("modeTrip").addEventListener("click", function(){ setMode("trip"); });
+    $("barHome").addEventListener("click", function(){ setMode("home"); });
+    $("barTrip").addEventListener("click", function(){ setMode("trip"); });
+    $("barNext").addEventListener("click", nextInner);
+    $("addTraits").addEventListener("change", function(e){
+      var c = e.target; if(c && c.getAttribute && c.getAttribute("data-t")) state.addTraits[c.getAttribute("data-t")] = !!c.checked;
+    });
+    $("addShare").addEventListener("click", function(e){
+      var b = closest(e.target, "button"); if(!b) return;
+      state.addShare = +b.getAttribute("data-k"); drawAddForm();
+      var again = $("addShare-"+state.addShare); if(again && again.focus) again.focus();
+    });
+    $("addBtn").addEventListener("click", addShop);
+    $("btnClear").addEventListener("click", function(){
+      ask("サンプルの店（近所の街・旅行先の街）をすべて消します。選んだ好みは残ります。", "消して自分で使う", clearSample);
+    });
+    $("btnSample").addEventListener("click", function(){
+      ask("サンプルの店に戻します。自分で足した店は消えます。", "サンプルに戻す", restoreSample);
+    });
+    $("toastUndo").addEventListener("click", function(){
+      var fn = toastUndo; hideToast(); if(fn) fn();
+    });
+  }
+
+  /* ---------- 起動 ---------- */
+  load();
+  state.data = clone(SAMPLE);
+  state.sel.home = -1; state.sel.trip = -1;
+  state.sel[state.mode] = topIndex();
+  drawBase(); drawChips(); drawAddForm(); bind();
+  renderAll(false);
+})();
+</script>
+</body>
+</html>

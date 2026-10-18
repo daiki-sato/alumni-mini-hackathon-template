@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>マモリライン</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+.wrap{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:12px;padding-bottom:40px}
+.inner{max-width:560px;margin:0 auto}
+a{color:var(--ink)}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.back{font-size:14px;display:inline-block;margin-bottom:10px}
+h1{font-family:var(--font-display);font-size:24px;margin:0 0 6px;line-height:1.3}
+h2{font-family:var(--font-display);font-size:16px;margin:0 0 8px}
+.hyp{margin:0 0 10px;padding:10px 12px;border-left:4px solid var(--signal);background:var(--surface);font-size:14px;line-height:1.6;border-radius:0 8px 8px 0}
+.hyp b{font-family:var(--font-display);font-size:12px;color:var(--muted);display:block;font-weight:500}
+.sample{font-size:12px;color:var(--muted);margin:0 0 12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sample .tag{border:1px solid var(--line);border-radius:8px;padding:1px 8px}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px}
+.field{margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+label,.lab{display:flex;justify-content:space-between;font-size:14px;font-weight:500;margin-bottom:4px}
+.lab output,label output{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--signal-ink);margin:4px 0}
+.seg{display:flex;gap:8px}
+.seg button{flex:1}
+button{font:inherit;font-size:14px;min-height:44px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+button[aria-pressed="true"]{border-color:var(--ink);font-weight:700;box-shadow:inset 0 0 0 1px var(--ink)}
+button.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+.boards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:10px 12px}
+.board .k{font-size:12px;opacity:.85}
+.board .v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:40px;line-height:1.1}
+.board .v small{font-size:16px;margin-left:4px}
+.board.bad .v{color:var(--board-ink)}
+.fig{width:100%;display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-2px;margin-right:4px}
+.legend .o{background:var(--ok);opacity:.5}
+.legend .n{background:var(--ng);opacity:.6}
+.s-ok{fill:var(--ok);fill-opacity:.16;stroke:var(--ok);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.s-ng{fill:var(--ng);fill-opacity:.2;stroke:var(--ng);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.p-ok{fill:var(--ok)}
+.p-ng{fill:var(--ng)}
+.ground{fill:none;stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.walk{fill:var(--bg);stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.mark{fill:var(--ink)}
+.svgtxt{fill:var(--muted);font-family:var(--font-mono);font-size:11px}
+table.cmp{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0}
+table.cmp th,table.cmp td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:right}
+table.cmp th:first-child,table.cmp td:first-child{text-align:left}
+table.cmp td{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.note{font-size:12px;color:var(--muted);margin:6px 0 0;line-height:1.6}
+.poster{border:2px solid var(--ink);border-radius:8px;padding:12px;margin-bottom:10px;background:var(--bg)}
+.poster .t{font-family:var(--font-display);font-weight:700;font-size:18px;line-height:1.5;margin:0}
+.poster .t span{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+ol.pos{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:4px 8px;font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:13px}
+ol.pos li span{color:var(--muted);margin-right:4px}
+textarea{width:100%;min-height:150px;font:inherit;font-size:13px;line-height:1.6;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:8px;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.msg{font-size:13px;color:var(--ok);margin:0}
+.foot{display:flex;gap:8px;flex-wrap:wrap}
+.confirm{margin-top:10px;padding:10px;border:1px solid var(--ng);border-radius:8px;font-size:14px}
+.confirm[hidden]{display:none}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media (max-width:380px){.board .v{font-size:34px}}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="inner">
+<a class="back" href="./">← 50の仮説</a>
+<h1>マモリライン</h1>
+<p class="hyp"><b>確かめる仮説</b>自分では変えられない近さも、店が足元マークで間隔を決めれば変えられる。</p>
+<p class="sample" id="sampleNote"><span class="tag" id="sampleTag">サンプル表示中</span><span>お店の人が使う画面です。数字は目安です。</span></p>
+
+<section class="sec" aria-labelledby="h-set">
+  <h2 id="h-set">列の設定</h2>
+  <div class="field">
+    <label for="len">店の前の歩道の長さ <output id="lenOut" for="len"></output></label>
+    <input type="range" id="len" min="3" max="20" step="0.5">
+  </div>
+  <div class="field">
+    <label for="gap">足元マークの間隔 <output id="gapOut" for="gap"></output></label>
+    <input type="range" id="gap" min="60" max="150" step="5">
+  </div>
+  <div class="field">
+    <label for="rad">宇宙服の半径（知らない人どうしが気にならない距離の目安） <output id="radOut" for="rad"></output></label>
+    <input type="range" id="rad" min="40" max="70" step="1">
+  </div>
+  <div class="field">
+    <div class="lab" id="modeLab">列の向き</div>
+    <div class="seg" role="group" aria-labelledby="modeLab">
+      <button type="button" id="modeStraight" aria-pressed="true">まっすぐ</button>
+      <button type="button" id="modeFold" aria-pressed="false">折り返し</button>
+    </div>
+  </div>
+</section>
+
+<div class="boards" role="group" aria-label="この間隔での結果">
+  <div class="board"><div class="k">この間隔で並べる人数</div><div class="v"><span id="bN">0</span><small>人</small></div></div>
+  <div class="board bad"><div class="k">宇宙服が重なる組</div><div class="v"><span id="bP">0</span><small>組</small></div></div>
+</div>
+
+<section class="sec" aria-labelledby="h-fig">
+  <h2 id="h-fig">足元マークと宇宙服</h2>
+  <svg id="fig" class="fig" role="img" aria-labelledby="figT" xmlns="http://www.w3.org/2000/svg">
+    <title id="figT">足元マークに並ぶ人と、そのまわりの宇宙服の円</title>
+  </svg>
+  <div class="legend"><span><i class="o"></i>重なっていない</span><span><i class="n"></i>重なっている</span><span id="figNote"></span></div>
+  <div class="row">
+    <button type="button" id="cmpBtn" aria-expanded="false" aria-controls="cmpBox">比較: 90cmにすると</button>
+  </div>
+  <div id="cmpBox" hidden>
+    <table class="cmp" id="cmpTable">
+      <thead><tr><th>間隔</th><th>並べる人数</th><th>重なる組</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="row"><button type="button" id="cmpApply">90cmに切りかえて図を見る</button></div>
+    <p class="note" id="cmpNote"></p>
+  </div>
+</section>
+
+<section class="sec" aria-labelledby="h-post">
+  <h2 id="h-post">貼り紙</h2>
+  <div class="poster">
+    <p class="t" id="posterT"></p>
+  </div>
+  <div class="lab">マークを貼る位置（入口から）</div>
+  <ol class="pos" id="posList"></ol>
+  <div class="field" style="margin-top:12px">
+    <label for="posterText">貼り紙の文面（コピーできます）</label>
+    <textarea id="posterText" readonly></textarea>
+  </div>
+  <div class="row">
+    <button type="button" id="copyBtn" class="primary">文面をコピーする</button>
+    <p class="msg" id="copyMsg" role="status" aria-live="polite"></p>
+  </div>
+</section>
+
+<div class="foot">
+  <button type="button" id="clearBtn">サンプルを消して自分で使う</button>
+  <button type="button" id="resetBtn">サンプルに戻す</button>
+</div>
+<div class="confirm" id="confirmBox" hidden role="group" aria-label="確認">
+  <p style="margin:0 0 8px" id="confirmText"></p>
+  <div class="row" style="margin-top:0">
+    <button type="button" id="confirmYes" class="primary">はい、そうする</button>
+    <button type="button" id="confirmNo">やめる</button>
+  </div>
+</div>
+</div></div>
+
+<script>
+(function(){
+  var KEY = 'hack-mamoriline-v1';
+  var SAMPLE = {len:8, gap:60, rad:45, mode:'straight', sample:true};
+  var BLANK  = {len:5, gap:100, rad:50, mode:'straight', sample:false};
+  var LANE_GAP = 120; // cm between folded lanes
+  var state = copy(SAMPLE);
+  var cmpOpen = false;
+  var pendingAction = null;
+
+  function copy(o){ return {len:o.len, gap:o.gap, rad:o.rad, mode:o.mode, sample:o.sample}; }
+  function $(id){ return document.getElementById(id); }
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(raw){
+        var o = JSON.parse(raw);
+        if(o && typeof o === 'object'){
+          var s = copy(SAMPLE);
+          if(isFinite(o.len)) s.len = Math.min(20, Math.max(3, +o.len));
+          if(isFinite(o.gap)) s.gap = Math.min(150, Math.max(60, +o.gap));
+          if(isFinite(o.rad)) s.rad = Math.min(70, Math.max(40, +o.rad));
+          s.mode = o.mode === 'fold' ? 'fold' : 'straight';
+          s.sample = !!o.sample;
+          state = s;
+        }
+      }
+    }catch(e){}
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+  // positions (cm) of people along the line
+  function layout(len, gap, mode){
+    var total = Math.round(len * 100);
+    var pts = [];
+    var half = total / 2;
+    for(var t = 0, i = 0; t <= total; t += gap, i++){
+      var x = t, y = 0;
+      if(mode === 'fold'){
+        if(t <= half){ x = t; y = 0; }
+        else { x = total - t; y = LANE_GAP; }
+      }
+      pts.push({d:t, x:x, y:y});
+    }
+    return pts;
+  }
+  function overlaps(pts, r){
+    var hit = new Array(pts.length), pairs = 0;
+    for(var i = 0; i < pts.length; i++) hit[i] = false;
+    var lim = 2 * r;
+    for(var a = 0; a < pts.length; a++){
+      for(var b = a + 1; b < pts.length; b++){
+        var dx = pts[a].x - pts[b].x, dy = pts[a].y - pts[b].y;
+        var dist = Math.sqrt(dx*dx + dy*dy);
+        if(Math.round(dist) < lim){ pairs++; hit[a] = true; hit[b] = true; }
+      }
+    }
+    return {pairs:pairs, hit:hit};
+  }
+  function calc(len, gap, rad, mode){
+    var pts = layout(len, gap, mode);
+    var o = overlaps(pts, rad);
+    return {pts:pts, n:pts.length, pairs:o.pairs, hit:o.hit};
+  }
+  function fmtM(cm){
+    var m = cm / 100;
+    var s = m.toFixed(2);
+    if(s.charAt(s.length-1) === '0') s = s.slice(0, -1);
+    return s;
+  }
+  function fmtLen(v){ return (Math.round(v*10)/10).toFixed(1); }
+
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs, text){
+    var e = document.createElementNS(SVGNS, name);
+    for(var k in attrs){ e.setAttribute(k, attrs[k]); }
+    if(text != null) e.textContent = text;
+    return e;
+  }
+
+  function drawFig(c){
+    var svg = $('fig');
+    var keep = svg.querySelector('title');
+    while(svg.lastChild && svg.lastChild !== keep){ svg.removeChild(svg.lastChild); }
+    var total = Math.round(state.len * 100);
+    var r = state.rad;
+    var padX = Math.max(r, 60) + 20;
+    var padTop = 50, padBot = 40;
+    var fold = state.mode === 'fold';
+    var W = total + padX * 2;
+    var H = (fold ? LANE_GAP : 0) + r * 2 + padTop + padBot;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    var baseY = padTop + r;
+    // font size in cm units so text is ~11px on screen
+    var cssW = svg.getBoundingClientRect ? (svg.getBoundingClientRect().width || 340) : 340;
+    var unit = W / Math.max(cssW, 200);
+    var fs = 11 * unit;
+    svg.style.height = 'auto';
+    // sidewalk band
+    var laneBottom = baseY + (fold ? LANE_GAP : 0);
+    svg.appendChild(el('rect', {x:padX - 20, y:baseY - r - 10, width:total + 40, height:(laneBottom - baseY) + r*2 + 20, 'class':'walk', rx:8*unit}));
+    // entrance & scale labels
+    var ent = el('text', {x:padX, y:baseY - r - 20, 'class':'svgtxt', 'text-anchor':'middle'}, '入口');
+    ent.setAttribute('style', 'font-size:' + fs + 'px');
+    svg.appendChild(ent);
+    svg.appendChild(el('line', {x1:padX, x2:padX, y1:baseY - r - 16 + 4*unit, y2:baseY - r - 8, 'class':'ground'}));
+    var endx = padX + total;
+    var endT = el('text', {x:endx, y:H - 12*unit, 'class':'svgtxt', 'text-anchor':'end'}, fmtLen(state.len) + 'm の歩道');
+    endT.setAttribute('style', 'font-size:' + fs + 'px');
+    svg.appendChild(endT);
+    // circles first (under), then marks and people
+    var i, p;
+    for(i = 0; i < c.pts.length; i++){
+      p = c.pts[i];
+      svg.appendChild(el('circle', {cx:padX + p.x, cy:baseY + p.y, r:r, 'class': c.hit[i] ? 's-ng' : 's-ok'}));
+    }
+    for(i = 0; i < c.pts.length; i++){
+      p = c.pts[i];
+      var cx = padX + p.x, cy = baseY + p.y;
+      svg.appendChild(el('rect', {x:cx - 9, y:cy + 14, width:18, height:5, rx:1.5, 'class':'mark'}));
+      svg.appendChild(el('circle', {cx:cx, cy:cy, r:13, 'class': c.hit[i] ? 'p-ng' : 'p-ok'}));
+    }
+    $('figNote').textContent = fold ? '折り返し: 2列の間は' + (LANE_GAP/100).toFixed(1) + 'm' : '';
+  }
+
+  function render(){
+    var c = calc(state.len, state.gap, state.rad, state.mode);
+    $('len').value = state.len; $('gap').value = state.gap; $('rad').value = state.rad;
+    $('lenOut').textContent = fmtLen(state.len) + ' m';
+    $('gapOut').textContent = state.gap + ' cm';
+    $('radOut').textContent = state.rad + ' cm';
+    $('modeStraight').setAttribute('aria-pressed', state.mode === 'straight' ? 'true' : 'false');
+    $('modeFold').setAttribute('aria-pressed', state.mode === 'fold' ? 'true' : 'false');
+    $('bN').textContent = c.n; $('bP').textContent = c.pairs;
+    $('sampleTag').hidden = !state.sample;
+    $('sampleNote').hidden = !state.sample;
+    drawFig(c);
+    renderPoster(c);
+    renderCompare(c);
+    save();
+  }
+
+  function posterText(c){
+    var lines = [];
+    lines.push('足元のマークに1人ずつお並びください（間隔' + state.gap + 'cm）');
+    lines.push('');
+    lines.push('マークの位置（入口から）');
+    for(var i = 0; i < c.pts.length; i++){
+      lines.push((i + 1) + '人目: ' + fmtM(c.pts[i].d) + 'm');
+    }
+    lines.push('');
+    lines.push('この列では最大' + c.n + '人並べます。');
+    return lines.join('\n');
+  }
+  function renderPoster(c){
+    $('posterT').textContent = '足元のマークに1人ずつお並びください（間隔' + state.gap + 'cm）';
+    var ol = $('posList');
+    while(ol.firstChild) ol.removeChild(ol.firstChild);
+    for(var i = 0; i < c.pts.length; i++){
+      var li = document.createElement('li');
+      var s = document.createElement('span'); s.textContent = (i + 1) + '.';
+      li.appendChild(s);
+      li.appendChild(document.createTextNode(fmtM(c.pts[i].d) + 'm'));
+      ol.appendChild(li);
+    }
+    $('posterText').value = posterText(c);
+    $('copyMsg').textContent = '';
+  }
+
+  function renderCompare(c){
+    $('cmpBox').hidden = !cmpOpen;
+    $('cmpBtn').setAttribute('aria-expanded', cmpOpen ? 'true' : 'false');
+    if(!cmpOpen) return;
+    var d = calc(state.len, 90, state.rad, state.mode);
+    var tb = $('cmpTable').querySelector('tbody');
+    while(tb.firstChild) tb.removeChild(tb.firstChild);
+    var rows = [[state.gap + ' cm（いま）', c.n + ' 人', c.pairs + ' 組'], ['90 cm', d.n + ' 人', d.pairs + ' 組']];
+    for(var i = 0; i < rows.length; i++){
+      var tr = document.createElement('tr');
+      for(var j = 0; j < 3; j++){
+        var td = document.createElement(j === 0 ? 'th' : 'td');
+        td.textContent = rows[i][j];
+        if(j === 0) td.setAttribute('scope', 'row');
+        tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+    }
+    var diffN = d.n - c.n, diffP = d.pairs - c.pairs;
+    var t;
+    if(state.gap === 90){
+      t = 'いまが90cmです。';
+    }else{
+      t = '90cmにすると、並べる人数は' + Math.abs(diffN) + '人' + (diffN < 0 ? '減り' : diffN > 0 ? '増え' : '変わらず') + '、重なる組は' + Math.abs(diffP) + '組' + (diffP < 0 ? '減ります。' : diffP > 0 ? '増えます。' : '変わりません。');
+    }
+    $('cmpNote').textContent = t + '（半径' + state.rad + 'cmの場合）';
+    $('cmpApply').hidden = state.gap === 90;
+  }
+
+  function touch(){ state.sample = false; render(); }
+
+  function showConfirm(text, fn){
+    pendingAction = fn;
+    $('confirmText').textContent = text;
+    $('confirmBox').hidden = false;
+    $('confirmYes').focus();
+  }
+  function hideConfirm(){ pendingAction = null; $('confirmBox').hidden = true; }
+
+  function copyText(){
+    var ta = $('posterText');
+    var text = ta.value;
+    function fallback(){
+      try{ ta.focus(); ta.select(); if(ta.setSelectionRange) ta.setSelectionRange(0, text.length); }catch(e){}
+      $('copyMsg').textContent = 'コピーできませんでした。選択した文面をそのままコピーしてください。';
+      $('copyMsg').style.color = 'var(--ng)';
+    }
+    $('copyMsg').style.color = 'var(--ok)';
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){
+          $('copyMsg').textContent = 'コピーしました。';
+        }, fallback);
+      }else{ fallback(); }
+    }catch(e){ fallback(); }
+  }
+
+  function init(){
+    load();
+    $('len').addEventListener('input', function(){ state.len = +this.value; touch(); });
+    $('gap').addEventListener('input', function(){ state.gap = +this.value; touch(); });
+    $('rad').addEventListener('input', function(){ state.rad = +this.value; touch(); });
+    $('modeStraight').addEventListener('click', function(){ state.mode = 'straight'; touch(); });
+    $('modeFold').addEventListener('click', function(){ state.mode = 'fold'; touch(); });
+    $('cmpBtn').addEventListener('click', function(){ cmpOpen = !cmpOpen; $('cmpBtn').textContent = cmpOpen ? '比較を閉じる' : '比較: 90cmにすると'; render(); });
+    $('cmpApply').addEventListener('click', function(){ state.gap = 90; touch(); });
+    $('copyBtn').addEventListener('click', copyText);
+    $('clearBtn').addEventListener('click', function(){
+      showConfirm('サンプルを消して、空の設定（歩道5m・間隔100cm）から始めます。', function(){ state = copy(BLANK); render(); });
+    });
+    $('resetBtn').addEventListener('click', function(){
+      showConfirm('いまの設定を消して、サンプル（歩道8m・間隔60cm）に戻します。', function(){ state = copy(SAMPLE); render(); });
+    });
+    $('confirmYes').addEventListener('click', function(){ var f = pendingAction; hideConfirm(); if(f) f(); });
+    $('confirmNo').addEventListener('click', hideConfirm);
+    try{ window.addEventListener('resize', function(){ render(); }); }catch(e){}
+    render();
+  }
+  init();
+})();
+</script>
+</body>
+</html>

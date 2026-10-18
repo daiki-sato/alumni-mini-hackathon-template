@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ナカガミエル</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --ink:#1A2320; --muted:#5E6B66; --line:#D9DED9;
+  --signal:#E3A008; --signal-ink:#5A3E00; --ok:#2F7D6D; --ng:#C8512F; --board:#1F2A26; --board-ink:#F6C343;
+  --font-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-body:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#1A201D; --ink:#E6ECE8; --muted:#9AA7A1; --line:#2C3531;
+  --signal:#F2B632; --signal-ink:#2A1D00; --ok:#5FB8A3; --ng:#EE7C5A; --board:#0B0F0D; --board-ink:#F6C343; color-scheme:dark;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);margin:0}
+*{box-sizing:border-box}
+.wrap{max-width:560px;margin:0 auto;padding-top:12px;padding-bottom:48px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a.back{display:inline-block;font-size:13px;color:var(--muted);text-decoration:none;padding:8px 0}
+a.back:hover{color:var(--ink);text-decoration:underline}
+h1{font-family:var(--font-display);font-size:26px;line-height:1.2;margin:2px 0 10px;letter-spacing:.02em}
+h2{font-family:var(--font-display);font-size:16px;margin:24px 0 8px}
+p{line-height:1.7;font-size:14px;margin:6px 0}
+.lead{color:var(--ink)}
+.small{font-size:12px;color:var(--muted);line-height:1.6}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.hcard{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.6;margin-bottom:14px}
+.hcard p{font-size:12.5px;margin:3px 0;line-height:1.6}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.tag{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:1px 9px;color:var(--muted)}
+.k{color:var(--muted);font-size:11px;margin-right:6px}
+.hit{color:var(--ok);font-weight:700}
+.miss{color:var(--ng);font-weight:700}
+.board{background:var(--board);color:var(--board-ink);border-radius:8px;padding:12px 14px;display:flex;gap:12px;font-family:var(--font-mono);margin:10px 0}
+.bcol{flex:1;min-width:0}
+.bl{font-family:var(--font-body);font-size:11px;line-height:1.4;opacity:.9}
+.bn{font-size:36px;font-weight:600;line-height:1.15;font-variant-numeric:tabular-nums}
+.bu{font-size:12px;margin-left:2px}
+.bsub{font-family:var(--font-body);font-size:11px;opacity:.85}
+.btn{font:inherit;font-size:14px;min-height:44px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:700}
+.btn[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:-2px;font-weight:700}
+.ctlrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.sel{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+select{font:inherit;font-size:14px;min-height:44px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:0 8px}
+.clock{margin-left:auto;font-family:var(--font-mono);font-size:13px;color:var(--muted)}
+.lane{margin:12px 0}
+.lane-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px}
+.lane-h b{font-family:var(--font-display);font-size:14px}
+.lane-h span{font-size:11px;color:var(--muted)}
+canvas{width:100%;height:96px;display:block;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.sign{background:var(--board);color:var(--board-ink);font-family:var(--font-display);font-size:13px;font-weight:500;padding:7px 10px;border-radius:8px 8px 0 0;min-height:32px;line-height:1.5}
+.sign.off{background:var(--surface);color:var(--muted);border:1px solid var(--line);border-bottom:0}
+.sign+canvas{border-radius:0 0 8px 8px}
+.lane-stat{font-size:12px;color:var(--muted);margin-top:4px}
+.lane-stat b{color:var(--ink);font-family:var(--font-mono)}
+.ctl{margin:10px 0}
+.ctl label{display:flex;justify-content:space-between;font-size:13px;gap:8px}
+.ctl label b{font-family:var(--font-mono);font-weight:600}
+input[type=range]{width:100%;min-height:32px;accent-color:var(--signal)}
+.verdict .vbtns{display:flex;gap:8px;flex-wrap:wrap}
+.verdict .btn{flex:1;min-width:140px}
+.vbar{height:8px;border-radius:4px;background:var(--ng);margin:10px 0 4px;overflow:hidden}
+.vbar i{display:block;height:100%;background:var(--ok);width:50%}
+.vtxt{font-size:12px;color:var(--muted)}
+.vtxt b{color:var(--ink);font-family:var(--font-mono)}
+.sampleBar{margin-top:22px;border-top:1px solid var(--line);padding-top:10px}
+.sampleBar .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.confirm{margin-top:8px;border:1px solid var(--signal);border-radius:8px;padding:8px 10px;font-size:13px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.confirm[hidden]{display:none}
+[hidden]{display:none!important}
+.legend{font-size:11px;color:var(--muted);margin:2px 0 0}
+@media (max-width:420px){.bn{font-size:30px}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="./">← 50の仮説</a>
+<h1>ナカガミエル</h1>
+<section class="hcard" aria-label="仮説カード"><div class="tags"><span class="tag">視点：詰める側</span><span class="tag">具体</span></div><p><span class="k">仮説</span>中の様子が見えないと人は前に詰める。見えれば落ち着く。</p><p><span class="k">確かめること</span></p><p><span class="hit">当たり</span>＝店内の空き具合が分かると詰める必要を感じない</p><p><span class="miss">外れ</span>＝見えても前に出たい。</p></section>
+<p class="lead">店内の席の様子が列から見える列（B）と、見えない列（A）を並べました。席が空くと、どちらの列も1人ずつ進みます。</p>
+<div class="board" aria-live="off">
+  <div class="bcol"><div class="bl">A 中が見えない 詰めた回数</div><div class="bn" id="bA">0</div></div>
+  <div class="bcol"><div class="bl">B 中が見える 詰めた回数</div><div class="bn" id="bB">0</div></div>
+</div>
+<div class="ctlrow"><button class="btn primary" id="play" type="button">一時停止</button><label class="sel" for="speed">速さ <select id="speed"><option value="1">×1</option><option value="3">×3</option><option value="6" selected>×6</option><option value="12">×12</option></select></label><button class="btn" id="skip" type="button" data-skip="60">1分進める</button><button class="btn" id="reset" type="button">最初から</button><span class="clock" id="clock" aria-label="シミュレーション内の経過時間">0:00</span></div>
+<style>
+.shop{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px;margin:10px 0}
+.shop h3{font-family:var(--font-display);font-size:13px;margin:0 0 8px}
+.seats{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.seat{border:2px solid var(--line);border-radius:8px;min-height:58px;font-size:10px;line-height:1.3;text-align:center;padding:6px 2px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.seat b{font-family:var(--font-mono);font-size:11px;font-weight:600}
+.seat.st-start{background:var(--muted);color:var(--surface);border-color:var(--muted)}
+.seat.st-mid{background:var(--line);border-color:var(--line)}
+.seat.st-end{background:var(--surface);border-color:var(--signal);border-style:solid}
+.seat.st-empty{background:var(--surface);border-color:var(--ok);border-style:dashed;color:var(--ok)}
+.seatkey{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
+@media (max-width:420px){.seat{font-size:9px}}
+</style>
+<div class="shop"><h3>列から見える「店内の様子」（Bの列にだけ見えています）</h3><div class="seats" id="seats"></div>
+<div class="seatkey"><span>濃い灰＝食べ始め</span><span>薄い灰＝食事中</span><span>黄の枠＝もうすぐ食べ終わり</span><span>緑の点線＝空席</span></div></div>
+<div class="lane"><div class="lane-h"><b>A 中が見えない</b><span>席の状況は分からない</span></div><div class="sign off" id="a-sign" aria-live="off">店内表示なし</div><canvas id="a-cv" role="img" aria-label="A 中が見えないの列の動き"></canvas><div class="lane-stat">詰めた回数 <b id="a-n">0</b> ／ いちばん近い人との平均距離 <b id="a-gap">0.90</b> m</div></div>
+<div class="lane"><div class="lane-h"><b>B 中が見える</b><span>席の状況が見える</span></div><div class="sign " id="b-sign" aria-live="off">店内表示あり（上の席の図）</div><canvas id="b-cv" role="img" aria-label="B 中が見えるの列の動き"></canvas><div class="lane-stat">詰めた回数 <b id="b-n">0</b> ／ いちばん近い人との平均距離 <b id="b-gap">0.90</b> m</div></div>
+<h2>シミュレーションの前提（仮置き・実測ではない）</h2>
+<p class="small">Aでは、1人が1分に前へ詰める回数を下の値とします。Bでは、席の状況が見える人はそこから「見えて落ち着く割合」ぶん詰めなくなる、と仮定しています。席は8つ、1人の食事は約4〜6分で、席が空くたびに先頭の1人が入ります。</p>
+<div class="ctl"><label for="base">1人が1分に前へ詰める回数（中が見えない） <b id="base-v"></b></label><input type="range" id="base" min="0" max="10" step="1"></div>
+<div class="ctl"><label for="calm">席が見えると、その回数が減る割合 <b id="calm-v"></b></label><input type="range" id="calm" min="0" max="100" step="5"></div>
+
+<section class="verdict"><h2>触ってみて、どちらに近いか</h2><div class="vbtns"><button id="vHit" class="btn" type="button" aria-pressed="false"></button><button id="vMiss" class="btn" type="button" aria-pressed="false"></button></div><div class="vbar"><i id="vBar"></i></div><p class="vtxt">当たり <b id="vHitN">0</b> 人 ／ 外れ <b id="vMissN">0</b> 人（はじめの数字はサンプル。押すと自分の1票が足されます）</p></section>
+<section class="sampleBar"><p class="small" id="sampleNote"></p><div class="row"><button class="btn" id="btnOwn" type="button">サンプルを消して自分で使う</button><button class="btn" id="btnSample" type="button" hidden>サンプルに戻す</button></div><div class="confirm" id="confirmBox" role="alertdialog" aria-labelledby="confirmMsg" hidden><span id="confirmMsg"></span><button class="btn" id="confirmYes" type="button">消して数え直す</button><button class="btn" id="confirmNo" type="button">やめる</button></div></section>
+</div>
+<script>
+const KEY='hack3-g4-4-v1';
+const SAMPLE_V={"hit":4,"miss":3};
+const V_LABELS=["当たりと感じた","外れと感じた"];
+'use strict';
+const $=id=>document.getElementById(id);
+const reduced=(()=>{try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}})();
+let state={own:false,v:null,params:{}};
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s==='object')state=Object.assign(state,s)}catch(e){}
+  if(!state.params||typeof state.params!=='object')state.params={};}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const S=0.9,MINGAP=0.4,FRONT=0.5,MAXN=9;
+let vPaint=null;
+
+/* ---- 列のシミュレーション（1次元・メートル単位） ---- */
+function makeLane(id,o){
+  const L={id:id,o:o,canvas:$(id+'-cv'),people:[],leaving:[],creeps:0,spawned:0,creepers:0,rnd:null,num:1};
+  L.ctx=L.canvas.getContext('2d');
+  L.spawn=function(tx){
+    const p={n:L.num++,tx:tx,x:tx,flash:0,creeped:false};
+    if(o.spawn)o.spawn(p,L);
+    L.people.push(p);L.spawned++;return p;
+  };
+  L.reset=function(){
+    L.rnd=mulberry32(o.seed||1);L.people=[];L.leaving=[];L.creeps=0;L.spawned=0;L.creepers=0;L.num=1;
+    for(let i=0;i<MAXN;i++)L.spawn(FRONT+i*S);
+  };
+  L.step=function(dt){
+    const ps=L.people;
+    for(let i=1;i<ps.length;i++){
+      const p=ps[i],rate=o.rate(p,L);
+      if(rate>0&&L.rnd()<rate*dt){
+        const gap=p.tx-ps[i-1].tx;
+        if(gap>MINGAP+0.05){
+          const d=Math.min(0.12+0.1*L.rnd(),gap-MINGAP);
+          p.tx-=d;p.flash=1;L.creeps++;
+          if(!p.creeped){p.creeped=true;L.creepers++}
+        }
+      }
+    }
+  };
+  L.advance=function(){
+    const f=L.people.shift();L.leaving.push(f);
+    const sh=L.people[0].tx-FRONT;
+    L.people.forEach(p=>{p.tx-=sh});
+    L.spawn(L.people[L.people.length-1].tx+S);
+  };
+  L.avgGap=function(){
+    const ps=L.people;if(ps.length<2)return S;
+    let sum=0;
+    for(let i=0;i<ps.length;i++){
+      const f=i>0?ps[i].tx-ps[i-1].tx:1e9,k=i<ps.length-1?ps[i+1].tx-ps[i].tx:1e9;
+      sum+=Math.min(f,k);
+    }
+    return sum/ps.length;
+  };
+  L.render=function(dt){
+    const c=L.canvas,dpr=window.devicePixelRatio||1,W=c.clientWidth||300,H=96;
+    if(c.width!==Math.round(W*dpr)||c.height!==Math.round(H*dpr)){c.width=Math.round(W*dpr);c.height=Math.round(H*dpr)}
+    const g=L.ctx;g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
+    const cs=getComputedStyle(document.documentElement);
+    const col=(n,d)=>(cs.getPropertyValue(n)||'').trim()||d;
+    const ink=col('--ink','#1A2320'),muted=col('--muted','#5E6B66'),line=col('--line','#D9DED9'),ng=col('--ng','#C8512F'),surf=col('--surface','#fff'),sig=col('--signal','#E3A008');
+    const padL=30,padR=10,sc=(W-padL-padR)/(MAXN*S+0.3),cy=52,r=Math.max(7,0.27*sc);
+    const px=x=>padL+x*sc;
+    g.fillStyle=line;g.fillRect(padL,cy+r*1.9,W-padL-padR,1);
+    g.fillStyle=ink;g.fillRect(px(0.02),cy-30,3,60);
+    g.fillStyle=muted;g.font='10px sans-serif';g.textAlign='left';g.fillText('入口',4,14);
+    g.fillRect(W-padR-sc,H-9,sc,2);g.textAlign='right';g.fillText('1m',W-padR,H-12);
+    const k=Math.min(1,dt*6);
+    L.people.forEach((p,i)=>{
+      p.x=reduced?p.tx:p.x+(p.tx-p.x)*k;p.flash=Math.max(0,p.flash-dt*1.5);
+      const x=px(p.x);
+      g.beginPath();g.arc(x,cy,r*1.7,0,6.2832);g.strokeStyle=line;g.lineWidth=1;g.stroke();
+      g.beginPath();g.arc(x,cy,r,0,6.2832);g.fillStyle=i===0?ink:(o.tint&&o.tint(p,L)?sig:muted);g.fill();
+      if(p.flash>0){g.beginPath();g.arc(x,cy,r*1.35,0,6.2832);g.strokeStyle=ng;g.lineWidth=3;g.globalAlpha=Math.min(1,p.flash);g.stroke();g.globalAlpha=1}
+      if(o.showNum){g.fillStyle=surf;g.font='600 '+Math.max(8,r*0.95)+'px monospace';g.textAlign='center';g.textBaseline='middle';g.fillText(String(p.n),x,cy+1);g.textBaseline='alphabetic'}
+    });
+    L.leaving=L.leaving.filter(p=>{
+      p.x-=dt*2.2;if(p.x<-0.6)return false;
+      g.globalAlpha=Math.max(0,(p.x+0.6)/1.2);g.beginPath();g.arc(px(Math.max(p.x,0.1)),cy,r,0,6.2832);g.fillStyle=ink;g.fill();g.globalAlpha=1;return true;
+    });
+  };
+  L.reset();
+  return L;
+}
+
+function Sim(o){
+  const s={t:0,speed:6,running:!reduced,lanes:o.lanes,interval:o.interval||30,lastAdv:0};
+  s.rnd=mulberry32(77);s.next=s.interval;
+  s.reset=function(){s.t=0;s.lastAdv=0;s.rnd=mulberry32(77);s.next=s.interval;s.lanes.forEach(l=>l.reset());if(o.onReset)o.onReset(s)};
+  s.step=function(dt){
+    s.t+=dt;
+    if(!o.noSched){while(s.t>=s.next){s.lanes.forEach(l=>l.advance());s.lastAdv=s.t;s.next+=s.interval*(0.8+0.4*s.rnd())}}
+    s.lanes.forEach(l=>l.step(dt));
+    if(o.onStep)o.onStep(dt,s);
+  };
+  s.skip=function(sec){for(let i=0;i<Math.round(sec/0.5);i++)s.step(0.5)};
+  let last=null;
+  s.frame=function(ts){
+    const dt=last===null?0:Math.min(0.1,(ts-last)/1000);last=ts;
+    if(s.running){let rem=dt*s.speed;while(rem>1e-9){const d=Math.min(0.5,rem);s.step(d);rem-=d}}
+    s.lanes.forEach(l=>l.render(dt));
+    $('clock').textContent=fmtClock(s.t);
+    if(o.onFrame)o.onFrame(s);
+    requestAnimationFrame(s.frame);
+  };
+  s.start=function(){s.reset();if(reduced)s.skip(120);s.lanes.forEach(l=>l.render(0));if(o.onFrame)o.onFrame(s);requestAnimationFrame(s.frame)};
+  return s;
+}
+function fmtClock(t){const m=Math.floor(t/60),sec=Math.floor(t%60);return m+':'+(sec<10?'0':'')+sec}
+function wireCtl(s){
+  const play=$('play'),sp=$('speed'),sk=$('skip'),rs=$('reset');
+  function paint(){play.textContent=s.running?'一時停止':'再生'}
+  play.addEventListener('click',()=>{s.running=!s.running;paint()});
+  sp.addEventListener('change',()=>{s.speed=+sp.value||6});
+  sk.addEventListener('click',()=>{s.skip(+sk.dataset.skip||30);if(s.onFrame)s.onFrame(s)});
+  rs.addEventListener('click',()=>{s.reset()});
+  s.speed=+sp.value||6;paint();
+}
+
+/* ---- 共通UI ---- */
+function askConfirm(msg,yes){
+  const b=$('confirmBox');$('confirmMsg').textContent=msg;b.hidden=false;
+  $('confirmYes').onclick=()=>{b.hidden=true;yes()};
+  $('confirmNo').onclick=()=>{b.hidden=true};
+  $('confirmNo').focus();
+}
+function initVerdict(sample,hitLabel,missLabel){
+  $('vHit').textContent=hitLabel;$('vMiss').textContent=missLabel;
+  vPaint=function(){
+    const h=(state.own?0:sample.hit)+(state.v==='hit'?1:0),m=(state.own?0:sample.miss)+(state.v==='miss'?1:0);
+    $('vHitN').textContent=h;$('vMissN').textContent=m;
+    $('vHit').setAttribute('aria-pressed',String(state.v==='hit'));$('vMiss').setAttribute('aria-pressed',String(state.v==='miss'));
+    $('vBar').style.width=(h+m?100*h/(h+m):50)+'%';
+  };
+  $('vHit').addEventListener('click',()=>{state.v=state.v==='hit'?null:'hit';save();vPaint()});
+  $('vMiss').addEventListener('click',()=>{state.v=state.v==='miss'?null:'miss';save();vPaint()});
+  vPaint();
+}
+function initSampleBar(opt){
+  function paint(){
+    $('sampleNote').textContent=state.own?'いまは自分の条件で数えています。サンプルの数字は入っていません。':'画面の数字はサンプルです（実測ではありません）。';
+    $('btnOwn').hidden=state.own;$('btnSample').hidden=!state.own;
+    if(vPaint)vPaint();
+  }
+  $('btnOwn').addEventListener('click',()=>askConfirm('サンプルの数字を消して、自分の条件で数え直します。',()=>{state.own=true;state.v=null;save();if(opt.own)opt.own();paint()}));
+  $('btnSample').addEventListener('click',()=>{state.own=false;state.v=null;save();if(opt.restore)opt.restore();paint()});
+  paint();
+}
+function bindRange(id,key,fmt,cb){
+  const el=$(id),out=$(id+'-v');
+  function paint(){el.value=state.params[key];out.textContent=fmt(+state.params[key])}
+  el.addEventListener('input',()=>{state.params[key]=+el.value;out.textContent=fmt(+el.value);save();if(cb)cb()});
+  paint();return paint;
+}
+
+const P0={base:5,calm:50};
+load();state.params=Object.assign({},P0,state.params);
+const A=makeLane('a',{seed:31,rate:()=>state.params.base/60});
+const B=makeLane('b',{seed:31,rate:()=>state.params.base/60*(1-state.params.calm/100)});
+const INIT=[20,70,125,185,235,280,320,45];
+let seats=[],srnd=mulberry32(5);
+function resetShop(){srnd=mulberry32(5);seats=INIT.map(r=>({dur:300,rem:r,empty:false,et:0,cls:'',txt:''}));
+  $('seats').innerHTML=seats.map((s,i)=>'<div class="seat" id="seat'+i+'"></div>').join('')}
+function shopStep(dt,sim){
+  seats.forEach(s=>{
+    if(s.empty){s.et-=dt;if(s.et<=0){s.empty=false;s.dur=220+Math.round(srnd()*140);s.rem=s.dur;A.advance();B.advance();sim.lastAdv=sim.t}}
+    else{s.rem-=dt;if(s.rem<=0){s.empty=true;s.et=4}}
+  });
+}
+function paintSeats(){
+  seats.forEach((s,i)=>{
+    let cls,txt;
+    if(s.empty){cls='st-empty';txt='空席'}
+    else if(s.dur-s.rem<40){cls='st-start';txt='食べ始め<b>約'+Math.ceil(s.rem/60)+'分</b>'}
+    else if(s.rem<=60){cls='st-end';txt='もうすぐ<br>終わり<b>約1分</b>'}
+    else{cls='st-mid';txt='食事中<b>約'+Math.ceil(s.rem/60)+'分</b>'}
+    const k=cls+'|'+txt;
+    if(s.k!==k){s.k=k;const el=$('seat'+i);el.className='seat '+cls;el.innerHTML=txt}
+  });
+}
+function paintBoard(s){
+  $('bA').textContent=A.creeps;$('bB').textContent=B.creeps;
+  $('a-n').textContent=A.creeps;$('b-n').textContent=B.creeps;
+  $('a-gap').textContent=A.avgGap().toFixed(2);$('b-gap').textContent=B.avgGap().toFixed(2);
+  paintSeats();
+}
+const sim=Sim({lanes:[A,B],noSched:true,onReset:resetShop,onStep:shopStep,onFrame:paintBoard});
+wireCtl(sim);
+const rp=[bindRange('base','base',v=>v+' 回/分'),bindRange('calm','calm',v=>v+' %')];
+initVerdict(SAMPLE_V,V_LABELS[0],V_LABELS[1]);
+initSampleBar({own:()=>sim.reset(),restore:()=>{state.params=Object.assign({},P0);save();rp.forEach(f=>f());sim.reset()}});
+sim.start();
+window.__t={sim:sim};
+
+</script>
+</body>
+</html>
