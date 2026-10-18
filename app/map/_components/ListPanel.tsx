@@ -57,7 +57,7 @@ export function OpenBadge({ place, className = "" }: { place: Place; className?:
 /** Google の順で並べているときに、あなたの順での順位を出す */
 function MyRankBadge({ rank }: { rank: number }) {
   return (
-    <span className="inline-block rounded-full bg-brand px-2 py-0.5 font-bold text-[11px] text-on-brand tabular-nums">
+    <span className="inline-block whitespace-nowrap rounded-full bg-brand px-2 py-0.5 font-bold text-[11px] text-on-brand tabular-nums">
       あなたの順では{rank}位
     </span>
   );
@@ -67,8 +67,11 @@ function MyRankBadge({ rank }: { rank: number }) {
 export function GoogleRankBadge({ rank }: { rank?: number }) {
   if (!rank) return null;
   return (
-    <span className="inline-block rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted tabular-nums">
-      Google の検索結果では{rank}番目
+    <span className="inline-block whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted tabular-nums">
+      {/* 幅 360px 未満では短く（2行に折り返さないように） */}
+      <span className="max-[360px]:hidden">Google の検索結果では</span>
+      <span className="hidden max-[360px]:inline">Google </span>
+      {rank}番目
     </span>
   );
 }
@@ -129,12 +132,13 @@ function TopCard({
           {/* 写真の帰属表示を置く場所（リンクはボタンの中に置けないので、下で重ねる） */}
           {credit && <span className="h-4" aria-hidden="true" />}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-bold group-hover:underline">
+        {/* 幅 360px 未満では、点数を右上の小さなバッジにして、店名とバッジ類の幅を空ける */}
+        <span className="min-w-0 flex-1 max-[360px]:pr-11">
+          <span className="block truncate font-bold group-hover:underline max-[360px]:line-clamp-2 max-[360px]:whitespace-normal">
             {placeName(s.place)}
           </span>
           {/* 住所は詳細だけに出す。カードはジャンルと営業状況 */}
-          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-muted text-xs">
+          <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-muted text-xs">
             <span className="truncate">{s.place.primaryTypeDisplayName?.text ?? "飲食店"}</span>
             <OpenBadge place={s.place} />
           </span>
@@ -169,7 +173,7 @@ function TopCard({
             </span>
           )}
         </span>
-        <span className="flex shrink-0 flex-col items-end gap-1">
+        <span className="flex shrink-0 flex-col items-end gap-1 max-[360px]:absolute max-[360px]:top-2 max-[360px]:right-2 max-[360px]:origin-top-right max-[360px]:scale-90">
           <ScoreBadge v={s.score} />
           <span className={`whitespace-nowrap font-bold text-[11px] ${BAND_TEXT[band(s.score)]}`}>
             {verdict(s.score)}

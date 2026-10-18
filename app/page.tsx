@@ -283,7 +283,7 @@ function CompareRow({
   const hot = mark === "A" || s.mineRank === 1;
   return (
     <li
-      className="flex items-center gap-2 rounded-2xl border border-line bg-surface px-2 md:gap-3 md:px-3"
+      className="flex min-w-0 items-center gap-2 rounded-2xl border border-line bg-surface px-2 md:gap-3 md:px-3"
       style={{ height: ROW - 8 }}
     >
       <span
@@ -319,9 +319,10 @@ function Compare({ pop, mine }: { pop: LpShop[]; mine: LpShop[] }) {
   const markOf = new Map(pop.map((s, i) => [s.id, MARKS[i]]));
   return (
     // スマホでも2列で並べ、間を線でつなぐ（線の幅だけ詰める）
-    <div className="grid grid-cols-[1fr_28px_1fr] md:grid-cols-[1fr_96px_1fr]">
-      <div>
-        <h3 className="mb-3 h-7 font-bold text-base md:text-lg">Google の順</h3>
+    // 列は minmax(0,1fr)（1fr だと中身の最小幅で列が広がり、320px で横にはみ出していた）
+    <div className="grid grid-cols-[minmax(0,1fr)_28px_minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_96px_minmax(0,1fr)]">
+      <div className="min-w-0">
+        <h3 className="mb-3 h-7 truncate font-bold text-base md:text-lg">Google の順</h3>
         <ol className="grid gap-2" aria-label="口コミの多い順（Google の順に見立てた例）">
           {pop.map((s, i) => (
             <CompareRow
@@ -362,8 +363,8 @@ function Compare({ pop, mine }: { pop: LpShop[]; mine: LpShop[] }) {
           );
         })}
       </svg>
-      <div>
-        <h3 className="mb-3 h-7 font-bold text-base md:text-lg">あなたの順</h3>
+      <div className="min-w-0">
+        <h3 className="mb-3 h-7 truncate font-bold text-base md:text-lg">あなたの順</h3>
         <ol className="grid gap-2" aria-label="あなたの順（点数の高い順）">
           {mine.map((s, i) => (
             <CompareRow
