@@ -471,7 +471,7 @@ export default function Home() {
       <header className="sticky top-0 z-20 border-line border-b bg-surface/90 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 md:px-6">
           <Logo size={32} />
-          <nav className="flex items-center gap-1" aria-label="ページ内のリンク">
+          <nav className="flex items-center gap-1" aria-label="メイン">
             <a
               href="#how"
               className="hidden rounded-full px-4 py-2 text-sm hover:bg-surface-2 sm:block"
