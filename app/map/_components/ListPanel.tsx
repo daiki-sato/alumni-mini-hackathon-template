@@ -54,6 +54,15 @@ export function OpenBadge({ place, className = "" }: { place: Place; className?:
   );
 }
 
+/** Google の順で並べているときに、あなたの順での順位を出す */
+function MyRankBadge({ rank }: { rank: number }) {
+  return (
+    <span className="inline-block rounded-full bg-brand px-2 py-0.5 font-bold text-[11px] text-on-brand tabular-nums">
+      あなたの順では{rank}位
+    </span>
+  );
+}
+
 /** Google の並び順。デモのデータ（順番がない）では出さない */
 export function GoogleRankBadge({ rank }: { rank?: number }) {
   if (!rank) return null;
@@ -66,6 +75,8 @@ export function GoogleRankBadge({ rank }: { rank?: number }) {
 
 type CardProps = {
   s: Scored;
+  /** Google の順で並べているときの、あなたの順での順位 */
+  myRank?: number;
   hot: boolean;
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
@@ -82,6 +93,7 @@ function hoverProps({ s, onHover }: Pick<CardProps, "s" | "onHover">) {
 
 function TopCard({
   s,
+  myRank,
   rank,
   words,
   hot,
@@ -126,10 +138,16 @@ function TopCard({
             <span className="truncate">{s.place.primaryTypeDisplayName?.text ?? "飲食店"}</span>
             <OpenBadge place={s.place} />
           </span>
-          {s.place.googleRank && (
+          {myRank ? (
             <span className="mt-1 block">
-              <GoogleRankBadge rank={s.place.googleRank} />
+              <MyRankBadge rank={myRank} />
             </span>
+          ) : (
+            s.place.googleRank && (
+              <span className="mt-1 block">
+                <GoogleRankBadge rank={s.place.googleRank} />
+              </span>
+            )
           )}
           {kq?.quote && (
             <span className="mt-1.5 block truncate text-xs">
@@ -169,6 +187,7 @@ function TopCard({
 /** 4位以下の小さめの行。写真は小さいサムネイル（160px）で、行が画面に入ったときだけ読む */
 function Row({
   s,
+  myRank,
   rank,
   words,
   hot,
@@ -202,7 +221,11 @@ function Row({
           <span className="block truncate text-[15px] md:text-sm">{placeName(s.place)}</span>
           <span className="block truncate text-muted text-xs">
             {s.place.primaryTypeDisplayName?.text ?? "飲食店"}
-            {s.place.googleRank ? `・Google の検索結果では${s.place.googleRank}番目` : ""}
+            {myRank
+              ? `・あなたの順では${myRank}位`
+              : s.place.googleRank
+                ? `・Google の検索結果では${s.place.googleRank}番目`
+                : ""}
             <OpenBadge place={s.place} className="ml-1.5" />
           </span>
           {kq?.quote && (
@@ -309,6 +332,10 @@ export function ListPanel({
   onSolo,
   scoreTip,
   onCloseScoreTip,
+  order,
+  onOrder,
+  myRanks,
+  lineUrl,
   hidden,
   hiddenWhy,
   onShowAll,
@@ -344,6 +371,13 @@ export function ListPanel({
   /** 点数の説明の吹き出しを出すか（初回だけ） */
   scoreTip: boolean;
   onCloseScoreTip: () => void;
+  /** 並び順。Google の順のときはカードに「あなたの順では◯位」を出す */
+  order: "mine" | "google";
+  /** 並び順を切り替える（Google の順番がないデモでは null） */
+  onOrder: ((o: "mine" | "google") => void) | null;
+  myRanks: Map<string, number> | null;
+  /** 友だちとのときだけ:「この3軒を LINE で送る」の URL */
+  lineUrl: string | null;
   /** 最低点で隠している件数（一時的に全部出しているときは 0） */
   hidden: number;
   /** 隠している理由（例: ほかのジャンル・60点未満） */
@@ -442,14 +476,48 @@ export function ListPanel({
         aria-labelledby="list-title"
         aria-busy={status.kind === "loading"}
       >
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="list-title" className="font-bold">
-            点数の高い順
+            {order === "google" ? "Google の検索結果の順" : "点数の高い順"}
             {genreLabel && (
               <span className="ml-1.5 font-normal text-muted text-sm">・{genreLabel}</span>
             )}
           </h2>
+          {onOrder && (
+            // 並び順の切り替え。Google の順は googleRank の昇順に並べ替えるだけ（再検索しない）
+            <fieldset className="flex shrink-0 rounded-full bg-surface-2 p-0.5">
+              <legend className="sr-only">並び順</legend>
+              {(
+                [
+                  ["mine", "あなたの順"],
+                  ["google", "Google の順"],
+                ] as const
+              ).map(([v, l]) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={order === v}
+                  onClick={() => onOrder(v)}
+                  className={`h-10 whitespace-nowrap rounded-full px-3 font-medium text-[13px] md:h-8 ${
+                    order === v ? "bg-brand text-on-brand" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </fieldset>
+          )}
         </div>
+        {lineUrl && total > 0 && (
+          <a
+            href={lineUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="mt-2 inline-flex h-10 items-center gap-1.5 rounded-full bg-[#06c755] px-4 font-bold text-sm text-white hover:opacity-90"
+          >
+            この3軒を LINE で送る
+          </a>
+        )}
         {scoreTip && status.kind === "ok" && total > 0 && (
           // 初回だけ。点数とひと言の評価の意味を1行で
           <p
@@ -490,6 +558,7 @@ export function ListPanel({
                   <TopCard
                     key={s.place.id}
                     s={s}
+                    myRank={myRanks?.get(s.place.id)}
                     rank={i + 1}
                     words={words}
                     hot={hoverId === s.place.id}
@@ -500,6 +569,7 @@ export function ListPanel({
                   <Row
                     key={s.place.id}
                     s={s}
+                    myRank={myRanks?.get(s.place.id)}
                     rank={i + 1}
                     words={words}
                     hot={hoverId === s.place.id}

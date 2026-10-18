@@ -10,6 +10,7 @@ import {
   DEMO_TOWNS,
   demoSearch,
   demoSearchBounds,
+  forcedDemo,
 } from "@/lib/jibunmap/demo";
 import { genreByKey, genreChips, genreOf, MAIN_GENRE_KEYS, townPart } from "@/lib/jibunmap/genre";
 import {
@@ -109,6 +110,8 @@ export function MapApp() {
   // キーがあっても、Google に届かなければデモに切り替える（fellBack）
   const [demo, setDemoState] = useState(!HAS_KEY);
   const [fellBack, setFellBack] = useState(false);
+  /** 固定デモ（?demo=1）で開いている */
+  const [pinnedDemo, setPinnedDemo] = useState(false);
   const demoRef = useRef(!HAS_KEY);
   const setDemo = useCallback((v: boolean) => {
     demoRef.current = v;
@@ -148,7 +151,8 @@ export function MapApp() {
   /** 初めて使う人だけに出す、3ステップの設定 */
   const [onboardOpen, setOnboardOpen] = useState(false);
   useEffect(() => {
-    if (!onboardingDone()) setOnboardOpen(true);
+    // 固定デモでは出さない（すぐに触れるように）
+    if (!onboardingDone() && !forcedDemo()) setOnboardOpen(true);
   }, []);
   /** 「並びが変わりました」などの短い知らせ */
   const [toast, setToast] = useState<string | null>(null);
@@ -254,8 +258,23 @@ export function MapApp() {
     () => (showAll ? inGenre : inGenre.filter((s) => s.score >= prefs.minScore)),
     [inGenre, showAll, prefs.minScore],
   );
+  // 並び順: あなたの順（点数）／Google の順（googleRank の昇順に並べ替えるだけ。再検索しない）
+  const [order, setOrder] = useState<"mine" | "google">("mine");
+  const hasGoogleRank = places.some((p) => p.googleRank);
+  const shown = useMemo(() => {
+    if (order !== "google" || !hasGoogleRank) return visible;
+    const g = (s: Scored) => s.place.googleRank ?? Number.POSITIVE_INFINITY;
+    return visible.slice().sort((a, b) => g(a) - g(b));
+  }, [visible, order, hasGoogleRank]);
+  const myRanks = useMemo(
+    () =>
+      order === "google" && hasGoogleRank
+        ? new Map(visible.map((s, i) => [s.place.id, i + 1]))
+        : null,
+    [visible, order, hasGoogleRank],
+  );
   // 番号は、いま出している並びの順位（一覧と地図のピンでそろえる）
-  const rankIds = useMemo(() => visible.map((s) => s.place.id), [visible]);
+  const rankIds = useMemo(() => shown.map((s) => s.place.id), [shown]);
   const genreLabel = genre
     ? (chips.find((c) => c.key === genre)?.label ?? genreByKey(genre)?.label ?? null)
     : null;
@@ -314,7 +333,7 @@ export function MapApp() {
   // Maps JS は、ページを開いた直後（検索の前）に読み始める。読むだけなら課金されない。
   // 失敗の扱いは地図と検索の側に任せる
   useEffect(() => {
-    if (!HAS_KEY) return;
+    if (!HAS_KEY || forcedDemo()) return;
     importLibrary("places").catch(() => {});
   }, []);
 
@@ -435,6 +454,17 @@ export function MapApp() {
     if (booted.current) return;
     booted.current = true;
     const sp = new URLSearchParams(window.location.search);
+    // 審査員向けの固定デモ: 通信も API も使わず、デモの街を決まった語で開く
+    if (forcedDemo()) {
+      setDemo(true);
+      setPinnedDemo(true);
+      urlExtra.current = { ...urlExtra.current, demo: "1" };
+      const dq = sp.get("q")?.trim() || FIRST_DEMO_TOWN;
+      const q0 = demoSearch(dq).length ? dq : FIRST_DEMO_TOWN;
+      setQuery(q0);
+      run(q0, { fit: true });
+      return;
+    }
     const v = sp.get("view");
     if (v === "list" || v === "map") bootView.current = v;
     if (sp.get("scene") === "friends") setScene("friends");
@@ -449,7 +479,7 @@ export function MapApp() {
     if (demoRef.current && !demoSearch(q).length) return;
     setQuery(q);
     run(q, { fit: true, select: sp.get("place") ?? undefined });
-  }, [run, setScene, setGenre]);
+  }, [run, setScene, setGenre, setDemo]);
 
   /** デモから Google に戻してもう一度探す */
   const retry = useCallback(() => {
@@ -666,6 +696,21 @@ export function MapApp() {
     [mobile, onSelect],
   );
   const peek = peekId ? ranked.find((s) => s.place.id === peekId) : undefined;
+
+  /**
+   * 友だちとのときだけ:「この3軒を LINE で送る」。店名3つと、同じ条件で開ける共有 URL を送る
+   * （位置は載せない。現在地のまわりの検索なら語なしの URL）
+   */
+  const lineUrl = (() => {
+    if (scene !== "friends" || !shown.length || typeof window === "undefined") return null;
+    const names = shown.slice(0, 3).map((s, i) => `${i + 1}. ${placeName(s.place)}`);
+    const sp = new URLSearchParams();
+    if (urlQ.current) sp.set("q", urlQ.current);
+    sp.set("scene", "friends");
+    if (pinnedDemo) sp.set("demo", "1");
+    const text = `ジブンマップで見つけた3軒\n${names.join("\n")}\n${window.location.origin}/map?${sp}`;
+    return `https://line.me/R/share?text=${encodeURIComponent(text)}`;
+  })();
 
   /** シーンを切り替える。再検索はしない（手元で並べ直すだけなので費用はかからない） */
   const changeScene = (v: Scene) => {
@@ -893,9 +938,17 @@ export function MapApp() {
           >
             <InfoIcon className="size-4 shrink-0 text-mid" />
             <span>
-              <b>デモデータ</b>
-              で動いています（街・店・口コミは架空）。Google
-              マップのキーを設定すると実際の店で動きます。
+              {pinnedDemo ? (
+                <>
+                  <b>通信なしのデモ</b>です（街・店・口コミは架空。Google には接続しません）。
+                </>
+              ) : (
+                <>
+                  <b>デモデータ</b>
+                  で動いています（街・店・口コミは架空）。Google
+                  マップのキーを設定すると実際の店で動きます。
+                </>
+              )}
             </span>
           </div>
         )
@@ -1034,7 +1087,11 @@ export function MapApp() {
                   busy={busy}
                   title={title}
                   status={status}
-                  ranked={visible}
+                  ranked={shown}
+                  order={hasGoogleRank ? order : "mine"}
+                  onOrder={hasGoogleRank ? setOrder : null}
+                  myRanks={myRanks}
+                  lineUrl={lineUrl}
                   minScore={prefs.minScore}
                   onMinScore={(minScore) => update((p) => ({ ...p, minScore }))}
                   hidden={ranked.length - visible.length}
