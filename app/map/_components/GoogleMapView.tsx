@@ -28,6 +28,8 @@ type Marker = {
 type MarkerLib = { AdvancedMarkerElement: new (opts: Record<string, unknown>) => Marker };
 
 const TOKYO = { lat: 35.681, lng: 139.767 };
+/** 地図の読み込みがこれ以上かかったら、Google に届いていないとみなす */
+const LOAD_TIMEOUT_MS = 12_000;
 
 function markerContent(s: Scored, rank: number): HTMLElement {
   const el = document.createElement("div");
@@ -49,6 +51,7 @@ export function GoogleMapView({
   onSelect,
   onHover,
   onUserMove,
+  onFail,
   boundsRef,
 }: {
   items: Scored[];
@@ -59,6 +62,8 @@ export function GoogleMapView({
   onSelect: (id: string) => void;
   onHover: (id: string | null) => void;
   onUserMove: () => void;
+  /** 読み込めなかったとき（呼ぶ側でデモに切り替える） */
+  onFail: (why: string, detail?: unknown) => void;
   boundsRef: React.RefObject<Bounds | null>;
 }) {
   const divRef = useRef<HTMLDivElement>(null);
@@ -68,15 +73,20 @@ export function GoogleMapView({
   const contents = useRef(new Map<string, HTMLElement>());
   const programmatic = useRef(false);
   const [ready, setReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   // 最新のコールバックを ref で持つ（地図のリスナーは一度だけ登録するため）
-  const cb = useRef({ onSelect, onHover, onUserMove });
-  cb.current = { onSelect, onHover, onUserMove };
+  const cb = useRef({ onSelect, onHover, onUserMove, onFail });
+  cb.current = { onSelect, onHover, onUserMove, onFail };
 
   useEffect(() => {
     let cancelled = false;
     const subs: Listener[] = [];
+    const timer = setTimeout(() => {
+      if (cancelled || mapRef.current) return;
+      setError(true);
+      cb.current.onFail(`地図の読み込みが ${LOAD_TIMEOUT_MS / 1000} 秒で終わらない`);
+    }, LOAD_TIMEOUT_MS);
     (async () => {
       try {
         const [maps, core, marker] = await Promise.all([
@@ -108,13 +118,21 @@ export function GoogleMapView({
             if (!programmatic.current) cb.current.onUserMove();
           }),
         );
+        clearTimeout(timer);
         setReady(true);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "地図を読み込めませんでした");
+        clearTimeout(timer);
+        if (cancelled) return;
+        setError(true);
+        cb.current.onFail(
+          "Maps JavaScript API のスクリプトを読み込めない（ネットワーク・キー・API の有効化を確認）",
+          e,
+        );
       }
     })();
     return () => {
       cancelled = true;
+      clearTimeout(timer);
       for (const s of subs) s.remove();
     };
   }, [boundsRef]);
@@ -206,9 +224,7 @@ export function GoogleMapView({
         <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm">
           <div className="max-w-sm rounded-2xl bg-surface p-5 shadow-e1">
             <p className="font-bold">地図を読み込めませんでした</p>
-            <p className="mt-1 text-muted">
-              {error}。キーの HTTP リファラ制限と、Maps JavaScript API が有効かを確かめてください。
-            </p>
+            <p className="mt-1 text-muted">通信の状態を確かめて、もう一度開いてください。</p>
           </div>
         </div>
       )}

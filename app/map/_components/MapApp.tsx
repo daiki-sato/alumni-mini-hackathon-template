@@ -23,18 +23,40 @@ import { SearchBox } from "./SearchBox";
 import { DEFAULT_PREFS, usePrefs } from "./usePrefs";
 
 // キーはビルド時に埋め込まれる。サーバーとブラウザで同じ値なので、最初の描画がずれない
-const DEMO = !BROWSER_KEY;
+const HAS_KEY = !!BROWSER_KEY;
 const FIRST_DEMO_TOWN = DEMO_TOWNS[0].name;
+/** 検索がこれ以上かかったら、Google に届いていないとみなしてデモに切り替える */
+const SEARCH_TIMEOUT_MS = 12_000;
 
 type Status = { kind: "idle" | "loading" | "ok" } | { kind: "error"; message: string };
 
+class TimeoutError extends Error {}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const t = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new TimeoutError(`${ms}ms で応答がありません`)), ms);
+  });
+  return Promise.race([p, t]).finally(() => clearTimeout(timer));
+}
+
 export function MapApp() {
   const { prefs, update } = usePrefs();
-  const [query, setQuery] = useState(DEMO ? FIRST_DEMO_TOWN : "");
-  const [title, setTitle] = useState<string | null>(DEMO ? FIRST_DEMO_TOWN : null);
-  const [places, setPlaces] = useState<Place[]>(() => (DEMO ? demoSearch(FIRST_DEMO_TOWN) : []));
+  // キーがあっても、Google に届かなければデモに切り替える（fellBack）
+  const [demo, setDemoState] = useState(!HAS_KEY);
+  const [fellBack, setFellBack] = useState(false);
+  const demoRef = useRef(!HAS_KEY);
+  const setDemo = useCallback((v: boolean) => {
+    demoRef.current = v;
+    setDemoState(v);
+  }, []);
+  const [query, setQuery] = useState(HAS_KEY ? "" : FIRST_DEMO_TOWN);
+  const [title, setTitle] = useState<string | null>(HAS_KEY ? null : FIRST_DEMO_TOWN);
+  const [places, setPlaces] = useState<Place[]>(() => (HAS_KEY ? [] : demoSearch(FIRST_DEMO_TOWN)));
   const [now, setNow] = useState(DEMO_NOW);
-  const [status, setStatus] = useState<Status>({ kind: DEMO ? "ok" : "idle" });
+  const [status, setStatus] = useState<Status>({ kind: HAS_KEY ? "idle" : "ok" });
+  /** 検索中に次の検索が来たことを知らせる */
+  const [busy, setBusy] = useState(false);
   const [selId, setSelId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [fitKey, setFitKey] = useState(0);
@@ -43,6 +65,10 @@ export function MapApp() {
   const boundsRef = useRef<Bounds | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searching = useRef(false);
+  /** いちばん新しい検索の番号。古い検索の結果やエラーは捨てる */
+  const seq = useRef(0);
+  /** 最後に Google で探した語（「もう一度試す」用） */
+  const lastLive = useRef<{ q: string; select?: string } | null>(null);
 
   const words = useMemo(() => ({ good: prefs.good, ng: prefs.ng }), [prefs.good, prefs.ng]);
   const scored = useMemo(() => places.map((p) => scorePlace(p, now, words)), [places, now, words]);
@@ -61,13 +87,56 @@ export function MapApp() {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [selId]);
 
+  /** Google に届かないとき: デモの店と SVG の地図に切り替える。詳しい理由は console にだけ出す */
+  const fallBack = useCallback(
+    (why: string, detail?: unknown) => {
+      if (demoRef.current) return;
+      console.warn(
+        `[ジブンマップ] Google に接続できないため、デモデータに切り替えます（${why}）`,
+        detail ?? "",
+      );
+      seq.current++;
+      searching.current = false;
+      setBusy(false);
+      setDemo(true);
+      setFellBack(true);
+      setSelId(null);
+      setMoved(false);
+      const q = lastLive.current?.q.trim() ?? "";
+      const hits = q ? demoSearch(q) : [];
+      const label = hits.length ? q : FIRST_DEMO_TOWN;
+      setQuery(label);
+      setTitle(label);
+      setPlaces(hits.length ? hits : demoSearch(FIRST_DEMO_TOWN));
+      setNow(DEMO_NOW);
+      setStatus({ kind: "ok" });
+      setFitKey((k) => k + 1);
+    },
+    [setDemo],
+  );
+
+  // キーの拒否（HTTP リファラ制限・キーの誤り）は、Maps の読み込み後にこの関数で知らされる
+  useEffect(() => {
+    if (!HAS_KEY) return;
+    const w = window as unknown as { gm_authFailure?: () => void };
+    w.gm_authFailure = () =>
+      fallBack("gm_authFailure: キーが拒否された（HTTP リファラ制限・キーの誤り）");
+    return () => {
+      w.gm_authFailure = undefined;
+    };
+  }, [fallBack]);
+
   const run = useCallback(
     async (q: string, opts: { bounds?: Bounds; fit: boolean; select?: string }) => {
-      if (searching.current) return;
+      if (searching.current) {
+        setBusy(true);
+        return;
+      }
+      setBusy(false);
       const label = q.trim() || "このエリア";
       setSelId(null);
       setMoved(false);
-      if (DEMO) {
+      if (demoRef.current) {
         const found = opts.bounds ? demoSearchBounds(opts.bounds) : demoSearch(q);
         setPlaces(found);
         setNow(DEMO_NOW);
@@ -78,18 +147,21 @@ export function MapApp() {
             : { kind: "error", message: `「${label}」に当たる店はデモデータにありません。` },
         );
         if (opts.fit) setFitKey((k) => k + 1);
-        if (opts.select) setSelId(opts.select);
+        if (opts.select && found.some((p) => p.id === opts.select)) setSelId(opts.select);
         return;
       }
+      const my = ++seq.current;
+      if (!opts.bounds) lastLive.current = { q, select: opts.select };
       searching.current = true;
       setStatus({ kind: "loading" });
       setTitle(label);
       try {
         // 地図が出ているときは、表示中の範囲に寄せる（絞り込みではない）
-        const { places: found } = await searchPlaces(
-          q,
-          opts.bounds ?? boundsRef.current ?? undefined,
+        const { places: found } = await withTimeout(
+          searchPlaces(q, opts.bounds ?? boundsRef.current ?? undefined),
+          SEARCH_TIMEOUT_MS,
         );
+        if (my !== seq.current) return;
         setPlaces(found);
         setNow(Date.now());
         setStatus(
@@ -100,19 +172,46 @@ export function MapApp() {
         if (opts.fit) setFitKey((k) => k + 1);
         if (q.trim()) setRecent((r) => [q.trim(), ...r.filter((x) => x !== q.trim())].slice(0, 5));
       } catch (e) {
-        setStatus({
-          kind: "error",
-          message:
-            e instanceof SearchLimitError
-              ? e.message
-              : "検索できませんでした。キーの設定（HTTP リファラ制限と Places API (New) の有効化）を確かめてください。",
-        });
+        if (my !== seq.current) return;
+        if (e instanceof SearchLimitError) {
+          // 古いピンを地図に残さない
+          setPlaces([]);
+          setStatus({ kind: "error", message: e.message });
+        } else {
+          fallBack(
+            e instanceof TimeoutError
+              ? `検索が ${SEARCH_TIMEOUT_MS / 1000} 秒で返らない`
+              : "Place.searchByText が失敗（Places API (New) の有効化・リファラ制限を確認）",
+            e,
+          );
+        }
       } finally {
-        searching.current = false;
+        // 通信が返らなくても、次の検索ができなくならないように必ず解放する。
+        // ただし新しい検索がもう始まっていたら、そちらの印は消さない
+        if (my === seq.current) {
+          searching.current = false;
+          setBusy(false);
+        }
       }
     },
-    [],
+    [fallBack],
   );
+
+  /** デモから Google に戻してもう一度探す */
+  const retry = useCallback(() => {
+    setDemo(false);
+    setFellBack(false);
+    setPlaces([]);
+    setTitle(null);
+    setStatus({ kind: "idle" });
+    const last = lastLive.current;
+    if (last?.q.trim()) {
+      setQuery(last.q);
+      run(last.q, { fit: true, select: last.select });
+    } else {
+      setQuery("");
+    }
+  }, [run, setDemo]);
 
   const onSearch = useCallback(
     (q: string) => {
@@ -150,7 +249,7 @@ export function MapApp() {
       <header className="relative z-30 flex items-center gap-3 border-line border-b bg-surface px-3 py-2 md:px-4">
         <Logo compact />
         <SearchBox
-          demo={DEMO}
+          demo={demo}
           value={query}
           onChange={setQuery}
           onSearch={onSearch}
@@ -165,18 +264,37 @@ export function MapApp() {
         </Link>
       </header>
 
-      {DEMO && (
+      {fellBack ? (
         <div
           className="z-20 flex items-center gap-2 bg-accent-soft px-4 py-1.5 text-xs"
-          role="note"
+          role="status"
         >
           <InfoIcon className="size-4 shrink-0 text-mid" />
-          <span>
-            <b>デモデータ</b>
-            で動いています（街・店・口コミは架空）。Google
-            マップのキーを設定すると実際の店で動きます。
+          <span className="min-w-0 flex-1">
+            Google に接続できないため、<b>サンプルの街</b>で表示中（店・口コミは架空）
           </span>
+          <button
+            type="button"
+            onClick={retry}
+            className="shrink-0 rounded-full border border-line bg-surface px-3 py-1 font-medium hover:bg-surface-2"
+          >
+            もう一度試す
+          </button>
         </div>
+      ) : (
+        demo && (
+          <div
+            className="z-20 flex items-center gap-2 bg-accent-soft px-4 py-1.5 text-xs"
+            role="note"
+          >
+            <InfoIcon className="size-4 shrink-0 text-mid" />
+            <span>
+              <b>デモデータ</b>
+              で動いています（街・店・口コミは架空）。Google
+              マップのキーを設定すると実際の店で動きます。
+            </span>
+          </div>
+        )
       )}
 
       <main className="relative flex min-h-0 flex-1 flex-col md:flex-row">
@@ -184,8 +302,13 @@ export function MapApp() {
           aria-label="地図"
           className="relative h-[42dvh] shrink-0 md:order-2 md:h-auto md:flex-1"
         >
-          {DEMO ? (
+          {demo ? (
             <DemoMapView
+              note={
+                fellBack
+                  ? "サンプルの街（架空）の地図です"
+                  : "Google マップのキーを設定すると実際の地図になります"
+              }
               items={scored}
               topIds={topIds}
               selId={selId}
@@ -203,10 +326,11 @@ export function MapApp() {
               onSelect={onSelect}
               onHover={setHoverId}
               onUserMove={onUserMove}
+              onFail={fallBack}
               boundsRef={boundsRef}
             />
           )}
-          {!DEMO && moved && status.kind !== "loading" && (
+          {!demo && moved && status.kind !== "loading" && (
             <button
               type="button"
               onClick={searchArea}
@@ -234,12 +358,13 @@ export function MapApp() {
                 rank={rank}
                 axes={prefs.axes}
                 words={words}
-                demo={DEMO}
+                demo={demo}
                 onBack={onBack}
               />
             ) : (
               <ListPanel
-                demo={DEMO}
+                demo={demo}
+                busy={busy}
                 title={title}
                 status={status}
                 total={scored.length}

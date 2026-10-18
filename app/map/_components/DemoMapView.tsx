@@ -22,6 +22,7 @@ function seeded(seed: number) {
  * 背景の道や建物は飾りで、実際の地形ではない
  */
 export function DemoMapView({
+  note,
   items,
   topIds,
   selId,
@@ -29,6 +30,7 @@ export function DemoMapView({
   onSelect,
   onHover,
 }: {
+  note: string;
   items: Scored[];
   topIds: string[];
   selId: string | null;
@@ -238,7 +240,7 @@ export function DemoMapView({
       )}
       <div className="absolute top-3 left-1/2 flex max-w-[92%] -translate-x-1/2 items-center gap-1.5 rounded-full bg-surface/95 px-3 py-1.5 text-muted text-xs shadow-e1">
         <InfoIcon className="size-4 shrink-0" />
-        <span className="truncate">Google マップのキーを設定すると実際の地図になります</span>
+        <span className="truncate">{note}</span>
       </div>
     </div>
   );

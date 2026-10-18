@@ -353,6 +353,7 @@ function Skeleton() {
 
 export function ListPanel({
   demo,
+  busy,
   title,
   status,
   total,
@@ -366,6 +367,7 @@ export function ListPanel({
   onPickTown,
 }: {
   demo: boolean;
+  busy: boolean;
   title: string | null;
   status: { kind: "idle" | "loading" | "ok" } | { kind: "error"; message: string };
   total: number;
@@ -393,6 +395,11 @@ export function ListPanel({
               上の検索欄に「街 + 食べたいもの」を入れて Enter。
             </p>
           </>
+        )}
+        {busy && (
+          <p className="mt-2 rounded-xl bg-surface-2 px-3 py-2 text-xs" role="status">
+            いま検索しています。終わってから、もう一度お試しください。
+          </p>
         )}
         <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-accent-soft px-3 py-2 text-xs">
           <InfoIcon className="mt-px size-4 shrink-0 text-mid" />
