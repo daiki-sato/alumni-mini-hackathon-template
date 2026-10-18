@@ -26,6 +26,15 @@ import { DEFAULT_PREFS, usePrefs } from "./usePrefs";
 // キーはビルド時に埋め込まれる。サーバーとブラウザで同じ値なので、最初の描画がずれない
 const HAS_KEY = !!BROWSER_KEY;
 const FIRST_DEMO_TOWN = DEMO_TOWNS[0].name;
+/** URL（?q=検索語&place=店の id）。検索語と選んだ店を、共有と戻るボタンのために載せる */
+function urlFor(q: string, place: string | null): string {
+  const sp = new URLSearchParams();
+  if (q.trim()) sp.set("q", q.trim());
+  if (place) sp.set("place", place);
+  const s = sp.toString();
+  return `${window.location.pathname}${s ? `?${s}` : ""}`;
+}
+
 /** 検索がこれ以上かかったら、Google に届いていないとみなしてデモに切り替える */
 const SEARCH_TIMEOUT_MS = 12_000;
 
@@ -71,6 +80,16 @@ export function MapApp() {
   const seq = useRef(0);
   /** 最後に Google で探した語（「もう一度試す」用） */
   const lastLive = useRef<{ q: string; select?: string } | null>(null);
+  /** URL に載せる検索語（デモに切り替わっても、入力した語のまま） */
+  const urlQ = useRef("");
+  /** 詳細を開くとき履歴を1つ積んだか（積んだなら、閉じるときは history.back() で戻る） */
+  const placePushed = useRef(false);
+  /** 詳細を開く前にいたカード（閉じたらここにフォーカスを戻す） */
+  const fromCard = useRef<string | null>(null);
+  const selRef = useRef<string | null>(null);
+  selRef.current = selId;
+  const placesRef = useRef(places);
+  placesRef.current = places;
 
   const words = useMemo(() => ({ good: prefs.good, ng: prefs.ng }), [prefs.good, prefs.ng]);
   const scored = useMemo(() => places.map((p) => scorePlace(p, now, words)), [places, now, words]);
@@ -102,6 +121,10 @@ export function MapApp() {
       setFellBack(true);
       setSelId(null);
       setMoved(false);
+      // URL の検索語は入力した語のまま残す（「もう一度試す」や再読み込みで Google に聞き直せるように）
+      placePushed.current = false;
+      fromCard.current = null;
+      window.history.replaceState(null, "", urlFor(urlQ.current, null));
       const q = lastLive.current?.q.trim() ?? "";
       const hits = q ? demoSearch(q) : [];
       const label = hits.length ? q : FIRST_DEMO_TOWN;
@@ -137,6 +160,14 @@ export function MapApp() {
       setSelId(null);
       setOthersOpen(false);
       setMoved(false);
+      fromCard.current = null;
+      placePushed.current = false;
+      if (!opts.bounds) urlQ.current = q;
+      const found0 = (found: Place[]) => {
+        const sel = opts.select && found.some((p) => p.id === opts.select) ? opts.select : null;
+        window.history.replaceState(null, "", urlFor(urlQ.current, sel));
+        if (sel) setSelId(sel);
+      };
       if (demoRef.current) {
         const found = opts.bounds ? demoSearchBounds(opts.bounds) : demoSearch(q);
         setPlaces(found);
@@ -148,7 +179,7 @@ export function MapApp() {
             : { kind: "error", message: `「${label}」に当たる店はデモデータにありません。` },
         );
         if (opts.fit) setFitKey((k) => k + 1);
-        if (opts.select && found.some((p) => p.id === opts.select)) setSelId(opts.select);
+        found0(found);
         return;
       }
       const my = ++seq.current;
@@ -174,7 +205,7 @@ export function MapApp() {
             : { kind: "error", message: `「${label}」で店が見つかりませんでした。` },
         );
         if (opts.fit) setFitKey((k) => k + 1);
-        if (opts.select && found.some((p) => p.id === opts.select)) setSelId(opts.select);
+        found0(found);
       } catch (e) {
         if (my !== seq.current) return;
         if (e instanceof SearchLimitError) {
@@ -251,8 +282,75 @@ export function MapApp() {
     [run],
   );
 
-  const onSelect = useCallback((id: string) => setSelId(id), []);
-  const onBack = useCallback(() => setSelId(null), []);
+  /** 店を選ぶ。一覧から開くときは履歴を1つ積む（ブラウザの戻るで一覧に戻れるように） */
+  const onSelect = useCallback(
+    (id: string) => {
+      if (selRef.current === id) return;
+      if (selRef.current) {
+        window.history.replaceState(null, "", urlFor(urlQ.current, id));
+      } else {
+        window.history.pushState(null, "", urlFor(urlQ.current, id));
+        placePushed.current = true;
+        fromCard.current = id;
+      }
+      if (!topIds.includes(id)) setOthersOpen(true);
+      setSelId(id);
+    },
+    [topIds],
+  );
+
+  /** 詳細を閉じる。積んだ履歴があればそれを戻る（popstate で閉じる） */
+  const onBack = useCallback(() => {
+    if (!selRef.current) return;
+    if (placePushed.current) {
+      window.history.back();
+      return;
+    }
+    window.history.replaceState(null, "", urlFor(urlQ.current, null));
+    setSelId(null);
+  }, []);
+
+  // ブラウザの戻る・進む: URL の place に合わせて詳細を開け閉めする（ここでは履歴を積まない）
+  useEffect(() => {
+    const onPop = () => {
+      const place = new URLSearchParams(window.location.search).get("place");
+      if (place && placesRef.current.some((p) => p.id === place)) {
+        placePushed.current = true;
+        setSelId(place);
+      } else {
+        placePushed.current = false;
+        setSelId(null);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // Escape で一覧に戻る（検索欄などで打っているときは除く）
+  useEffect(() => {
+    if (!selId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("input, textarea, select")) return;
+      onBack();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selId, onBack]);
+
+  // 詳細を閉じたら、開く前のカードにフォーカスを戻す
+  const prevSel = useRef<string | null>(null);
+  useEffect(() => {
+    const was = prevSel.current;
+    prevSel.current = selId;
+    if (selId || !was) return;
+    const id = fromCard.current ?? was;
+    fromCard.current = null;
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(`[data-place-card="${CSS.escape(id)}"]`)?.focus();
+    });
+  }, [selId]);
   const onReset = useCallback(() => update(() => DEFAULT_PREFS), [update]);
   const onUserMove = useCallback(() => setMoved(true), []);
 
