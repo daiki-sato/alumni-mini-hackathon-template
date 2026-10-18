@@ -13,7 +13,7 @@ import {
 } from "@/lib/jibunmap/score";
 import { LIVE_EXAMPLES } from "@/lib/jibunmap/suggest";
 import { Highlighted } from "./Highlighted";
-import { CloseIcon, InfoIcon, MyLocationIcon } from "./Icons";
+import { CloseIcon, InfoIcon, MyLocationIcon, SearchIcon } from "./Icons";
 import { PhotoCredit, PlacePhotoImg } from "./PlacePhotoImg";
 import { MinScoreSlider } from "./PrefsSheet";
 
@@ -275,6 +275,8 @@ export function ListPanel({
   onMinScore,
   hidden,
   onShowAll,
+  nearby,
+  onSearchArea,
 }: {
   demo: boolean;
   /** 前の検索が終わったら探す語 */
@@ -298,6 +300,10 @@ export function ListPanel({
   /** 最低点で隠している件数（一時的に全部出しているときは 0） */
   hidden: number;
   onShowAll: () => void;
+  /** 隣の街で同じジャンルを探す語（「もっと探す」に出す。デモでは空） */
+  nearby: string[];
+  /** 地図のいまの範囲で探し直す（範囲がまだないときは null） */
+  onSearchArea: (() => void) | null;
 }) {
   const [sliderOpen, setSliderOpen] = useState(false);
   const total = ranked.length;
@@ -486,6 +492,42 @@ export function ListPanel({
           )}
         </div>
       </section>
+
+      {status.kind === "ok" && total > 0 && (nearby.length > 0 || onSearchArea) && (
+        <section className="min-w-0 rounded-2xl bg-surface-2 p-4" aria-labelledby="more-title">
+          <h2 id="more-title" className="font-bold text-[15px] md:text-sm">
+            もっと探す
+          </h2>
+          <p className="mt-0.5 text-muted text-xs">
+            Google の検索は1回20件までです。近くの街や、地図の範囲を変えて探せます。
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {nearby.map((q) => (
+              <li key={q}>
+                <button
+                  type="button"
+                  onClick={() => onPickExample(q)}
+                  className="h-10 rounded-full border border-line bg-surface px-3.5 text-[13px] hover:bg-surface-3"
+                >
+                  {q}
+                </button>
+              </li>
+            ))}
+            {onSearchArea && (
+              <li>
+                <button
+                  type="button"
+                  onClick={onSearchArea}
+                  className="flex h-10 items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 text-[13px] hover:bg-surface-3"
+                >
+                  <SearchIcon className="size-4" />
+                  地図のこのエリアで再検索
+                </button>
+              </li>
+            )}
+          </ul>
+        </section>
+      )}
 
       <p className="text-[11px] text-muted leading-relaxed">
         {demo
