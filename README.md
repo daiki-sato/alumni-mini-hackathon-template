@@ -37,11 +37,11 @@ npm run db:start   # 初回は Docker イメージの取得に5〜10分かかり
 npm run dev
 ```
 
-[http://localhost:3000](http://localhost:3000) を開いて「接続できています」と緑色で出れば成功です。
+[http://localhost:3000/dev](http://localhost:3000/dev) を開いて「接続できています」と緑色で出れば成功です（トップページ `/` は製品の入口、`/map` がアプリ本体です）。
 
 | URL | 用途 |
 |---|---|
-| http://localhost:3000 | アプリ |
+| http://localhost:3000 | アプリ（`/` 入口、`/map` マップ、`/dev` 接続確認） |
 | http://127.0.0.1:54323 | Supabase Studio（テーブルを GUI で見る・SQL を実行する） |
 | http://127.0.0.1:54324 | Mailpit（ローカルで送信されたメールの確認。認証を足したとき用） |
 
@@ -205,6 +205,33 @@ npm run db:push
 
 ---
 
+## Google Maps のキーを設定する
+
+`/map` は Google マップの店の情報（Places API (New)）を、ブラウザから直接取ります。
+キーが無いときは架空のデモデータと簡易の地図で動くので、設定しなくても画面は確かめられます。
+
+キーはブラウザ用の **1本だけ** です（サーバー側からは Google を呼びません）。
+
+1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクトを選び、次の2つの API を有効にする
+   - Maps JavaScript API
+   - Places API (New)
+2. 「認証情報」で API キーを1本作り、制限をかける
+   - **アプリケーションの制限**: HTTP リファラ（例: `https://<プロジェクト>.vercel.app/*`、Preview 用に `https://*-<チーム>.vercel.app/*`、ローカル用に `http://localhost:3000/*`）
+   - **API の制限**: Maps JavaScript API と Places API (New) の2つだけ
+3. Vercel の Project → Settings → Environment Variables に入れて、再デプロイする
+   - `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` = 作ったキー
+   - `NEXT_PUBLIC_GOOGLE_MAP_ID` は任意（未設定なら `DEMO_MAP_ID` を使う）
+   - ローカルで試すときは `.env.local` に同じ名前で書く
+4. 使いすぎを防ぐため、Cloud Console の「割り当て（クォータ）」で、Places API (New) の1日あたりのリクエスト数に上限を設定する
+
+費用について:
+
+- 口コミ（`reviews`）・予約の可否・グループ向き・支払い方法は、料金の高い区分（Text Search Enterprise + Atmosphere）に当たります。詳細画面では追加の問い合わせをせず、一覧の検索1回で取ります
+- 検索は Enter か候補を選んだときだけ動きます（入力のたびには呼びません）
+- 同じ検索は10分間 sessionStorage に置いて再検索しません（タブを閉じると消えます）。1セッション30回で止まります
+
+---
+
 ## 試作（public/prototypes）
 
 ハッカソンのお題「行列で知らない人が近くて嫌」に向けた試作60本を `public/prototypes/` に置いています。
@@ -222,7 +249,7 @@ npm run db:push
 
 ### Vercel で試作だけを公開する手順
 
-試作は環境変数なしで動くので、上の「2. Vercel」の環境変数は後回しでかまいません（トップページは「接続できませんでした」と出ますが、`/prototypes` は見られます）。
+試作は環境変数なしで動くので、上の「2. Vercel」の環境変数は後回しでかまいません（`/dev` は「接続できませんでした」と出ますが、`/`・`/map`・`/prototypes` は見られます）。
 
 1. 作業用ブランチを切って push し、PR を作る（`main` に直接 push しない）
    ```bash
