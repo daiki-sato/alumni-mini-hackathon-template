@@ -158,6 +158,16 @@ export function directionsUrl(p: Place, mode?: TravelMode): string {
   return `https://www.google.com/maps/dir/?${q}`;
 }
 
+/**
+ * 店のページの URL（Google マップの店の画面）。Places が返した googleMapsUri を優先し、
+ * なければ店名と place_id で検索の URL を組み立てる
+ */
+export function placePageUrl(p: Place): string {
+  if (p.googleMapsUri) return p.googleMapsUri;
+  const q = new URLSearchParams({ api: "1", query: placeName(p), query_place_id: p.id });
+  return `https://www.google.com/maps/search/?${q}`;
+}
+
 const MODE_LABEL: Record<TravelMode, string> = { WALKING: "徒歩", TRANSIT: "電車" };
 
 /**
@@ -244,12 +254,12 @@ function RouteBox({
         )}
       </div>
       <a
-        href={directionsUrl(place, route?.mode)}
+        href={placePageUrl(place)}
         target="_blank"
         rel="noreferrer noopener"
         className="mt-1 inline-flex min-h-10 items-center text-muted text-xs underline"
       >
-        Google マップでナビ ↗
+        Google マップでお店を見る ↗
       </a>
     </section>
   );
