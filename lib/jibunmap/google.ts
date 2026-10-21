@@ -322,10 +322,10 @@ export function searchesLeft(): number {
  * キャッシュのキー。ふつうの検索は語だけで決める（地図の範囲が少し違うだけで取り直して課金しないため）。
  * 「このエリアで再検索」のときだけ範囲を含める
  */
-function cacheKey(query: string, bounds?: Bounds): string {
+function cacheKey(query: string, bounds?: Bounds, digits = 3): string {
   const b = bounds
     ? [bounds.low.latitude, bounds.low.longitude, bounds.high.latitude, bounds.high.longitude]
-        .map((v) => v.toFixed(3))
+        .map((v) => v.toFixed(digits))
         .join(",")
     : "";
   return `${CACHE_PREFIX}${query}|${b}`;
@@ -408,7 +408,8 @@ export type LatLngLiteral = { lat: number; lng: number };
 
 /**
  * Text Search を1回だけ呼ぶ（ページ送りはしない）。
- * bounds は寄せる範囲（locationBias）。area が true のときだけ、範囲もキャッシュのキーに入れる。
+ * bounds は寄せる範囲（locationBias）。範囲もキャッシュのキーに入れる（別の場所で同じ語を探したときに、
+ * 前の場所の結果を返さないように）。area（このエリアで再検索）は細かく、ふつうの検索は約1km単位で丸める。
  * textQuery は Google に送る語（例:「高円寺 飲食店」）。キャッシュのキーは query（入力のまま）で作る
  */
 export async function searchPlaces(
@@ -420,7 +421,7 @@ export async function searchPlaces(
   // 現在地のまわりは、丸めた座標（小数2桁、約1km）をキーにする。位置そのものは保存しない
   const key = opts.near
     ? `${CACHE_PREFIX}現在地|${opts.near.lat.toFixed(2)},${opts.near.lng.toFixed(2)}|${q}`
-    : cacheKey(q, opts.area ? bounds : undefined);
+    : cacheKey(q, bounds, opts.area ? 3 : 2);
   const hit = readCache(key);
   if (hit) return { places: hit, cached: true };
   // 上限の確認と加算は、await の前に同期で済ませる（同時に呼ばれてもすり抜けない）
@@ -453,8 +454,32 @@ export async function searchPlaces(
   const out = (places ?? [])
     .map((p, i) => ({ ...fromJsPlace(p), googleRank: i + 1 }))
     .filter(isFoodPlace);
-  writeCache(key, out);
-  return { places: out, cached: false };
+  const kept = opts.near || !bounds ? out : keepNearView(out, bounds);
+  writeCache(key, kept);
+  return { places: kept, cached: false };
+}
+
+/**
+ * 寄せる範囲は「寄せる」だけなので、語によっては遠くの店（渋谷・世田谷など）が混ざる。
+ * 口コミの少ない遠くの店は点数が高くなりやすく、地図もそこまで広がってしまう。
+ * 結果の半分以上が見ている範囲（少し広げた範囲）に入るなら、範囲の外の店を外す。
+ * 半分に届かないときは、語に別の街が入っている（例: 上野を見ながら「高円寺 ラーメン」）とみなして全部残す
+ */
+function keepNearView(places: Place[], bounds: Bounds): Place[] {
+  const { low, high } = bounds;
+  const padLat = (high.latitude - low.latitude) * 0.25;
+  const padLng = (high.longitude - low.longitude) * 0.25;
+  const inside = places.filter((p) => {
+    const l = p.location;
+    return (
+      !!l &&
+      l.latitude >= low.latitude - padLat &&
+      l.latitude <= high.latitude + padLat &&
+      l.longitude >= low.longitude - padLng &&
+      l.longitude <= high.longitude + padLng
+    );
+  });
+  return inside.length * 2 >= places.length ? inside : places;
 }
 
 /* ---------- 経路（Maps JavaScript API の Routes ライブラリ） ---------- */
